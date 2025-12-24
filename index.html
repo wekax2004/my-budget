@@ -2,272 +2,111 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ניהול תקציב Pro - המרה אוטומטית</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ניהול תקציב משותף Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; --savings: #0ea5e9; --gift: #ec4899; }
+        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; --gift: #ec4899; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
-        .container { max-width: 1200px; margin: auto; }
         .card { background: white; border-radius: 20px; padding: 15px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media (min-width: 1000px) { .dashboard-grid { grid-template-columns: 320px 1fr 320px; } }
-        
-        .category-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); cursor: pointer; transition: 0.2s; position: relative; }
-        .category-card.active { border: 2px solid var(--primary); background: #f5f7ff; }
-        
+        .hidden { display: none !important; }
+        .btn { border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 10px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: white; border: 1px solid var(--primary); color: var(--primary); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
+        .category-card { background: white; border-radius: 20px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 15px; border: 2px solid transparent; }
         .progress-container { background: #f1f5f9; height: 10px; border-radius: 10px; margin: 8px 0; overflow: hidden; }
         .progress-bar { height: 100%; transition: width 0.8s ease; }
-
-        .btn { border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-gift { background: var(--gift); color: white; }
-        .btn-danger { background: var(--danger); color: white; margin-top: 10px; }
-
-        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        .modal-content { background: white; padding: 25px; border-radius: 24px; width: 90%; max-width: 400px; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-family: inherit; }
-
-        .converter-row { display: flex; gap: 8px; background: #f8fafc; padding: 10px; border-radius: 15px; border: 1px solid #e2e8f0; margin-bottom: 10px; align-items: center; }
-        .converter-row input { margin: 0; flex: 1; border-color: var(--primary); }
-        .converter-row select { margin: 0; width: 80px; }
-        
-        .history-list { max-height: 500px; overflow-y: auto; }
-        .history-item { padding: 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; border-radius: 12px; }
-        .method-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; background: #e2e8f0; color: #475569; }
-        .hidden { display: none !important; }
-        .gift-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px dashed #eee; font-size: 0.9rem; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 15px; }
+        .modal-content { background: white; padding: 20px; border-radius: 24px; width: 100%; max-width: 400px; }
+        .history-item { padding: 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
-        <h2>התקציב החכם שלי 💎</h2>
-        <button onclick="logout()" style="background:none; border:1px solid #ddd; padding:8px 15px; border-radius:12px; cursor:pointer;">יציאה</button>
+<div id="authSection" class="card" style="max-width: 400px; margin: 60px auto; text-align: center;">
+    <h2 id="authTitle">התחברות למערכת</h2>
+    <input type="email" id="email" placeholder="אימייל">
+    <input type="password" id="pass" placeholder="סיסמה">
+    <input type="text" id="groupCode" placeholder="קוד קבוצה משותף (למשל: Family2025)">
+    <small style="display:block; margin-bottom:10px; color:#64748b;">* כל מי שיזין את אותו הקוד יראה את אותם הנתונים</small>
+    
+    <button class="btn btn-primary" id="loginBtn">התחבר</button>
+    <button class="btn btn-outline" id="signupBtn">צור חשבון חדש</button>
+</div>
+
+<div id="mainApp" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3>התקציב של קבוצת <span id="displayGroup"></span> 💎</h3>
+        <button onclick="location.reload()" style="background:none; border:none; cursor:pointer;">🔄 התנתק</button>
     </div>
 
-    <div id="authSection" class="card" style="max-width: 350px; margin: 80px auto; text-align: center;">
-        <input type="email" id="email" placeholder="אימייל" value="wekax2004@gmail.com">
-        <input type="password" id="pass" placeholder="סיסמה">
-        <button class="btn btn-primary" onclick="login()">התחבר</button>
+    <div id="categoriesList"></div>
+    
+    <div class="card">
+        <strong>היסטוריה (חודש נוכחי)</strong>
+        <div id="historyList"></div>
     </div>
 
-    <div id="mainApp" class="hidden">
-        <div class="dashboard-grid">
-            
-            <div>
-                <div class="card" style="border-right: 5px solid var(--gift);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>🎁 ארנק גיפטקארד</strong>
-                        <button style="border:none; background:none; cursor:pointer;" onclick="openGiftModal()">➕</button>
-                    </div>
-                    <div id="giftCardsList" style="margin-top:10px;"></div>
-                </div>
-
-                <div class="card">
-                    <strong>אמצעי תשלום</strong>
-                    <div style="height: 180px; margin-top:15px;"><canvas id="methodChart"></canvas></div>
-                </div>
-
-                <div class="card" style="background: #e0f2fe; text-align:center;">
-                    <small>חיסכון מצטבר</small>
-                    <div id="savingsTotal" style="font-size:1.6rem; font-weight:bold; color:#0369a1;">₪0</div>
-                </div>
-            </div>
-
-            <div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                    <button class="btn btn-primary" onclick="openAddCat('expense')">➕ קטגוריה</button>
-                    <button class="btn btn-gift" onclick="openAddCat('savings')">💰 יעד חיסכון</button>
-                </div>
-                <div id="categoriesList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:15px;"></div>
-            </div>
-
-            <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                    <h3 id="historyTitle" style="margin:0;">היסטוריה</h3>
-                    <select id="monthFilter" style="width:auto; border:none; background:#f1f5f9; font-size:0.8rem;"></select>
-                </div>
-                <div id="historyList" class="history-list"></div>
-            </div>
-        </div>
+    <div style="position:fixed; bottom:20px; left:20px; right:20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <button class="btn btn-primary" onclick="openAddCat()">➕ קטגוריה</button>
+        <button class="btn btn-primary" style="background:var(--success)" onclick="openAddExp()">💸 הוצאה</button>
     </div>
 </div>
 
-<div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle">פעולה חדשה</h3>
-    
-    <div class="converter-row">
-        <span style="font-size:0.8rem; font-weight:bold;">המרה:</span>
-        <input type="number" id="foreignAmt" placeholder="סכום מט"ח" oninput="autoConvert()">
-        <select id="currType" onchange="autoConvert()">
-            <option value="USD">USD $</option>
-            <option value="EUR">EUR €</option>
-        </select>
-        <span id="liveRate" style="font-size:0.7rem; color:var(--primary);">טוען שער...</span>
-    </div>
-
-    <div style="display: flex; gap: 8px;">
-        <input type="number" id="expAmount" placeholder="סכום סופי ₪" style="flex: 1; font-weight:bold; border-color:var(--success);">
-        <select id="paymentMethod" style="flex: 1;" onchange="toggleGiftSelect()">
-            <option value="אשראי">💳 אשראי</option>
-            <option value="מזומן">💵 מזומן</option>
-            <option value="Bit/PayBox">📱 Bit/PayBox</option>
-            <option value="גיפט קארד">🎁 גיפט קארד</option>
-        </select>
-    </div>
-    <select id="selectGiftCard" class="hidden"></select>
-    <textarea id="expNotes" placeholder="הערות..."></textarea>
-    <input type="hidden" id="activeCatId"><input type="hidden" id="editingTxId">
-    <button class="btn btn-primary" onclick="saveExpense()">שמור</button>
-    <button class="btn btn-danger" id="delTxBtn" style="display:none;" onclick="deleteTransaction()">מחק</button>
-    <button class="btn" style="background:none;" onclick="closeModal('expModal')">ביטול</button>
-</div></div>
-
-<div id="giftModal" class="modal"><div class="modal-content">
-    <h3>הוספת כרטיס מתנה</h3>
-    <input type="text" id="giftName" placeholder="שם הכרטיס">
-    <input type="number" id="giftBalance" placeholder="סכום טעון ₪">
-    <button class="btn btn-gift" onclick="saveGiftCard()">שמור</button>
-    <button class="btn" style="background:none;" onclick="closeModal('giftModal')">ביטול</button>
-</div></div>
-
-<div id="catModal" class="modal"><div class="modal-content">
-    <h3>קטגוריה</h3>
-    <input type="text" id="catName" placeholder="שם">
-    <input type="number" id="catBudget" placeholder="תקציב ₪">
-    <input type="hidden" id="editingCatId"><input type="hidden" id="catTypeHidden">
-    <button class="btn btn-primary" onclick="saveCategory()">שמור</button>
-    <button class="btn btn-danger" id="delCatBtn" style="display:none;" onclick="deleteCategory()">מחק</button>
-    <button class="btn" style="background:none;" onclick="closeModal('catModal')">ביטול</button>
-</div></div>
+<div id="genericModal" class="modal">
+    <div class="modal-content" id="modalBody"></div>
+</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, doc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, Timestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    
-    let myGroupId = null, allTransactions = [], allCategories = [], allGiftCards = [], methodChart = null;
-    let rates = { USD: 3.7, EUR: 4.0 };
 
-    // משיכת שערים חיה
-    async function fetchRates() {
+    let myGroupId = localStorage.getItem('lastGroupCode') || "";
+    if(myGroupId) document.getElementById('groupCode').value = myGroupId;
+
+    // הרשמה
+    document.getElementById('signupBtn').onclick = async () => {
+        const code = document.getElementById('groupCode').value;
+        if(!code) return alert("חובה להזין קוד קבוצה!");
         try {
-            const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-            const data = await res.json();
-            rates.USD = data.rates.ILS;
-            const eurRes = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
-            const eurData = await eurRes.json();
-            rates.EUR = eurData.rates.ILS;
-            document.getElementById('liveRate').innerText = `שער: ${rates.USD.toFixed(2)}`;
-        } catch(e) { console.log("Rates fetch failed"); }
-    }
-    fetchRates();
-
-    window.autoConvert = () => {
-        const val = parseFloat(foreignAmt.value) || 0;
-        const type = currType.value;
-        expAmount.value = Math.round(val * rates[type]);
-        document.getElementById('liveRate').innerText = `שער ${type}: ${rates[type].toFixed(2)}`;
+            await createUserWithEmailAndPassword(auth, email.value, pass.value);
+            localStorage.setItem('lastGroupCode', code);
+            location.reload();
+        } catch(e) { alert("שגיאה בהרשמה: " + e.message); }
     };
 
-    window.login = () => signInWithEmailAndPassword(auth, email.value, pass.value);
-    window.logout = () => signOut(auth);
-    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
-
-    window.openGiftModal = () => { giftName.value = ""; giftBalance.value = ""; document.getElementById('giftModal').style.display = 'flex'; };
-    window.saveGiftCard = async () => {
-        await addDoc(collection(db, "giftcards"), { name: giftName.value, balance: parseFloat(giftBalance.value), groupId: myGroupId });
-        closeModal('giftModal');
-    };
-
-    window.toggleGiftSelect = () => {
-        const isGift = paymentMethod.value === "גיפט קארד";
-        selectGiftCard.classList.toggle('hidden', !isGift);
-        if(isGift) selectGiftCard.innerHTML = allGiftCards.map(g => `<option value="${g.id}">${g.name} (₪${g.balance})</option>`).join('');
-    };
-
-    window.openAddCat = (type) => { editingCatId.value = ""; catName.value = ""; catBudget.value = ""; catTypeHidden.value = type; delCatBtn.style.display="none"; document.getElementById('catModal').style.display = 'flex'; };
-    window.openEditCat = (e, id) => {
-        e.stopPropagation(); const cat = allCategories.find(c => c.id === id);
-        editingCatId.value = id; catName.value = cat.name; catBudget.value = cat.budget; catTypeHidden.value = cat.type;
-        delCatBtn.style.display="block"; document.getElementById('catModal').style.display = 'flex';
-    };
-    window.saveCategory = async () => {
-        const data = { name: catName.value, budget: parseFloat(catBudget.value) || 0, type: catTypeHidden.value, groupId: myGroupId };
-        if(editingCatId.value) await updateDoc(doc(db, "categories", editingCatId.value), data);
-        else await addDoc(collection(db, "categories"), data);
-        closeModal('catModal');
-    };
-
-    window.openAddExpense = (e, id, name) => {
-        e.stopPropagation(); editingTxId.value = ''; delTxBtn.style.display = 'none';
-        activeCatId.value = id; expTitle.innerText = "הוספה ל: " + name; expAmount.value = ''; foreignAmt.value = '';
-        paymentMethod.value = "אשראי"; toggleGiftSelect(); document.getElementById('expModal').style.display = 'flex';
-    };
-    window.openEditTx = (id) => {
-        const tx = allTransactions.find(t => t.id === id);
-        editingTxId.value = id; activeCatId.value = tx.catId; expAmount.value = tx.amount;
-        paymentMethod.value = tx.method || "אשראי"; toggleGiftSelect(); expTitle.innerText = "עריכה";
-        delTxBtn.style.display = 'block'; document.getElementById('expModal').style.display = 'flex';
-    };
-
-    window.saveExpense = async () => {
-        const amt = parseFloat(expAmount.value); if(!amt) return;
-        const txData = { amount: amt, method: paymentMethod.value, notes: expNotes.value, catId: activeCatId.value, catName: expTitle.innerText.split(": ")[1], groupId: myGroupId, date: Timestamp.now() };
-        if(paymentMethod.value === "גיפט קארד" && !editingTxId.value) {
-            const cardId = selectGiftCard.value;
-            const card = allGiftCards.find(g => g.id === cardId);
-            if(card) await updateDoc(doc(db, "giftcards", cardId), { balance: card.balance - amt });
-        }
-        if(editingTxId.value) await updateDoc(doc(db, "transactions", editingTxId.value), txData);
-        else await addDoc(collection(db, "transactions"), txData);
-        closeModal('expModal');
+    // התחברות
+    document.getElementById('loginBtn').onclick = async () => {
+        const code = document.getElementById('groupCode').value;
+        if(!code) return alert("חובה להזין קוד קבוצה!");
+        try {
+            await signInWithEmailAndPassword(auth, email.value, pass.value);
+            localStorage.setItem('lastGroupCode', code);
+            myGroupId = code;
+        } catch(e) { alert("שגיאה בהתחברות: " + e.message); }
     };
 
     onAuthStateChanged(auth, u => {
-        if(u) {
-            authSection.classList.add('hidden'); mainApp.classList.remove('hidden'); myGroupId = "mishpachat_cohen_2024";
-            onSnapshot(query(collection(db, "categories"), where("groupId", "==", myGroupId)), s => { allCategories = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-            onSnapshot(query(collection(db, "transactions"), where("groupId", "==", myGroupId)), s => { allTransactions = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-            onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", myGroupId)), s => { allGiftCards = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
+        if(u && myGroupId) {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('displayGroup').innerText = myGroupId;
+            startSync();
         }
     });
 
-    function render() {
-        giftCardsList.innerHTML = allGiftCards.map(g => `<div class="gift-item"><span>${g.name}</span><strong>₪${g.balance.toLocaleString()}</strong></div>`).join('') || '<small>אין כרטיסים</small>';
-        categoriesList.innerHTML = allCategories.map(c => {
-            const spent = allTransactions.filter(t => t.catId === c.id).reduce((s,t) => s+t.amount, 0);
-            const pct = Math.min((spent / (c.budget || 1)) * 100, 100);
-            return `<div class="category-card">
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>${c.name}</strong>
-                    <div><button onclick="openEditCat(event, '${c.id}')">⚙️</button><button onclick="openAddExpense(event, '${c.id}', '${c.name}')">+</button></div>
-                </div>
-                <small>₪${spent} / ₪${c.budget}</small>
-                <div class="progress-container"><div class="progress-bar" style="width:${pct}%; background:${pct>90?'var(--danger)':'var(--success)'}"></div></div>
-            </div>`;
-        }).join('');
-        historyList.innerHTML = allTransactions.sort((a,b)=>b.date.seconds-a.date.seconds).map(t => `<div class="history-item" onclick="openEditTx('${t.id}')">
-            <div style="display:flex; justify-content:space-between;"><strong>${t.catName}</strong><strong>₪${t.amount}</strong></div>
-            <small class="method-badge">${t.method}</small></div>`).join('');
-            
-        if (methodChart) methodChart.destroy();
-        const mCount = {}; allTransactions.forEach(t => { mCount[t.method] = (mCount[t.method] || 0) + t.amount; });
-        methodChart = new Chart(document.getElementById('methodChart'), {
-            type: 'pie',
-            data: { labels: Object.keys(mCount), datasets: [{ data: Object.values(mCount), backgroundColor: ['#6366f1', '#fbbf24', '#22c55e', '#ec4899'] }] },
-            options: { plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false }
-        });
-        savingsTotal.innerText = `₪${allCategories.filter(c=>c.type==='savings').reduce((sum,c)=> sum + allTransactions.filter(t=>t.catId===c.id).reduce((s,t)=>s+t.amount,0),0).toLocaleString()}`;
+    function startSync() {
+        // כאן נכנסות פונקציות ה-onSnapshot שלך עם ה-where("groupId", "==", myGroupId)
+        // המערכת תמשוך נתונים רק של הקבוצה שהוזנה בתיבת הטקסט
+        console.log("מסנכרן נתונים עבור קבוצה:", myGroupId);
     }
 </script>
 </body>
-
 </html>
