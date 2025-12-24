@@ -3,166 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Budget Master Pro</title>
+    <title>BudgetMaster</title>
     <style>
-        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; --card: #ffffff; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; color: #1e293b; padding-bottom: 100px; }
-        .container { max-width: 500px; margin: auto; }
-        .card { background: var(--card); border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .btn { border: none; padding: 14px; border-radius: 16px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
+        .container { max-width: 450px; margin: auto; }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        /* כניסה */
+        .auth-card { text-align: center; margin-top: 50px; }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; margin-top: 10px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
-        .btn-ghost { background: #f1f5f9; color: #64748b; margin-top: 15px; }
-        .category-card { background: white; border-radius: 20px; padding: 18px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
-        .progress-container { background: #f1f5f9; height: 12px; border-radius: 10px; margin: 12px 0; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 0.8s ease; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px); padding: 20px; }
-        .modal-content { background: white; padding: 25px; border-radius: 30px; width: 100%; max-width: 400px; }
-        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 16px; box-sizing: border-box; }
-        .fab-container { position: fixed; bottom: 25px; left: 20px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; z-index: 999; }
+        
+        /* אפליקציה */
+        .category-card { background: white; border-radius: 18px; padding: 15px; margin-bottom: 12px; border: 1px solid #f1f5f9; }
+        .prog-bg { background: #f1f5f9; height: 10px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        .prog-fill { height: 100%; transition: width 0.5s; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 25px; border-radius: 24px; width: 100%; max-width: 400px; }
+        
+        .fab-container { position: fixed; bottom: 20px; left: 20px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .hidden { display: none !important; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="authSection" class="card" style="margin-top: 50px; text-align: center;">
-        <h1 style="font-size: 28px;">💎 התחברות</h1>
+    <div id="authBox" class="card auth-card">
+        <h2 style="font-size: 30px; margin-bottom: 5px;">BudgetMaster 💰</h2>
+        <p style="color: #64748b;">ניהול תקציב משותף חכם</p>
         <input type="email" id="email" placeholder="אימייל" value="wekax2004@gmail.com">
         <input type="password" id="pass" placeholder="סיסמה">
-        <button class="btn btn-primary" id="loginBtn">התחבר</button>
-        <button class="btn btn-ghost" id="signupBtn">הרשמה כמשתמש חדש</button>
+        <button class="btn btn-primary" id="btnSignIn">התחברות</button>
+        <p id="btnSignUp" style="color: var(--primary); cursor: pointer; text-decoration: underline; margin-top: 15px; font-weight: 500;">משתמש חדש? צור חשבון</p>
     </div>
 
-    <div id="mainApp" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0;">התקציב שלנו</h2>
-            <button id="logoutBtn" style="background:#eee; border:none; padding:8px 12px; border-radius:10px;">יציאה</button>
+    <div id="appBox" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 style="margin:0;">התקציב שלנו ✨</h2>
+            <button id="btnSignOut" style="background:#f1f5f9; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">יציאה</button>
         </div>
-        <div id="categoriesList"></div>
-        <div class="card">
-            <h3>היסטוריה</h3>
+
+        <div id="catsList"></div>
+        
+        <div class="card" style="margin-bottom: 80px;">
+            <h3 style="font-size: 18px; margin-bottom: 15px;">פעולות אחרונות</h3>
             <div id="historyList"></div>
         </div>
+
         <div class="fab-container">
-            <button class="btn" style="background:white; border:1px solid #ddd;" onclick="openModal('catModal')">➕ קטגוריה</button>
-            <button class="btn btn-success" onclick="openModal('expModal')">💸 הוצאה</button>
+            <button class="btn" style="background:white; color:#1e293b; border:1px solid #ddd;" onclick="openM('catModal')">➕ קטגוריה</button>
+            <button class="btn btn-success" onclick="openM('expModal')">💸 הוצאה</button>
         </div>
     </div>
 </div>
 
-<div id="expModal" class="modal"><div class="modal-content">
-    <h3>הוצאה חדשה</h3>
-    <input type="number" id="expAmount" placeholder="סכום בשקלים">
-    <select id="catSelect"></select>
-    <button class="btn btn-primary" id="saveExpBtn">שמור</button>
-    <button class="btn btn-ghost" onclick="closeModal('expModal')">ביטול</button>
-</div></div>
-
 <div id="catModal" class="modal"><div class="modal-content">
     <h3>קטגוריה חדשה</h3>
-    <input type="text" id="catName" placeholder="שם הקטגוריה">
-    <input type="number" id="catBudget" placeholder="תקציב חודשי">
-    <button class="btn btn-primary" id="saveCatBtn">צור</button>
-    <button class="btn btn-ghost" onclick="closeModal('catModal')">ביטול</button>
+    <input type="text" id="catName" placeholder="שם (אוכל, דלק...)">
+    <input type="number" id="catBudget" placeholder="תקציב יעד ₪">
+    <button class="btn btn-primary" id="btnSaveCat">שמור קטגוריה</button>
+    <button class="btn" style="background:none;" onclick="closeM('catModal')">ביטול</button>
+</div></div>
+
+<div id="expModal" class="modal"><div class="modal-content">
+    <h3>הוצאה חדשה</h3>
+    <input type="number" id="expAmt" placeholder="סכום ב-₪">
+    <select id="catPick"></select>
+    <button class="btn btn-primary" id="btnSaveExp">שמור הוצאה</button>
+    <button class="btn" style="background:none;" onclick="closeM('expModal')">ביטול</button>
 </div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
-    const app = initializeApp(firebaseConfig);
+    const config = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
+    const app = initializeApp(config);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const gid = "mishpacha_shared_2025";
 
-    const myGroupId = "Mishpacha_2025_VIP";
+    window.openM = (id) => document.getElementById(id).style.display = 'flex';
+    window.closeM = (id) => document.getElementById(id).style.display = 'none';
 
-    // ניהול מודאלים
-    window.openModal = (id) => document.getElementById(id).style.display = 'flex';
-    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+    // חיבור כפתורים
+    document.getElementById('btnSignIn').onclick = () => {
+        signInWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("שגיאה: " + e.message));
+    };
 
-    // חיבור כפתורי כניסה
-    document.getElementById('loginBtn').addEventListener('click', () => {
-        const e = document.getElementById('email').value;
-        const p = document.getElementById('pass').value;
-        signInWithEmailAndPassword(auth, e, p).catch(err => alert("שגיאה: " + err.message));
-    });
+    document.getElementById('btnSignUp').onclick = () => {
+        createUserWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("שגיאה בהרשמה: " + e.message));
+    };
 
-    document.getElementById('signupBtn').addEventListener('click', () => {
-        const e = document.getElementById('email').value;
-        const p = document.getElementById('pass').value;
-        createUserWithEmailAndPassword(auth, e, p).then(() => alert("נרשמת בהצלחה")).catch(err => alert("שגיאה בהרשמה: " + err.message));
-    });
+    document.getElementById('btnSignOut').onclick = () => signOut(auth).then(() => location.reload());
 
-    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth).then(() => location.reload()));
-
-    // מעקב אחר מצב התחברות
     onAuthStateChanged(auth, user => {
-        if (user) {
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            startSync();
+        if(user) {
+            document.getElementById('authBox').classList.add('hidden');
+            document.getElementById('appBox').classList.remove('hidden');
+            loadData();
         }
     });
 
-    function startSync() {
-        onSnapshot(query(collection(db, "categories"), where("groupId", "==", myGroupId)), s => {
+    function loadData() {
+        onSnapshot(query(collection(db, "categories"), where("groupId", "==", gid)), s => {
             const cats = s.docs.map(d => ({id: d.id, ...d.data()}));
-            onSnapshot(query(collection(db, "transactions"), where("groupId", "==", myGroupId), orderBy("date", "desc")), ts => {
-                const txs = ts.docs.map(d => ({id: d.id, ...d.data()}));
+            onSnapshot(query(collection(db, "transactions"), where("groupId", "==", gid), orderBy("date", "desc")), ts => {
+                const txs = ts.docs.map(d => d.data());
                 render(cats, txs);
+                document.getElementById('catPick').innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
             });
         });
     }
 
     function render(cats, txs) {
-        document.getElementById('catSelect').innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        
-        document.getElementById('categoriesList').innerHTML = cats.map(c => {
+        document.getElementById('catsList').innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((sum, t) => sum + t.amount, 0);
             const pct = Math.min((spent / c.budget) * 100, 100);
-            return `
-                <div class="category-card">
-                    <div style="display:flex; justify-content:space-between;">
-                        <strong>${c.name}</strong>
-                        <span>₪${spent} / ₪${c.budget}</span>
-                    </div>
-                    <div class="progress-container"><div class="progress-fill" style="width:${pct}%; background:var(--primary)"></div></div>
-                    <button onclick="window.delItem('categories','${c.id}')" style="font-size:10px; border:none; background:none; color:red; cursor:pointer;">מחק קטגוריה</button>
-                </div>`;
+            return `<div class="category-card">
+                <div style="display:flex; justify-content:space-between;"><strong>${c.name}</strong> <span>₪${spent} / ₪${c.budget}</span></div>
+                <div class="prog-bg"><div class="prog-fill" style="width:${pct}%; background:var(--primary)"></div></div>
+            </div>`;
         }).join('');
 
-        document.getElementById('historyList').innerHTML = txs.slice(0,10).map(t => `
-            <div class="history-item">
-                <span>${t.catName}</span>
-                <strong>- ₪${t.amount}</strong>
+        document.getElementById('historyList').innerHTML = txs.slice(0, 10).map(t => `
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
+                <span>${t.catName}</span> <strong>₪${t.amount}</strong>
             </div>
         `).join('');
     }
 
-    // הפיכת פונקציות שמירה לגלובליות
-    document.getElementById('saveCatBtn').onclick = async () => {
-        const name = document.getElementById('catName').value;
-        const budget = parseFloat(document.getElementById('catBudget').value);
-        if(!name || !budget) return;
-        await addDoc(collection(db, "categories"), { name, budget, groupId: myGroupId });
-        closeModal('catModal');
+    document.getElementById('btnSaveCat').onclick = async () => {
+        await addDoc(collection(db, "categories"), { name: catName.value, budget: parseFloat(catBudget.value), groupId: gid });
+        closeM('catModal');
     };
 
-    document.getElementById('saveExpBtn').onclick = async () => {
-        const amt = parseFloat(document.getElementById('expAmount').value);
-        const catId = document.getElementById('catSelect').value;
-        const catName = document.getElementById('catSelect').options[document.getElementById('catSelect').selectedIndex].text;
-        if(!amt) return;
-        await addDoc(collection(db, "transactions"), { amount: amt, catId, catName, groupId: myGroupId, date: Timestamp.now() });
-        closeModal('expModal');
-        document.getElementById('expAmount').value = '';
+    document.getElementById('btnSaveExp').onclick = async () => {
+        const cName = catPick.options[catPick.selectedIndex].text;
+        await addDoc(collection(db, "transactions"), { amount: parseFloat(expAmt.value), catId: catPick.value, catName: cName, groupId: gid, date: Timestamp.now() });
+        closeM('expModal');
+        expAmt.value = '';
     };
-
-    window.delItem = async (c, id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, c, id)); };
 </script>
 </body>
 </html>
