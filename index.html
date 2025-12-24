@@ -3,57 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ניהול תקציב - BudgetMaster</title>
+    <title>BudgetMaster Pro</title>
     <style>
         :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; color: #1e293b; }
         
-        /* מגביל רוחב במחשב כדי שייראה כמו אפליקציה */
-        .container { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; }
+        /* עיצוב המכולה המרכזית - נראה טוב גם במחשב */
+        .container { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
         
-        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         
-        /* עיצוב קטגוריות */
-        .category-card { background: white; border-radius: 20px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        /* קטגוריות */
+        .category-card { background: white; border-radius: 20px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; position: relative; }
         .progress-bar { background: #f1f5f9; height: 12px; border-radius: 10px; margin: 12px 0; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 0.8s ease; border-radius: 10px; }
+        .progress-fill { height: 100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
         
         /* כפתורים */
         .btn { border: none; padding: 14px; border-radius: 16px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
-        .btn-ghost { background: #f1f5f9; color: #64748b; font-size: 14px; }
+        .btn-ghost { background: #f1f5f9; color: #64748b; font-size: 14px; margin-top: 10px; }
         
         /* תפריט תחתון צף */
-        .fab-container { position: sticky; bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; z-index: 100; margin-top: 20px; }
+        .fab-container { position: sticky; bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; z-index: 100; margin-top: auto; padding-bottom: 10px; }
         
         /* מודאלים */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.75); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 20px; }
-        .modal-content { background: white; padding: 25px; border-radius: 28px; width: 100%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 20px; }
+        .modal-content { background: white; padding: 25px; border-radius: 28px; width: 100%; max-width: 400px; }
         
-        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 16px; box-sizing: border-box; outline: none; }
-        input:focus { border-color: var(--primary); }
-        
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 16px; box-sizing: border-box; }
         .hidden { display: none !important; }
-        .history-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="authSection" class="card" style="margin-top: 60px; text-align: center;">
+    <div id="authSection" class="card" style="margin-top: 50px; text-align: center;">
         <h1 style="font-size: 32px; margin-bottom: 10px;">💎 BudgetMaster</h1>
-        <p style="color: #64748b; margin-bottom: 25px;">ניהול תקציב משותף חכם</p>
+        <p style="color: #64748b; margin-bottom: 25px;">ניהול תקציב משותף</p>
         <input type="email" id="email" placeholder="אימייל" value="wekax2004@gmail.com">
         <input type="password" id="pass" placeholder="סיסמה">
         <button class="btn btn-primary" id="loginBtn">התחברות</button>
-        <button class="btn btn-ghost" id="signupBtn" style="margin-top:10px;">משתמש חדש? צור חשבון</button>
+        <button class="btn btn-ghost" id="signupBtn">צור חשבון חדש</button>
     </div>
 
     <div id="mainApp" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h2 style="margin:0;">התקציב שלנו 🏠</h2>
-            <button id="logoutBtn" class="btn-ghost" style="padding:8px 15px; border-radius:12px; width:auto;">יציאה</button>
+            <button id="logoutBtn" style="background:none; border:none; color:var(--primary); font-weight:bold; cursor:pointer;">יציאה</button>
         </div>
 
         <div id="categoriesList"></div>
@@ -73,47 +71,46 @@
 <div id="expModal" class="modal"><div class="modal-content">
     <h3>הוספת הוצאה</h3>
     <div style="display:flex; gap:8px;">
-        <input type="number" id="foreignAmt" placeholder="מט״ח" oninput="convert()" style="flex:2;">
-        <select id="currType" onchange="convert()" style="flex:1;"><option value="USD">USD $</option><option value="EUR">EUR €</option></select>
+        <input type="number" id="foreignAmt" placeholder="סכום מטח" oninput="convertAmt()" style="flex:2;">
+        <select id="currType" onchange="convertAmt()" style="flex:1;"><option value="USD">USD $</option><option value="EUR">EUR €</option></select>
     </div>
-    <input type="number" id="expAmount" placeholder="סכום סופי ₪" style="font-weight:bold; border-color:var(--primary);">
+    <input type="number" id="expAmount" placeholder="סכום בשקלים ₪" style="font-weight:bold; border-color:var(--primary);">
     <select id="catSelect"></select>
     <button class="btn btn-primary" id="saveExpBtn">שמור הוצאה</button>
-    <button class="btn btn-ghost" style="margin-top:8px;" onclick="closeM('expModal')">ביטול</button>
+    <button class="btn btn-ghost" onclick="closeM('expModal')">ביטול</button>
 </div></div>
 
 <div id="catModal" class="modal"><div class="modal-content">
     <h3>קטגוריה חדשה</h3>
-    <input type="text" id="catName" placeholder="שם הקטגוריה (למשל: אוכל)">
-    <input type="number" id="catBudget" placeholder="תקציב יעד חודשי ₪">
+    <input type="text" id="catName" placeholder="שם (אוכל, חשבונות...)">
+    <input type="number" id="catBudget" placeholder="תקציב יעד ₪">
     <button class="btn btn-primary" id="saveCatBtn">צור קטגוריה</button>
-    <button class="btn btn-ghost" style="margin-top:8px;" onclick="closeM('catModal')">ביטול</button>
+    <button class="btn btn-ghost" onclick="closeM('catModal')">ביטול</button>
 </div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const groupID = "Mishpacha_Final_2025";
+    const groupID = "Shared_Mishpacha_2025_VIP";
     let rates = { USD: 3.75, EUR: 4.10 };
 
     window.openM = (id) => document.getElementById(id).style.display = 'flex';
     window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.convert = () => {
+    window.convertAmt = () => {
         const amt = parseFloat(document.getElementById('foreignAmt').value) || 0;
         const rate = rates[document.getElementById('currType').value];
         document.getElementById('expAmount').value = Math.round(amt * rate);
     };
 
-    // לוגיקת כפתורים
     document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("שגיאה: " + e.message));
-    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("שגיאה בהרשמה: " + e.message));
+    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("נרשמת! כעת לחץ על התחבר"));
     document.getElementById('logoutBtn').onclick = () => signOut(auth).then(() => location.reload());
 
     onAuthStateChanged(auth, user => {
@@ -129,20 +126,56 @@
             const cats = s.docs.map(d => ({id: d.id, ...d.data()}));
             onSnapshot(query(collection(db, "transactions"), where("groupId", "==", groupID), orderBy("date", "desc")), ts => {
                 const txs = ts.docs.map(d => ({id: d.id, ...d.data()}));
-                render(cats, txs);
+                renderUI(cats, txs);
                 document.getElementById('catSelect').innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
             });
         });
     }
 
-    function render(cats, txs) {
+    function renderUI(cats, txs) {
         document.getElementById('categoriesList').innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((sum, t) => sum + t.amount, 0);
             const pct = Math.min((spent / c.budget) * 100, 100);
-            return `<div class="category-card">
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>${c.name}</strong>
-                    <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
+            return `
+                <div class="category-card">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                        <span>${c.name}</span>
+                        <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${pct > 90 ? 'var(--danger)' : 'var(--primary)'}"></div></div>
+                    <button onclick="deleteMe('categories','${c.id}')" style="background:none; border:none; color:#cbd5e1; font-size:10px; cursor:pointer;">מחק קטגוריה</button>
+                </div>`;
+        }).join('') || '<p style="text-align:center; padding:20px; color:#94a3b8;">הוסיפו קטגוריה ראשונה למטה</p>';
+
+        document.getElementById('historyList').innerHTML = txs.slice(0, 8).map(t => `
+            <div class="history-item">
+                <span>${t.catName}</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <strong style="color:var(--danger)">- ₪${t.amount}</strong>
+                    <button onclick="deleteMe('transactions','${t.id}')" style="background:none; border:none; color:#eee; cursor:pointer;">✕</button>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${pct > 90 ? 'var(--danger)' : 'var(--primary)'}"></div></div>
-                <button onclick="delItem('categories','${c.id}')" style="background:none; border:none; color:#cbd5e1; font-size:10px; cursor:pointer;">
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('saveCatBtn').onclick = async () => {
+        await addDoc(collection(db, "categories"), { name: catName.value, budget: parseFloat(catBudget.value), groupId: groupID });
+        closeM('catModal');
+        catName.value = ''; catBudget.value = '';
+    };
+
+    document.getElementById('saveExpBtn').onclick = async () => {
+        const amt = parseFloat(expAmount.value);
+        if(!amt) return;
+        await addDoc(collection(db, "transactions"), {
+            amount: amt, catId: catSelect.value, catName: catSelect.options[catSelect.selectedIndex].text,
+            groupId: groupID, date: Timestamp.now()
+        });
+        closeM('expModal');
+        expAmount.value = ''; foreignAmt.value = '';
+    };
+
+    window.deleteMe = async (coll, id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, coll, id)); };
+</script>
+</body>
+</html>
