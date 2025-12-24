@@ -6,115 +6,130 @@
     <title>ניהול תקציב משותף Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; --gift: #ec4899; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; }
-        .container { max-width: 1200px; margin: auto; }
-        .card { background: white; border-radius: 20px; padding: 15px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .btn { border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 10px; }
+        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; direction: rtl; }
+        .container { max-width: 600px; margin: auto; }
+        
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        
+        h2, h3 { margin-top: 0; color: #0f172a; }
+        
+        input, select, textarea { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 16px; box-sizing: border-box; transition: 0.2s; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+        
+        .btn { border: none; padding: 14px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        .btn-ghost { background: #f1f5f9; color: #475569; }
+
+        .category-card { background: white; border-radius: 16px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; }
+        .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        
+        .progress-bg { background: #f1f5f9; height: 12px; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 0.5s ease-out; }
+
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .history-item:last-child { border: none; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; }
+        .modal-content { background: white; padding: 25px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+
+        .converter-badge { background: #e0e7ff; color: var(--primary); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+        
         .hidden { display: none !important; }
-        .category-card { background: white; border-radius: 20px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 10px; }
-        .progress-container { background: #f1f5f9; height: 10px; border-radius: 10px; margin: 8px 0; overflow: hidden; }
-        .progress-bar { height: 100%; transition: width 0.8s ease; }
-        .converter-row { display: flex; gap: 8px; background: #f1f5f9; padding: 10px; border-radius: 12px; align-items: center; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 15px; }
-        .modal-content { background: white; padding: 20px; border-radius: 24px; width: 100%; max-width: 400px; }
-        .history-item { padding: 12px; border-bottom: 1px solid #eee; }
+        .fab-container { position: fixed; bottom: 25px; left: 20px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="authSection" class="card" style="max-width: 350px; margin: 60px auto; text-align: center;">
-        <h2>ברוכים הבאים 💎</h2>
+    <div id="authSection" class="card" style="margin-top: 50px; text-align: center;">
+        <h2>שלום! 👋</h2>
+        <p style="color: #64748b;">התחברו כדי לנהל את התקציב</p>
         <input type="email" id="email" placeholder="אימייל">
         <input type="password" id="pass" placeholder="סיסמה">
-        <button class="btn btn-primary" id="loginBtn">התחבר</button>
-        <button id="signupBtn" style="background:none; border:none; color:var(--primary); margin-top:15px; cursor:pointer; text-decoration:underline;">משתמש חדש? הירשם כאן</button>
+        <button class="btn btn-primary" id="loginBtn">התחברות</button>
+        <button id="signupBtn" style="background:none; border:none; color:var(--primary); margin-top:20px; cursor:pointer; font-weight:bold; text-decoration: underline;">משתמש חדש? הירשמו כאן</button>
     </div>
 
     <div id="mainApp" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3 style="margin:0;">התקציב המשותף שלנו</h3>
-            <button onclick="auth.signOut().then(()=>location.reload())" style="background:none; border:1px solid #ddd; padding:5px 10px; border-radius:10px;">יציאה</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">התקציב שלנו 💎</h2>
+            <button onclick="auth.signOut().then(()=>location.reload())" class="btn btn-ghost" style="width:auto; padding:8px 15px;">יציאה</button>
         </div>
 
         <div id="categoriesList"></div>
         
-        <div class="card">
-            <strong>היסטוריה</strong>
+        <div class="card" style="margin-bottom: 100px;">
+            <h3 style="font-size: 18px;">פעולות אחרונות</h3>
             <div id="historyList"></div>
         </div>
 
-        <div style="position:fixed; bottom:20px; left:20px; right:20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <button class="btn btn-primary" onclick="openModal('catModal')">➕ קטגוריה</button>
-            <button class="btn btn-primary" style="background:var(--success)" id="addExpQuick">💸 הוצאה</button>
+        <div class="fab-container">
+            <button class="btn btn-ghost" onclick="openModal('catModal')">➕ קטגוריה</button>
+            <button class="btn btn-success" onclick="openModal('expModal')">💸 הוצאה</button>
         </div>
     </div>
 </div>
 
 <div id="expModal" class="modal"><div class="modal-content">
     <h3>הוספת הוצאה</h3>
-    <div class="converter-row">
-        <input type="number" id="foreignAmt" placeholder="סכום מטח" oninput="autoConvert()">
-        <select id="currType" onchange="autoConvert()" style="width:80px;"><option value="USD">USD</option><option value="EUR">EUR</option></select>
+    <div style="display:flex; gap:10px; background:#f8fafc; padding:10px; border-radius:12px; margin-bottom:10px;">
+        <input type="number" id="foreignAmt" placeholder="סכום מטח" oninput="autoConvert()" style="margin:0;">
+        <select id="currType" onchange="autoConvert()" style="margin:0; width:90px;"><option value="USD">USD $</option><option value="EUR">EUR €</option></select>
     </div>
-    <input type="number" id="expAmount" placeholder="סכום סופי ₪">
+    <input type="number" id="expAmount" placeholder="סכום סופי ₪" style="font-weight:bold; border-color:var(--primary);">
+    <select id="catSelect"></select>
     <select id="paymentMethod">
         <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
-        <option value="Bit">📱 Bit</option>
+        <option value="Bit/PayBox">📱 אפליקציה</option>
     </select>
-    <select id="catSelect"></select>
-    <button class="btn btn-primary" id="saveExpBtn">שמור הוצאה</button>
-    <button class="btn" onclick="closeModal('expModal')">ביטול</button>
+    <button class="btn btn-primary" id="saveExpBtn">שמור</button>
+    <button class="btn btn-ghost" onclick="closeModal('expModal')">סגור</button>
 </div></div>
 
 <div id="catModal" class="modal"><div class="modal-content">
     <h3>קטגוריה חדשה</h3>
-    <input type="text" id="catName" placeholder="שם הקטגוריה">
-    <input type="number" id="catBudget" placeholder="תקציב חודשי ₪">
+    <input type="text" id="catName" placeholder="שם (למשל: אוכל)">
+    <input type="number" id="catBudget" placeholder="תקציב יעד ₪">
     <button class="btn btn-primary" id="saveCatBtn">שמור</button>
-    <button class="btn" onclick="closeModal('catModal')">ביטול</button>
+    <button class="btn btn-ghost" onclick="closeModal('catModal')">ביטול</button>
 </div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // הגדרת קוד קבוצה משותף לכולם
     const myGroupId = "Mishpacha_Vip_2025"; 
-    let rates = { USD: 3.7, EUR: 4.0 };
+    let rates = { USD: 3.75, EUR: 4.10 };
 
-    // המרה אוטומטית
     window.autoConvert = () => {
         const val = parseFloat(document.getElementById('foreignAmt').value) || 0;
         const type = document.getElementById('currType').value;
         document.getElementById('expAmount').value = Math.round(val * rates[type]);
     };
 
-    // ניהול מודאלים
     window.openModal = (id) => document.getElementById(id).style.display = 'flex';
     window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
-    // התחברות
     document.getElementById('loginBtn').onclick = () => {
-        signInWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("שגיאה: " + e.message));
+        signInWithEmailAndPassword(auth, email.value, pass.value).catch(e => alert("שגיאה: פרטים לא נכונים"));
     };
 
-    // הרשמה אוטומטית
     document.getElementById('signupBtn').onclick = () => {
-        createUserWithEmailAndPassword(auth, email.value, pass.value)
-            .then(() => alert("נרשמת בהצלחה!"))
+        if(confirm("ליצור חשבון חדש עם הפרטים האלו?")) {
+            createUserWithEmailAndPassword(auth, email.value, pass.value)
             .catch(e => alert("שגיאה בהרשמה: " + e.message));
+        }
     };
 
     onAuthStateChanged(auth, u => {
@@ -126,60 +141,64 @@
     });
 
     function startSync() {
-        // סנכרון קטגוריות
         onSnapshot(query(collection(db, "categories"), where("groupId", "==", myGroupId)), s => {
             const cats = s.docs.map(d => ({id:d.id, ...d.data()}));
             renderCats(cats);
-            updateCatSelect(cats);
+            document.getElementById('catSelect').innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         });
 
-        // סנכרון הוצאות
-        onSnapshot(query(collection(db, "transactions"), where("groupId", "==", myGroupId)), s => {
+        onSnapshot(query(collection(db, "transactions"), where("groupId", "==", myGroupId), orderBy("date", "desc"), limit(10)), s => {
             renderHistory(s.docs.map(d => d.data()));
         });
     }
 
     function renderCats(cats) {
-        document.getElementById('categoriesList').innerHTML = cats.map(c => `
-            <div class="category-card">
-                <strong>${c.name}</strong> <small>(₪${c.budget})</small>
-                <div class="progress-container"><div class="progress-bar" style="width:30%; background:var(--success)"></div></div>
-            </div>
-        `).join('');
-    }
-
-    function updateCatSelect(cats) {
-        document.getElementById('catSelect').innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        document.getElementById('categoriesList').innerHTML = cats.map(c => {
+            const pct = Math.min(Math.random() * 100, 100); // כאן בהמשך נחשב סכום אמיתי
+            return `
+                <div class="category-card">
+                    <div class="cat-header">
+                        <strong>${c.name}</strong>
+                        <span style="font-size: 14px; font-weight: bold;">₪${c.budget}</span>
+                    </div>
+                    <div class="progress-bg"><div class="progress-fill" style="width:15%; background:var(--primary)"></div></div>
+                </div>`;
+        }).join('') || '<p style="text-align:center; color:#94a3b8;">אין עדיין קטגוריות. הוסיפו אחת!</p>';
     }
 
     function renderHistory(txs) {
         document.getElementById('historyList').innerHTML = txs.map(t => `
             <div class="history-item">
-                <span>${t.catName || 'הוצאה'}</span>: <strong>₪${t.amount}</strong>
+                <span>${t.catName || 'כללי'}</span>
+                <strong style="color:var(--danger)">- ₪${t.amount}</strong>
             </div>
-        `).join('');
+        `).join('') || '<p style="text-align:center; color:#94a3b8; font-size:14px;">אין פעולות אחרונות</p>';
     }
 
-    document.getElementById('addExpQuick').onclick = () => openModal('expModal');
-
     document.getElementById('saveCatBtn').onclick = async () => {
-        await addDoc(collection(db, "categories"), {
-            name: document.getElementById('catName').value,
-            budget: parseFloat(document.getElementById('catBudget').value),
-            groupId: myGroupId
-        });
+        const name = document.getElementById('catName').value;
+        const budget = document.getElementById('catBudget').value;
+        if(!name || !budget) return;
+        await addDoc(collection(db, "categories"), { name, budget: parseFloat(budget), groupId: myGroupId });
         closeModal('catModal');
     };
 
     document.getElementById('saveExpBtn').onclick = async () => {
+        const amt = document.getElementById('expAmount').value;
+        const catId = document.getElementById('catSelect').value;
+        if(!amt || !catId) return;
+        const catName = document.querySelector(`#catSelect option[value="${catId}"]`).text;
         await addDoc(collection(db, "transactions"), {
-            amount: parseFloat(document.getElementById('expAmount').value),
+            amount: parseFloat(amt),
+            catId,
+            catName,
             method: document.getElementById('paymentMethod').value,
-            catId: document.getElementById('catSelect').value,
             groupId: myGroupId,
             date: Timestamp.now()
         });
         closeModal('expModal');
+        document.getElementById('expAmount').value = '';
+        document.getElementById('foreignAmt').value = '';
     };
 </script>
 </body>
