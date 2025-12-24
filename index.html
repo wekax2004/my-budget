@@ -233,7 +233,7 @@
 
     onAuthStateChanged(auth, u => {
         if(u) {
-            authSection.classList.add('hidden'); mainApp.classList.remove('hidden'); myGroupId = u.uid;
+            authSection.classList.add('hidden'); mainApp.classList.remove('hidden'); myGroupId = "mishpachat_cohen_2024";
             onSnapshot(query(collection(db, "categories"), where("groupId", "==", myGroupId)), s => { allCategories = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
             onSnapshot(query(collection(db, "transactions"), where("groupId", "==", myGroupId)), s => { allTransactions = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
             onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", myGroupId)), s => { allGiftCards = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
@@ -269,4 +269,5 @@
     }
 </script>
 </body>
+
 </html>
