@@ -11,26 +11,19 @@
         .container { max-width: 1200px; margin: auto; }
         .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 20px; }
         @media (min-width: 1024px) { .dashboard-grid { grid-template-columns: 350px 1fr 300px; } }
-        
         .card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02); height: fit-content; margin-bottom: 20px; }
         .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        
         .category-card { background: white; border-radius: 20px; padding: 18px; margin-bottom: 15px; border: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
         .progress-bg { background: #f1f5f9; height: 10px; border-radius: 10px; margin: 12px 0; overflow: hidden; }
         .progress-fill { height: 100%; transition: width 0.6s ease; }
-        
         .btn { border: none; padding: 14px; border-radius: 16px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; width: 100%; }
         .btn-primary { background: var(--primary); }
         .btn-gift { background: var(--gift); }
-        
         .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px); padding: 15px; }
         .modal-content { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 420px; box-sizing: border-box; }
         input, select, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 16px; box-sizing: border-box; }
-        
         .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f8fafc; }
-        .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 8px; background: #eef2ff; color: var(--primary); font-weight: bold; }
         .hidden { display: none !important; }
-        
         .share-header { background: #6366f1; color: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center; font-weight: bold; }
     </style>
 </head>
@@ -39,40 +32,27 @@
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
         <h2 style="margin:0; font-weight: 900;">החשבון המשותף שלנו 💎</h2>
-        <button onclick="logout()" style="background:none; border:none; color:var(--danger); font-weight:bold; cursor:pointer;">התנתק</button>
+        <button id="logoutBtn" class="hidden" style="background:none; border:none; color:var(--danger); font-weight:bold; cursor:pointer;">התנתק</button>
     </div>
 
     <div id="authSection" class="card" style="max-width: 400px; margin: 40px auto; text-align: center; border: 2px solid var(--primary);">
-        <h3 style="margin-bottom: 5px;">כניסה למערכת</h3>
-        <p style="font-size: 14px; color: #64748b; margin-bottom: 20px;">הזינו את קוד השיתוף המשפחתי כדי לסנכרן נתונים</p>
-        
-        <input type="text" id="groupCode" placeholder="🔑 קוד שיתוף (לדוגמה: משפחת_כהן)" style="background: #f5f3ff; border: 1px solid var(--primary); font-weight: bold;">
+        <h3>ברוכים הבאים</h3>
+        <input type="text" id="groupCode" placeholder="🔑 קוד שיתוף משפחתי (למשל: כהן2025)">
         <input type="email" id="email" placeholder="📧 אימייל">
         <input type="password" id="pass" placeholder="🔒 סיסמה">
-        
-        <button class="btn btn-primary" id="loginBtn" style="margin-top: 10px;">התחברות / הרשמה</button>
-        <p style="font-size: 11px; color: #94a3b8; margin-top: 15px;">* אם זו פעם ראשונה, החשבון ייווצר אוטומטית עם קוד השיתוף שהזנתם.</p>
+        <button class="btn btn-primary" id="loginBtn">התחברות / יצירת חשבון</button>
     </div>
 
     <div id="mainApp" class="hidden">
         <div class="share-header" id="displayGroup"></div>
-
         <div class="dashboard-grid">
-            <div class="card">
-                <div class="section-title">📜 היסטוריה אחרונה</div>
-                <div id="historyList"></div>
-            </div>
-
+            <div class="card"><div class="section-title">📜 היסטוריה</div><div id="historyList"></div></div>
             <div>
-                <button class="btn btn-primary" onclick="openCatModal()" style="margin-bottom: 20px;">➕ הוספת קטגוריה חדשה</button>
+                <button class="btn btn-primary" onclick="openM('catModal')" style="margin-bottom: 20px;">➕ קטגוריה חדשה</button>
                 <div id="categoriesList"></div>
             </div>
-
             <div class="card" style="border-top: 4px solid var(--gift);">
-                <div class="section-title">
-                    <span>🎁 ארנק גיפטקארד</span>
-                    <button onclick="openM('giftModal')" style="border:none; background:none; cursor:pointer; font-size:20px; color:var(--gift)">+</button>
-                </div>
+                <div class="section-title">🎁 ארנק גיפטקארד <button onclick="openM('giftModal')" style="border:none; background:none; cursor:pointer;">+</button></div>
                 <div id="giftCardsList"></div>
             </div>
         </div>
@@ -80,39 +60,33 @@
 </div>
 
 <div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle">הוצאה חדשה</h3>
-    <div style="background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 10px;">
-        <label style="font-size: 12px; font-weight: bold;">מחשבון המרה (לא חובה):</label>
-        <div style="display: flex; gap: 8px; margin-top:5px;">
-            <input type="number" id="foreignAmt" placeholder="סכום מט"ח" oninput="doConvert()" style="margin:0">
-            <select id="currType" onchange="doConvert()" style="width:100px; margin:0">
-                <option value="3.72">USD $</option>
-                <option value="4.05">EUR €</option>
-            </select>
-        </div>
+    <h3 id="expTitle">הוצאה</h3>
+    <div style="background: #f1f5f9; padding: 10px; border-radius: 15px; margin-bottom: 10px; display: flex; gap: 5px;">
+        <input type="number" id="foreignAmt" placeholder="מט"ח" oninput="doConvert()" style="margin:0">
+        <select id="currType" onchange="doConvert()" style="width:80px; margin:0"><option value="3.72">$</option><option value="4.05">€</option></select>
     </div>
-    <input type="number" id="expAmount" placeholder="סכום ב-₪" style="font-weight: 800; font-size: 22px; text-align: center; border: 2px solid var(--primary);">
+    <input type="number" id="expAmount" placeholder="סכום ב-₪" style="font-weight:800; text-align:center;">
     <select id="paymentMethod"></select>
     <textarea id="expNotes" placeholder="הערות..."></textarea>
     <input type="hidden" id="activeCatId">
-    <button class="btn btn-primary" id="btnSaveTx">שמור פעולה</button>
-    <button onclick="closeM('expModal')" style="background:none; border:none; color:gray; width:100%; margin-top:10px; cursor:pointer;">ביטול</button>
+    <button class="btn btn-primary" id="btnSaveTx">שמור</button>
+    <button onclick="closeM('expModal')" style="background:none; border:none; color:gray; width:100%; margin-top:10px;">ביטול</button>
 </div></div>
 
 <div id="catModal" class="modal"><div class="modal-content">
     <h3>קטגוריה חדשה</h3>
-    <input type="text" id="catName" placeholder="שם (למשל: סופר, דלק, בילויים)">
+    <input type="text" id="catName" placeholder="שם הקטגוריה">
     <input type="number" id="catBudget" placeholder="תקציב חודשי ₪">
     <button class="btn btn-primary" id="btnSaveCat">שמור</button>
-    <button onclick="closeM('catModal')" style="background:none; border:none; color:gray; width:100%; margin-top:10px; cursor:pointer;">ביטול</button>
+    <button onclick="closeM('catModal')" style="background:none; border:none; color:gray; width:100%; margin-top:10px;">ביטול</button>
 </div></div>
 
 <div id="giftModal" class="modal"><div class="modal-content">
     <h3>הוספת גיפטקארד</h3>
-    <input type="text" id="giftName" placeholder="שם הכרטיס (למשל: BuyMe)">
-    <input type="number" id="giftBalance" placeholder="סכום טעון ₪">
-    <button class="btn btn-gift" id="btnSaveGift">שמור בארנק</button>
-    <button onclick="closeM('giftModal')" style="background:none; border:none; color:gray; width:100%; margin-top:10px; cursor:pointer;">ביטול</button>
+    <input type="text" id="giftName" placeholder="שם הכרטיס">
+    <input type="number" id="giftBalance" placeholder="סכום ₪">
+    <button class="btn btn-gift" id="btnSaveGift">שמור</button>
+    <button onclick="closeM('giftModal')" style="background:none; border:none; color:gray; width:100%; margin-top:10px;">ביטול</button>
 </div></div>
 
 <script type="module">
@@ -130,32 +104,33 @@
 
     window.openM = (id) => document.getElementById(id).style.display = 'flex';
     window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.logout = () => { signOut(auth); localStorage.removeItem('familyCode'); location.reload(); };
+    window.doConvert = () => expAmount.value = Math.round((parseFloat(foreignAmt.value) || 0) * parseFloat(currType.value));
 
-    window.doConvert = () => {
-        const val = parseFloat(foreignAmt.value) || 0;
-        const rate = parseFloat(currType.value);
-        expAmount.value = Math.round(val * rate);
-    };
-
-    document.getElementById('loginBtn').onclick = async () => {
+    // טיפול בחיבור
+    document.getElementById('loginBtn').addEventListener('click', async () => {
         const mail = email.value, p = pass.value, code = groupCode.value;
-        if(!code) return alert("חובה להזין קוד שיתוף!");
+        if (!code || !mail || !p) return alert("נא למלא את כל השדות!");
+        
         activeGid = code;
         localStorage.setItem('familyCode', code);
+
         try {
             await signInWithEmailAndPassword(auth, mail, p);
         } catch (e) {
-            if(e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-                try { await createUserWithEmailAndPassword(auth, mail, p); } catch(err) { alert(err.message); }
-            } else { alert(e.message); }
+            try {
+                await createUserWithEmailAndPassword(auth, mail, p);
+                alert("חשבון חדש נוצר עם קוד השיתוף: " + code);
+            } catch (err) { alert("שגיאה: " + err.message); }
         }
-    };
+    });
+
+    document.getElementById('logoutBtn').onclick = () => { signOut(auth); localStorage.removeItem('familyCode'); location.reload(); };
 
     onAuthStateChanged(auth, u => {
         if(u && activeGid) {
             authSection.classList.add('hidden');
             mainApp.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
             document.getElementById('displayGroup').innerText = "📍 שיתוף פעיל: " + activeGid;
             sync();
         }
@@ -167,7 +142,6 @@
         onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", activeGid)), s => { allGifts = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
     }
 
-    window.openCatModal = () => openM('catModal');
     document.getElementById('btnSaveCat').onclick = async () => {
         await addDoc(collection(db, "categories"), { name: catName.value, budget: parseFloat(catBudget.value), groupId: activeGid });
         closeM('catModal');
@@ -204,13 +178,11 @@
                 <div class="progress-bg"><div class="progress-fill" style="width:${pct}%; background:${pct > 90 ? 'var(--danger)' : 'var(--success)'}"></div></div>
             </div>`;
         }).join('');
-
-        historyList.innerHTML = allTxs.slice(0, 10).map(t => {
+        historyList.innerHTML = allTxs.slice(0,10).map(t => {
             const cat = allCats.find(c => c.id === t.catId);
             return `<div class="item-row"><div><strong>${cat ? cat.name : 'כללי'}</strong><br><small>${t.method}</small></div><strong style="color:var(--danger)">₪${t.amount}</strong></div>`;
         }).join('');
-
-        giftCardsList.innerHTML = allGifts.map(g => `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #eee;"><span>${g.name}</span><strong>₪${g.balance}</strong></div>`).join('') || 'הארנק ריק';
+        giftCardsList.innerHTML = allGifts.map(g => `<div style="display:flex; justify-content:space-between; padding:5px 0;"><span>${g.name}</span><strong>₪${g.balance}</strong></div>`).join('') || 'ריק';
     }
 </script>
 </body>
