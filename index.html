@@ -3,227 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro + Charts</title>
+    <title>BudgetMaster Pro - Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6366f1; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; --gift: #ec4899; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; direction: rtl; color: #1e293b; min-height: 100vh; }
+        :root { --primary: #6366f1; --bg: #f8fafc; --danger: #ef4444; --success: #22c55e; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 10px; }
+        .card { background: white; border-radius: 20px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 1024px) { .grid { grid-template-columns: 350px 1fr 300px; } }
         
-        .container { max-width: 1200px; margin: auto; }
-        .hidden { display: none !important; }
-        
-        .card { background: white; border-radius: 20px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02); margin-bottom: 15px; }
-        .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        @media (min-width: 1024px) { .dashboard-grid { grid-template-columns: 350px 1fr 300px; } }
-        
-        .btn { border: none; padding: 14px; border-radius: 14px; cursor: pointer; font-weight: bold; color: white; width: 100%; transition: 0.2s; font-size: 16px; }
-        .btn-primary { background: var(--primary); }
-        
-        .item-row { background: #fff; padding: 12px; border-bottom: 1px solid #f1f5f9; }
-        .item-actions { display: flex; gap: 10px; margin-top: 5px; }
-        .action-btn { background: #f1f5f9; border: none; padding: 6px 10px; border-radius: 8px; font-size: 13px; cursor: pointer; }
-
         /* עיצוב המרה */
-        .converter-box { background: #f1f5f9; padding: 10px; border-radius: 12px; margin-bottom: 10px; display: flex; gap: 5px; }
+        .converter-row { display: flex; gap: 10px; background: #f1f5f9; padding: 10px; border-radius: 12px; margin-bottom: 10px; }
+        .converter-row input { flex: 1; border: none; background: transparent; font-size: 16px; outline: none; }
         
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        .modal-content { background: white; padding: 25px; border-radius: 24px; width: 90%; max-width: 400px; }
-        
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border-radius: 10px; border: 1px solid #ddd; }
-        
-        canvas { max-width: 100%; margin-top: 10px; }
+        /* כפתורי פעולה בהיסטוריה */
+        .history-item { border-bottom: 1px solid #f1f5f9; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .actions { display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-edit { background: #e0e7ff; color: #4338ca; }
+        .btn-del { background: #fee2e2; color: #b91c1c; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; padding: 15px; }
+        .modal-content { background: white; padding: 25px; border-radius: 24px; width: 100%; max-width: 400px; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
+        .btn-main { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-        <h2 style="margin:0;">התקציב החכם שלי 💎</h2>
-        <button onclick="logout()" style="color:red; border:none; background:none; font-weight:bold; cursor:pointer;">יציאה</button>
-    </div>
+<div id="mainApp">
+    <div class="grid">
+        <div class="card">
+            <h3>📜 היסטוריית הוצאות</h3>
+            <div id="historyList"></div>
+        </div>
 
-    <div id="authSection" class="card">
-        <input type="text" id="groupCode" placeholder="🔑 קוד שיתוף">
-        <input type="email" id="email" placeholder="📧 אימייל">
-        <input type="password" id="pass" placeholder="🔒 סיסמה">
-        <button class="btn btn-primary" id="loginBtn">התחברות</button>
-    </div>
+        <div>
+            <div id="categoriesList"></div>
+        </div>
 
-    <div id="mainApp" class="hidden">
-        <div class="dashboard-grid">
-            <div>
-                <div class="card">
-                    <h3 style="margin-top:0">📊 פילוח תשלומים</h3>
-                    <canvas id="paymentChart"></canvas>
-                </div>
-                <div class="card">
-                    <h3>📜 היסטוריה</h3>
-                    <div id="historyList"></div>
-                </div>
-            </div>
-
-            <div>
-                <button class="btn btn-primary" onclick="openM('catModal')" style="margin-bottom:15px;">➕ קטגוריה חדשה</button>
-                <div id="categoriesList"></div>
-            </div>
-
-            <div class="card">
-                <h3>🎁 גיפטקארדים</h3>
-                <div id="giftCardsList"></div>
-                <button class="btn btn-primary" onclick="openM('giftModal')" style="margin-top:10px; background:var(--gift)">+</button>
-            </div>
+        <div class="card">
+            <canvas id="mainChart"></canvas>
         </div>
     </div>
 </div>
 
-<div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle">הוצאה חדשה</h3>
-    <div class="converter-box">
-        <input type="number" id="foreignAmt" placeholder="סכום מט''ח" oninput="doConvert()">
-        <select id="currType" onchange="doConvert()" style="width:90px">
-            <option value="3.72">USD $</option>
-            <option value="4.05">EUR €</option>
-        </select>
-    </div>
-    <input type="number" id="expAmount" placeholder="סכום סופי ב-₪" style="font-weight:bold; border:2px solid var(--primary)">
-    <select id="paymentMethod">
-        <option value="אשראי">💳 אשראי</option>
-        <option value="מזומן">💵 מזומן</option>
-    </select>
-    <textarea id="expNotes" placeholder="הערות..." style="width:100%; border-radius:10px; padding:10px; margin-top:5px;"></textarea>
-    <input type="hidden" id="activeCatId">
-    <button class="btn btn-primary" id="btnSaveTx" style="margin-top:15px">שמור הוצאה</button>
-    <button onclick="closeM('expModal')" style="width:100%; background:none; border:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
-</div></div>
+<div id="expModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle">הוצאה</h3>
+        
+        <div class="converter-row">
+            <input type="number" id="foreignAmt" placeholder="סכום במט''ח" oninput="autoConvert()">
+            <select id="currType" onchange="autoConvert()" style="width: auto; margin: 0;">
+                <option value="3.75">USD $</option>
+                <option value="4.08">EUR €</option>
+            </select>
+        </div>
 
-<div id="catModal" class="modal"><div class="modal-content">
-    <h3>קטגוריה חדשה</h3>
-    <input type="text" id="catName" placeholder="שם (למשל: אוכל)">
-    <input type="number" id="catBudget" placeholder="תקציב חודשי">
-    <button class="btn btn-primary" id="btnSaveCat">שמור</button>
-    <button onclick="closeM('catModal')" style="width:100%; background:none; border:none; margin-top:10px; color:gray;">ביטול</button>
-</div></div>
+        <label><small>סכום סופי בשקלים:</small></label>
+        <input type="number" id="expAmount" placeholder="₪ 0.00" style="font-weight: bold; font-size: 20px;">
+        
+        <select id="paymentMethod">
+            <option value="אשראי">💳 אשראי</option>
+            <option value="מזומן">💵 מזומן</option>
+        </select>
+        
+        <input type="hidden" id="editDocId">
+        <input type="hidden" id="activeCatId">
+        
+        <button class="btn-main" id="btnSaveTx">שמור שינויים</button>
+        <button onclick="closeM('expModal')" style="background:none; border:none; width:100%; margin-top:10px; color:gray;">ביטול</button>
+    </div>
+</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getFirestore(app);
+    const activeGid = localStorage.getItem('familyCode') || "טסט";
 
-    let activeGid = localStorage.getItem('familyCode') || "";
-    let allCats = [], allTxs = [], allGifts = [];
-    let myChart = null;
+    let allCats = [], allTxs = [];
 
-    window.openM = (id) => document.getElementById(id).style.display = 'flex';
     window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.logout = () => { signOut(auth); localStorage.removeItem('familyCode'); location.reload(); };
 
-    // פונקציית המרת מטבע
-    window.doConvert = () => {
-        const amt = parseFloat(document.getElementById('foreignAmt').value) || 0;
+    // המרה אוטומטית בזמן אמת
+    window.autoConvert = () => {
+        const foreign = parseFloat(document.getElementById('foreignAmt').value) || 0;
         const rate = parseFloat(document.getElementById('currType').value);
-        document.getElementById('expAmount').value = (amt * rate).toFixed(2);
+        document.getElementById('expAmount').value = (foreign * rate).toFixed(2);
     };
 
-    document.getElementById('loginBtn').onclick = async () => {
-        const mail = document.getElementById('email').value, p = document.getElementById('pass').value, code = document.getElementById('groupCode').value;
-        if(!code) return alert("הזן קוד שיתוף");
-        activeGid = code; localStorage.setItem('familyCode', code);
-        try { await signInWithEmailAndPassword(auth, mail, p); }
-        catch (e) { try { await createUserWithEmailAndPassword(auth, mail, p); } catch(err) { alert(err.message); } }
+    // פתיחת מודאל להוספה חדשה
+    window.openAdd = (catId, catName) => {
+        document.getElementById('editDocId').value = "";
+        document.getElementById('activeCatId').value = catId;
+        document.getElementById('modalTitle').innerText = "הוספה ל: " + catName;
+        document.getElementById('expAmount').value = "";
+        document.getElementById('foreignAmt').value = "";
+        document.getElementById('expModal').style.display = 'flex';
     };
 
-    onAuthStateChanged(auth, u => {
-        if(u && activeGid) {
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            sync();
-        }
-    });
+    // פתיחת מודאל לעריכה של הוצאה קיימת
+    window.openEdit = (txId) => {
+        const tx = allTxs.find(t => t.id === txId);
+        document.getElementById('editDocId').value = tx.id;
+        document.getElementById('activeCatId').value = tx.catId;
+        document.getElementById('expAmount').value = tx.amount;
+        document.getElementById('paymentMethod').value = tx.method;
+        document.getElementById('modalTitle').innerText = "עריכת הוצאה";
+        document.getElementById('expModal').style.display = 'flex';
+    };
 
-    function sync() {
-        onSnapshot(query(collection(db, "categories"), where("groupId", "==", activeGid)), s => { allCats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-        onSnapshot(query(collection(db, "transactions"), where("groupId", "==", activeGid)), s => { allTxs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
-        onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", activeGid)), s => { allGifts = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-    }
-
-    window.openExpModal = (id, name) => {
-        document.getElementById('activeCatId').value = id;
-        document.getElementById('expTitle').innerText = "הוספה ל: " + name;
-        openM('expModal');
+    window.deleteTx = async (id) => {
+        if(confirm("למחוק את ההוצאה לצמיתות?")) await deleteDoc(doc(db, "transactions", id));
     };
 
     document.getElementById('btnSaveTx').onclick = async () => {
-        const amt = parseFloat(document.getElementById('expAmount').value);
-        if(!amt) return alert("הזן סכום");
-        await addDoc(collection(db, "transactions"), {
-            amount: amt,
-            catId: document.getElementById('activeCatId').value,
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        const editId = document.getElementById('editDocId').value;
+        const data = {
+            amount: amount,
             method: document.getElementById('paymentMethod').value,
-            notes: document.getElementById('expNotes').value,
+            catId: document.getElementById('activeCatId').value,
             groupId: activeGid,
             date: Timestamp.now()
-        });
+        };
+
+        if(editId) {
+            await updateDoc(doc(db, "transactions", editId), data);
+        } else {
+            await addDoc(collection(db, "transactions"), data);
+        }
         closeM('expModal');
     };
 
-    document.getElementById('btnSaveCat').onclick = async () => {
-        await addDoc(collection(db, "categories"), { name: document.getElementById('catName').value, budget: parseFloat(document.getElementById('catBudget').value), groupId: activeGid });
-        closeM('catModal');
-    };
+    // סנכרון נתונים
+    onSnapshot(query(collection(db, "categories"), where("groupId", "==", activeGid)), s => {
+        allCats = s.docs.map(d => ({id:d.id, ...d.data()}));
+        render();
+    });
 
-    window.deleteTx = async (id) => { if(confirm('למחוק?')) await deleteDoc(doc(db, "transactions", id)); };
+    onSnapshot(query(collection(db, "transactions"), where("groupId", "==", activeGid)), s => {
+        allTxs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date);
+        render();
+    });
 
     function render() {
-        // קטגוריות
+        // רנדור קטגוריות
         document.getElementById('categoriesList').innerHTML = allCats.map(c => {
             const spent = allTxs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
-            return `<div class="card" onclick="openExpModal('${c.id}','${c.name}')" style="cursor:pointer">
-                <div style="display:flex; justify-content:space-between"><strong>${c.name}</strong><span>₪${spent.toFixed(0)} / ₪${c.budget}</span></div>
-                <div style="background:#eee; height:8px; border-radius:5px; margin-top:10px; overflow:hidden">
-                    <div style="width:${Math.min((spent/c.budget)*100, 100)}%; background:${spent > c.budget ? 'red' : 'green'}; height:100%"></div>
+            return `<div class="card" onclick="openAdd('${c.id}','${c.name}')" style="cursor:pointer">
+                <div style="display:flex; justify-content:space-between"><strong>${c.name}</strong><span>₪${spent} / ₪${c.budget}</span></div>
+                <div style="background:#eee; height:10px; border-radius:5px; margin-top:10px; overflow:hidden">
+                    <div style="width:${(spent/c.budget)*100}%; background:${spent > c.budget ? 'red' : 'green'}; height:100%"></div>
                 </div>
             </div>`;
         }).join('');
 
-        // היסטוריה
-        document.getElementById('historyList').innerHTML = allTxs.slice(0, 10).map(t => `
-            <div class="item-row">
-                <div style="display:flex; justify-content:space-between">
-                    <strong>${allCats.find(c => c.id === t.catId)?.name || 'כללי'}</strong>
-                    <span style="color:red; font-weight:bold">₪${t.amount}</span>
+        // רנדור היסטוריה עם כפתורי עריכה ומחיקה
+        document.getElementById('historyList').innerHTML = allTxs.slice(0, 15).map(t => `
+            <div class="history-item">
+                <div>
+                    <strong>${allCats.find(c => c.id === t.catId)?.name || 'כללי'}</strong><br>
+                    <small>${t.method} | ₪${t.amount}</small>
                 </div>
-                <div class="item-actions">
-                    <button class="action-btn" onclick="deleteTx('${t.id}')">🗑️</button>
-                    <small>${t.method}</small>
+                <div class="actions">
+                    <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">✏️</button>
+                    <button class="btn-sm btn-del" onclick="deleteTx('${t.id}')">🗑️</button>
                 </div>
             </div>
         `).join('');
-
-        updateChart();
-    }
-
-    function updateChart() {
-        const ctx = document.getElementById('paymentChart').getContext('2d');
-        const summary = allTxs.reduce((acc, t) => {
-            acc[t.method] = (acc[t.method] || 0) + t.amount;
-            return acc;
-        }, {});
-
-        if(myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: Object.keys(summary),
-                datasets: [{ data: Object.values(summary), backgroundColor: ['#6366f1', '#ec4899', '#22c55e', '#f59e0b'] }]
-            },
-            options: { plugins: { legend: { position: 'bottom' } } }
-        });
     }
 </script>
 </body>
