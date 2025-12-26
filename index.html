@@ -231,6 +231,65 @@
         catch (e) { alert('❌ ' + e.message); }
     });
 
+    // ============ מחיקת טרנזקציה ============
+    window.deleteTx = async (txId) => {
+        if (!confirm('🗑️ למחוק הוצאה זו?')) return;
+        try {
+            const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+            await deleteDoc(doc(db, "transactions", txId));
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) { alert('❌ שגיאה במחיקה: ' + e.message); }
+    };
+
+    // ============ עריכת טרנזקציה ============
+    window.editTx = async (txId) => {
+        const tx = allTxs.find(t => t.id === txId);
+        if (!tx) return;
+        
+        const newAmount = prompt(`✏️ ערוך סכום:\n(סכום נוכחי: ₪${tx.amount})`, tx.amount);
+        if (!newAmount || newAmount === tx.amount.toString()) return;
+        
+        const amt = parseFloat(newAmount);
+        if (isNaN(amt) || amt <= 0) return alert('❌ סכום לא תקין');
+        
+        try {
+            await updateDoc(doc(db, "transactions", txId), { amount: amt });
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) { alert('❌ שגיאה בעדכון: ' + e.message); }
+    };
+
+    // ============ מחיקת קטגוריה ============
+    window.deleteCat = async (catId) => {
+        const cat = allCats.find(c => c.id === catId);
+        const txCount = allTxs.filter(t => t.catId === catId).length;
+        if (txCount > 0) {
+            if (!confirm(`⚠️ יש ${txCount} הוצאות בקטגוריה "${cat.name}".\nהמחיקה תמחק גם את כל ההוצאות!\n\nלהמשיך?`)) return;
+        } else {
+            if (!confirm(`🗑️ למחוק את הקטגוריה "${cat.name}"?`)) return;
+        }
+        try {
+            const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+            // מחק קטגוריה
+            await deleteDoc(doc(db, "categories", catId));
+            // מחק את כל ההוצאות של הקטגוריה
+            for (const tx of allTxs.filter(t => t.catId === catId)) {
+                await deleteDoc(doc(db, "transactions", tx.id));
+            }
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) { alert('❌ שגיאה במחיקה: ' + e.message); }
+    };
+
+    // ============ מחיקת גיפטקארד ============
+    window.deleteGift = async (giftId) => {
+        const gift = allGifts.find(g => g.id === giftId);
+        if (!confirm(`🗑️ למחוק את "${gift.name}"?`)) return;
+        try {
+            const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+            await deleteDoc(doc(db, "giftcards", giftId));
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) { alert('❌ שגיאה במחיקה: ' + e.message); }
+    };
+
     function render() {
         if (!activeGid || !auth.currentUser) return;
         const catsList = document.getElementById('categoriesList');
@@ -239,10 +298,15 @@
         else catsList.innerHTML = allCats.map(c => {
             const spent = allTxs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const pct = Math.min((spent / c.budget) * 100, 100);
-            return `<div class="category-card" onclick="openExpModal('${c.id}','${c.name}')">
-                <div style="display:flex; justify-content:space-between"><strong>${c.name}</strong><span>₪${spent.toFixed(2)} / ₪${c.budget.toFixed(2)}</span></div>
-                <div class="progress-bg"><div class="progress-fill" style="width:${pct}%; background:${pct > 90 ? 'var(--danger)' : 'var(--success)'}"></div></div>
-                ${spent > c.budget ? '<small style="color:var(--danger);">⚠️ חריגה!</small>' : ''}
+            return `<div class="category-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div onclick="openExpModal('${c.id}','${c.name}')" style="flex:1; cursor:pointer;">
+                        <div style="display:flex; justify-content:space-between"><strong>${c.name}</strong><span>₪${spent.toFixed(2)} / ₪${c.budget.toFixed(2)}</span></div>
+                        <div class="progress-bg"><div class="progress-fill" style="width:${pct}%; background:${pct > 90 ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                        ${spent > c.budget ? '<small style="color:var(--danger);">⚠️ חריגה!</small>' : ''}
+                    </div>
+                    <button onclick="deleteCat('${c.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:18px; padding:5px; margin-right:10px;" title="מחק קטגוריה">🗑️</button>
+                </div>
             </div>`;
         }).join('');
 
@@ -254,13 +318,23 @@
             const dateStr = date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
             return `<div class="item-row">
                 <div><strong>${cat ? cat.name : 'כללי'}</strong><br><small>${t.method} • ${dateStr}</small>${t.notes ? `<br><small style="color:#94a3b8">${t.notes}</small>` : ''}</div>
-                <strong style="color:var(--danger)">₪${t.amount.toFixed(2)}</strong>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <strong style="color:var(--danger)">₪${t.amount.toFixed(2)}</strong>
+                    <button onclick="editTx('${t.id}')" style="background:none; border:none; color:#6366f1; cursor:pointer; font-size:18px; padding:5px;" title="ערוך">✏️</button>
+                    <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:18px; padding:5px;" title="מחק">🗑️</button>
+                </div>
             </div>`;
         }).join('');
 
         const giftList = document.getElementById('giftCardsList');
         if (allGifts.length === 0) giftList.innerHTML = '<div class="empty-state">🎁 אין גיפטקארדים</div>';
-        else giftList.innerHTML = allGifts.map(g => `<div class="item-row"><span>${g.name}</span><strong style="color:var(--gift)">₪${g.balance.toFixed(2)}</strong></div>`).join('');
+        else giftList.innerHTML = allGifts.map(g => `<div class="item-row">
+            <span>${g.name}</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <strong style="color:var(--gift)">₪${g.balance.toFixed(2)}</strong>
+                <button onclick="deleteGift('${g.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:18px; padding:5px;" title="מחק">🗑️</button>
+            </div>
+        </div>`).join('');
     }
 
     document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; }));
