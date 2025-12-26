@@ -3,90 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro - Full Control</title>
+    <title>BudgetMaster Pro - Fixed & Control</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --danger: #ef4444; --success: #22c55e; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 10px; color: #1e293b; }
-        .card { background: white; border-radius: 20px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; position: relative; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        @media (min-width: 1024px) { .grid { grid-template-columns: 350px 1fr 300px; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; color: #1e293b; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 1024px) { .grid { grid-template-columns: 350px 1fr 350px; } }
+
+        .card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); position: relative; border: 1px solid #f1f5f9; }
         
         /* המרה אוטומטית */
-        .converter-row { display: flex; gap: 10px; background: #f1f5f9; padding: 12px; border-radius: 12px; margin-bottom: 10px; align-items: center; }
-        .converter-row input { border: none; background: transparent; font-size: 16px; outline: none; flex: 1; }
+        .converter-box { background: #f1f5f9; padding: 15px; border-radius: 16px; margin-bottom: 15px; }
+        .converter-inputs { display: flex; gap: 10px; align-items: center; }
         
         /* כפתורי ניהול קטגוריה */
-        .cat-actions { position: absolute; left: 15px; top: 15px; display: flex; gap: 8px; }
-        .icon-btn { background: #f1f5f9; border: none; cursor: pointer; padding: 5px; border-radius: 8px; font-size: 14px; transition: 0.2s; }
-        .icon-btn:hover { background: #e2e8f0; }
+        .cat-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .manage-btn { background: #f1f5f9; border: none; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 16px; }
 
-        /* ניהול היסטוריה */
-        .history-item { border-bottom: 1px solid #f1f5f9; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
-        .actions { display: flex; gap: 8px; }
-        .btn-sm { padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
-        .btn-edit { background: #e0e7ff; color: #4338ca; }
-        .btn-del { background: #fee2e2; color: #b91c1c; }
+        /* רשימת הוצאות */
+        .tx-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f8fafc; }
+        .tx-info b { display: block; font-size: 16px; }
+        .tx-actions { display: flex; gap: 8px; }
+        .btn-icon { border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .edit-btn { background: #e0e7ff; color: #4338ca; }
+        .del-btn { background: #fee2e2; color: #b91c1c; }
 
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; padding: 15px; backdrop-filter: blur(4px); }
-        .modal-content { background: white; padding: 25px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        /* מודאלים */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 2000; padding: 20px; backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 30px; border-radius: 28px; width: 100%; max-width: 450px; }
+        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 16px; box-sizing: border-box; }
+        .btn-block { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        
+        .progress-bar { background: #f1f5f9; height: 12px; border-radius: 10px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { height: 100%; transition: width 0.5s ease-out; }
     </style>
 </head>
 <body>
 
+<div class="header">
+    <h2 style="margin:0;">התקציב שלי 💎</h2>
+    <span id="groupDisplay" style="background:#ddd; padding:5px 12px; border-radius:20px; font-size:12px;"></span>
+</div>
+
 <div class="grid">
     <div>
         <div class="card">
-            <h3>📊 פילוח תשלומים</h3>
-            <canvas id="paymentChart" height="200"></canvas>
+            <h3>📊 פילוח הוצאות</h3>
+            <canvas id="mainChart" style="max-height: 250px;"></canvas>
         </div>
-        <div class="card">
-            <h3>📜 היסטוריה</h3>
-            <div id="historyList"></div>
+        <div class="card" style="margin-top:20px;">
+            <h3>📜 היסטוריית הוצאות</h3>
+            <div id="txHistory"></div>
         </div>
     </div>
 
     <div>
-        <button class="btn-main" onclick="openCatModal()" style="margin-bottom:15px;">➕ קטגוריה חדשה</button>
-        <div id="categoriesList"></div>
+        <button class="btn-block btn-primary" onclick="openCatM()" style="margin-bottom:20px;">➕ קטגוריה חדשה</button>
+        <div id="catList"></div>
     </div>
 
     <div class="card">
         <h3>🎁 ארנק גיפטקארד</h3>
-        <div id="giftCardsList"></div>
+        <div id="giftList"></div>
     </div>
 </div>
 
 <div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expModalTitle">הוצאה</h3>
-    <div class="converter-row">
-        <input type="number" id="foreignAmt" placeholder="סכום במט''ח" oninput="doAutoConvert()">
-        <select id="currType" onchange="doAutoConvert()" style="width: auto; margin:0; border:none; background:none; font-weight:bold;">
-            <option value="3.75">USD $</option>
-            <option value="4.08">EUR €</option>
-        </select>
+    <h3 id="expTitle">הוספת הוצאה</h3>
+    <div class="converter-box">
+        <div class="converter-inputs">
+            <input type="number" id="foreignVal" placeholder="סכום במט''ח" oninput="runConvert()">
+            <select id="currency" onchange="runConvert()" style="width:100px;">
+                <option value="3.76">USD $</option>
+                <option value="4.08">EUR €</option>
+            </select>
+        </div>
+        <p style="margin:5px 0 0 0; font-size:12px; color:gray;">* המרה אוטומטית לשקלים</p>
     </div>
-    <input type="number" id="expAmount" placeholder="₪ סכום סופי" style="font-size:22px; font-weight:800; text-align:center; border:2px solid var(--primary);">
-    <select id="paymentMethod">
+    <input type="number" id="finalAmount" placeholder="₪ סכום סופי" style="font-size:24px; font-weight:bold; border-color:var(--primary);">
+    <select id="payMethod">
         <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
+        <option value="גיפטקארד">🎁 גיפטקארד</option>
     </select>
     <input type="hidden" id="editTxId">
-    <input type="hidden" id="activeCatId">
-    <button class="btn-main" id="btnSaveTx">💾 שמור הוצאה</button>
-    <button onclick="closeM('expModal')" style="width:100%; border:none; background:none; color:gray; margin-top:10px; cursor:pointer;">ביטול</button>
+    <input type="hidden" id="targetCatId">
+    <button class="btn-block btn-primary" id="saveTxBtn">שמור הוצאה</button>
+    <button onclick="closeM('expModal')" style="background:none; border:none; width:100%; margin-top:15px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <div id="catModal" class="modal"><div class="modal-content">
-    <h3 id="catModalTitle">קטגוריה</h3>
-    <input type="text" id="catName" placeholder="שם הקטגוריה">
-    <input type="number" id="catBudget" placeholder="תקציב ₪">
+    <h3 id="catTitle">ניהול קטגוריה</h3>
+    <input type="text" id="cName" placeholder="שם הקטגוריה (למשל: אוכל)">
+    <input type="number" id="cBudget" placeholder="תקציב חודשי ב-₪">
     <input type="hidden" id="editCatId">
-    <button class="btn-main" id="btnSaveCat">💾 שמור קטגוריה</button>
-    <button id="btnDeleteCat" class="btn-main" style="background:var(--danger); display:none;">🗑️ מחק קטגוריה</button>
-    <button onclick="closeM('catModal')" style="width:100%; border:none; background:none; color:gray; margin-top:10px; cursor:pointer;">ביטול</button>
+    <button class="btn-block btn-primary" id="saveCatBtn">שמור קטגוריה</button>
+    <button id="delCatBtn" class="btn-block" style="background:var(--danger); color:white; margin-top:10px; display:none;">מחק קטגוריה</button>
+    <button onclick="closeM('catModal')" style="background:none; border:none; width:100%; margin-top:15px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <script type="module">
@@ -96,145 +113,140 @@
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const activeGid = localStorage.getItem('familyCode') || "טסט";
+    const gid = localStorage.getItem('familyCode') || "כללי";
+    document.getElementById('groupDisplay').innerText = "קוד: " + gid;
 
-    let allCats = [], allTxs = [], chartInstance = null;
+    let cats = [], txs = [], chart = null;
 
     window.closeM = (id) => document.getElementById(id).style.display = 'none';
 
     // המרה אוטומטית
-    window.doAutoConvert = () => {
-        const f = parseFloat(document.getElementById('foreignAmt').value) || 0;
-        const r = parseFloat(document.getElementById('currType').value);
-        document.getElementById('expAmount').value = (f * r).toFixed(2);
+    window.runConvert = () => {
+        const val = parseFloat(document.getElementById('foreignVal').value) || 0;
+        const rate = parseFloat(document.getElementById('currency').value);
+        document.getElementById('finalAmount').value = (val * rate).toFixed(2);
     };
 
-    // ניהול הוצאות
-    window.openAddTx = (catId, catName) => {
+    // --- ניהול הוצאות ---
+    window.openAddTx = (id, name) => {
         document.getElementById('editTxId').value = "";
-        document.getElementById('activeCatId').value = catId;
-        document.getElementById('expModalTitle').innerText = "הוספה ל: " + catName;
-        document.getElementById('expAmount').value = "";
-        document.getElementById('foreignAmt').value = "";
+        document.getElementById('targetCatId').value = id;
+        document.getElementById('expTitle').innerText = "הוספה ל: " + name;
+        document.getElementById('finalAmount').value = "";
         document.getElementById('expModal').style.display = 'flex';
     };
 
-    window.openEditTx = (id) => {
-        const t = allTxs.find(x => x.id === id);
-        document.getElementById('editTxId').value = id;
-        document.getElementById('activeCatId').value = t.catId;
-        document.getElementById('expAmount').value = t.amount;
-        document.getElementById('paymentMethod').value = t.method;
-        document.getElementById('expModalTitle').innerText = "עריכת הוצאה";
+    window.openEditTx = (tid) => {
+        const t = txs.find(x => x.id === tid);
+        document.getElementById('editTxId').value = tid;
+        document.getElementById('targetCatId').value = t.catId;
+        document.getElementById('finalAmount').value = t.amount;
+        document.getElementById('payMethod').value = t.method;
+        document.getElementById('expTitle').innerText = "עריכת הוצאה";
         document.getElementById('expModal').style.display = 'flex';
     };
 
-    window.deleteTx = async (id) => {
-        if(confirm("למחוק הוצאה?")) await deleteDoc(doc(db, "transactions", id));
-    };
+    window.delTx = async (id) => { if(confirm("למחוק הוצאה?")) await deleteDoc(doc(db, "transactions", id)); };
 
-    document.getElementById('btnSaveTx').onclick = async () => {
-        const id = document.getElementById('editTxId').value;
+    document.getElementById('saveTxBtn').onclick = async () => {
+        const tid = document.getElementById('editTxId').value;
         const data = {
-            amount: parseFloat(document.getElementById('expAmount').value),
-            method: document.getElementById('paymentMethod').value,
-            catId: document.getElementById('activeCatId').value,
-            groupId: activeGid,
+            amount: parseFloat(document.getElementById('finalAmount').value),
+            method: document.getElementById('payMethod').value,
+            catId: document.getElementById('targetCatId').value,
+            groupId: gid,
             date: Timestamp.now()
         };
-        id ? await updateDoc(doc(db, "transactions", id), data) : await addDoc(collection(db, "transactions"), data);
+        tid ? await updateDoc(doc(db, "transactions", tid), data) : await addDoc(collection(db, "transactions"), data);
         closeM('expModal');
     };
 
-    // ניהול קטגוריות
-    window.openCatModal = (id = "") => {
-        const btnDel = document.getElementById('btnDeleteCat');
+    // --- ניהול קטגוריות ---
+    window.openCatM = (id = "") => {
+        const dBtn = document.getElementById('delCatBtn');
         if(id) {
-            const c = allCats.find(x => x.id === id);
+            const c = cats.find(x => x.id === id);
             document.getElementById('editCatId').value = id;
-            document.getElementById('catName').value = c.name;
-            document.getElementById('catBudget').value = c.budget;
-            document.getElementById('catModalTitle').innerText = "עריכת קטגוריה";
-            btnDel.style.display = 'block';
-            btnDel.onclick = async () => {
-                if(confirm(`למחוק את ${c.name} ואת כל ההוצאות שלה?`)) {
+            document.getElementById('cName').value = c.name;
+            document.getElementById('cBudget').value = c.budget;
+            document.getElementById('catTitle').innerText = "עריכת קטגוריה";
+            dBtn.style.display = 'block';
+            dBtn.onclick = async () => {
+                if(confirm(`למחוק את ${c.name}? כל ההוצאות שלה יימחקו גם.`)) {
                     await deleteDoc(doc(db, "categories", id));
-                    allTxs.filter(t => t.catId === id).forEach(async t => await deleteDoc(doc(db, "transactions", t.id)));
+                    txs.filter(t => t.catId === id).forEach(async t => await deleteDoc(doc(db, "transactions", t.id)));
                     closeM('catModal');
                 }
             };
         } else {
             document.getElementById('editCatId').value = "";
-            document.getElementById('catName').value = "";
-            document.getElementById('catBudget').value = "";
-            document.getElementById('catModalTitle').innerText = "קטגוריה חדשה";
-            btnDel.style.display = 'none';
+            document.getElementById('cName').value = "";
+            document.getElementById('cBudget').value = "";
+            dBtn.style.display = 'none';
         }
         document.getElementById('catModal').style.display = 'flex';
     };
 
-    document.getElementById('btnSaveCat').onclick = async () => {
-        const id = document.getElementById('editCatId').value;
-        const data = { name: document.getElementById('catName').value, budget: parseFloat(document.getElementById('catBudget').value), groupId: activeGid };
-        id ? await updateDoc(doc(db, "categories", id), data) : await addDoc(collection(db, "categories"), data);
+    document.getElementById('saveCatBtn').onclick = async () => {
+        const cid = document.getElementById('editCatId').value;
+        const data = { name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value), groupId: gid };
+        cid ? await updateDoc(doc(db, "categories", cid), data) : await addDoc(collection(db, "categories"), data);
         closeM('catModal');
     };
 
-    // סנכרון ורנדור
-    onSnapshot(query(collection(db, "categories"), where("groupId", "==", activeGid)), s => {
-        allCats = s.docs.map(d => ({id:d.id, ...d.data()}));
+    // --- סנכרון ורנדור ---
+    onSnapshot(query(collection(db, "categories"), where("groupId", "==", gid)), s => {
+        cats = s.docs.map(d => ({id:d.id, ...d.data()}));
         render();
     });
 
-    onSnapshot(query(collection(db, "transactions"), where("groupId", "==", activeGid)), s => {
-        allTxs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date);
+    onSnapshot(query(collection(db, "transactions"), where("groupId", "==", gid)), s => {
+        txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date);
         render();
     });
 
     function render() {
-        // רנדור קטגוריות
-        document.getElementById('categoriesList').innerHTML = allCats.map(c => {
-            const spent = allTxs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
-            return `<div class="card">
-                <div class="cat-actions">
-                    <button class="icon-btn" onclick="openCatModal('${c.id}')">⚙️</button>
-                </div>
-                <div onclick="openAddTx('${c.id}','${c.name}')" style="cursor:pointer; margin-top:10px;">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                        <span>${c.name}</span>
-                        <span>₪${spent.toFixed(0)} / ₪${c.budget}</span>
+        // קטגוריות
+        document.getElementById('catList').innerHTML = cats.map(c => {
+            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
+            const per = Math.min((spent/c.budget)*100, 100);
+            return `<div class="card" style="margin-bottom:15px;">
+                <div class="cat-header">
+                    <div onclick="openAddTx('${c.id}','${c.name}')" style="cursor:pointer; flex:1">
+                        <b style="font-size:18px;">${c.name}</b><br>
+                        <small>₪${spent.toFixed(0)} מתוך ₪${c.budget}</small>
                     </div>
-                    <div style="background:#f1f5f9; height:12px; border-radius:10px; margin-top:10px; overflow:hidden">
-                        <div style="width:${Math.min((spent/c.budget)*100, 100)}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}; height:100%; transition:0.3s;"></div>
-                    </div>
+                    <button class="manage-btn" onclick="openCatM('${c.id}')">⚙️</button>
                 </div>
+                <div class="progress-bar"><div class="progress-fill" style="width:${per}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
             </div>`;
         }).join('');
 
-        // רנדור היסטוריה
-        document.getElementById('historyList').innerHTML = allTxs.slice(0, 10).map(t => `
-            <div class="history-item">
-                <div>
-                    <strong>${allCats.find(c => c.id === t.catId)?.name || 'כללי'}</strong><br>
+        // היסטוריה
+        document.getElementById('txHistory').innerHTML = txs.slice(0, 10).map(t => `
+            <div class="tx-item">
+                <div class="tx-info">
+                    <b>${cats.find(c => c.id === t.catId)?.name || 'כללי'}</b>
                     <small>${t.method} | ₪${t.amount}</small>
                 </div>
-                <div class="actions">
-                    <button class="btn-sm btn-edit" onclick="openEditTx('${t.id}')">✏️ ערוך</button>
-                    <button class="btn-sm btn-del" onclick="deleteTx('${t.id}')">🗑️</button>
+                <div class="tx-actions">
+                    <button class="btn-icon edit-btn" onclick="openEditTx('${t.id}')">✏️</button>
+                    <button class="btn-icon del-btn" onclick="delTx('${t.id}')">🗑️</button>
                 </div>
             </div>
-        `).join('');
+        `).join('') || '<p style="color:gray; text-align:center;">אין הוצאות להצגה</p>';
 
         updateChart();
     }
 
     function updateChart() {
-        const ctx = document.getElementById('paymentChart').getContext('2d');
-        const summary = allTxs.reduce((acc, t) => { acc[t.method] = (acc[t.method] || 0) + t.amount; return acc; }, {});
-        if(chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(ctx, {
+        const ctx = document.getElementById('mainChart');
+        if(!ctx) return;
+        const data = txs.reduce((acc, t) => { acc[t.method] = (acc[t.method] || 0) + t.amount; return acc; }, {});
+        if(chart) chart.destroy();
+        chart = new Chart(ctx, {
             type: 'doughnut',
-            data: { labels: Object.keys(summary), datasets: [{ data: Object.values(summary), backgroundColor: ['#6366f1', '#ec4899', '#22c55e'] }] },
+            data: { labels: Object.keys(data), datasets: [{ data: Object.values(data), backgroundColor: ['#6366f1', '#ec4899', '#22c55e', '#f59e0b'] }] },
             options: { plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
         });
     }
