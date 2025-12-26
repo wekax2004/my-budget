@@ -3,45 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BudgetMaster Pro - Multi Currency</title>
+    <title>BudgetMaster Pro - Final Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --gift: #ec4899; --danger: #ef4444; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
-        
         .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media (min-width: 1024px) { .grid { grid-template-columns: 320px 1fr 300px; } }
-
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; margin-bottom: 15px; }
         .btn-main { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; }
-        .btn-share { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 9999; padding: 15px; backdrop-filter: blur(5px); }
-        .modal-content { background: white; padding: 25px; border-radius: 25px; width: 100%; max-width: 400px; }
+        .modal-content { background: white; padding: 25px; border-radius: 25px; width: 100%; max-width: 400px; position: relative; }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
-        
         .progress-bar { background: #eee; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
         .progress-fill { height: 100%; transition: 0.3s; }
-        .tx-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; }
+        .tx-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; align-items: center; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <h2 style="margin:0;">התקציב שלי 💎</h2>
-    <button class="btn-share" onclick="window.copyShareLink()">🔗 שתף קישור</button>
+    <button onclick="window.copyShareLink()" style="background:var(--success); color:white; border:none; padding:10px 20px; border-radius:12px; cursor:pointer;">🔗 שתף</button>
 </div>
 
 <div class="grid">
     <div>
         <div class="card">
-            <h3>📊 פילוח הוצאות</h3>
-            <div style="min-height: 200px;"><canvas id="mainChart"></canvas></div>
+            <h3>📊 פילוח</h3>
+            <div style="height:250px"><canvas id="mainChart"></canvas></div>
         </div>
         <div class="card">
             <h3>📜 היסטוריה</h3>
-            <div id="txHistory">אין עדיין הוצאות...</div>
+            <div id="txHistory"></div>
         </div>
     </div>
 
@@ -51,7 +46,7 @@
     </div>
 
     <div class="card">
-        <h3 style="color:var(--gift)">🎁 ארנק גיפטקארד</h3>
+        <h3 style="color:var(--gift)">🎁 גיפטקארדים</h3>
         <div id="giftList"></div>
         <button class="btn-main" onclick="window.openGiftM()" style="background:var(--gift); margin-top:15px;">➕ הוסף כרטיס</button>
     </div>
@@ -60,20 +55,14 @@
 <div id="expModal" class="modal"><div class="modal-content">
     <h3 id="expTitle">הוצאה חדשה</h3>
     <input type="text" id="expNote" placeholder="מה קנית?">
-    
-    <div style="background:#f1f5f9; padding:15px; border-radius:15px; margin-bottom:10px;">
-        <label style="font-size:12px; color:gray;">סכום במט"ח (אופציונלי):</label>
-        <div style="display:flex; gap:10px;">
-            <input type="number" id="foreignVal" placeholder="0.00" oninput="window.calcExchange()" style="margin:0;">
-            <select id="currencyType" onchange="window.calcExchange()" style="width:100px; margin:0;">
-                <option value="3.76">$ USD</option>
-                <option value="4.05">€ EUR</option>
-            </select>
+    <div style="background:#f1f5f9; padding:10px; border-radius:12px; margin-bottom:10px;">
+        <small>המרת מטבע:</small>
+        <div style="display:flex; gap:5px;">
+            <input type="number" id="foreignVal" placeholder="סכום במט''ח" oninput="window.calcEx()" style="margin:0">
+            <select id="curRate" onchange="window.calcEx()" style="width:90px; margin:0"><option value="3.75">$ USD</option><option value="4.05">€ EUR</option></select>
         </div>
     </div>
-
-    <input type="number" id="fAmt" placeholder="₪ סכום סופי בשקלים" step="0.01" style="border:2px solid var(--primary); font-weight:bold;">
-    
+    <input type="number" id="fAmt" placeholder="₪ סכום סופי בשקלים">
     <select id="pMethod">
         <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
@@ -86,19 +75,19 @@
 
 <div id="catModal" class="modal"><div class="modal-content">
     <h3>ניהול קטגוריה</h3>
-    <input type="text" id="cName" placeholder="שם הקטגוריה">
-    <input type="number" id="cBudget" placeholder="תקציב חודשי ב-₪">
+    <input type="text" id="cName" placeholder="שם (ללא גרשיים)">
+    <input type="number" id="cBudget" placeholder="תקציב ב-₪">
     <input type="hidden" id="eCatId">
     <button class="btn-main" id="saveCatBtn">שמור</button>
     <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <div id="giftModal" class="modal"><div class="modal-content">
-    <h3>הוספת כרטיס</h3>
+    <h3>הוספת גיפטקארד</h3>
     <input type="text" id="gName" placeholder="שם הכרטיס">
-    <input type="number" id="gBalance" placeholder="סכום ב-₪">
+    <input type="number" id="gBalance" placeholder="סכום">
     <button class="btn-main" id="saveGiftBtn" style="background:var(--gift);">שמור</button>
-    <button onclick="window.closeM('giftModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
+    <button onclick="window.closeM('giftModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <script type="module">
@@ -114,20 +103,20 @@
 
     let cats = [], txs = [], gifts = [], chart = null;
 
-    // פונקציות גלובליות
-    window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.openGiftM = () => document.getElementById('giftModal').style.display = 'flex';
-    
-    window.calcExchange = () => {
+    // פונקציות גלובליות - תיקון בעיית ה-Scope
+    window.closeM = (id) => { document.getElementById(id).style.display = 'none'; };
+    window.openGiftM = () => { document.getElementById('giftModal').style.display = 'flex'; };
+    window.calcEx = () => {
         const val = parseFloat(document.getElementById('foreignVal').value) || 0;
-        const rate = parseFloat(document.getElementById('currencyType').value);
+        const rate = parseFloat(document.getElementById('curRate').value);
         if(val > 0) document.getElementById('fAmt').value = (val * rate).toFixed(2);
     };
 
     window.openCatM = (id = "") => {
-        if(id) {
-            const c = cats.find(x => x.id === id);
-            document.getElementById('eCatId').value = id;
+        const cid = id.toString();
+        if(cid) {
+            const c = cats.find(x => x.id === cid);
+            document.getElementById('eCatId').value = cid;
             document.getElementById('cName').value = c.name;
             document.getElementById('cBudget').value = c.budget;
         } else {
@@ -141,20 +130,21 @@
     window.openAddTx = (id, name) => {
         document.getElementById('tCatId').value = id;
         document.getElementById('expNote').value = "";
-        document.getElementById('foreignVal').value = "";
         document.getElementById('fAmt').value = "";
+        document.getElementById('foreignVal').value = "";
         document.getElementById('expTitle').innerText = "הוספה ל: " + name;
         document.getElementById('expModal').style.display = 'flex';
     };
 
     window.copyShareLink = () => {
         const link = window.location.origin + window.location.pathname + "?group=" + gid;
-        navigator.clipboard.writeText(link).then(() => alert("הקישור הועתק!"));
+        navigator.clipboard.writeText(link);
+        alert("הקישור הועתק!");
     };
 
     window.delTx = async (id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, "transactions", id)); };
 
-    // שמירה ל-Firebase
+    // כפתורי שמירה
     document.getElementById('saveTxBtn').onclick = async () => {
         const amt = parseFloat(document.getElementById('fAmt').value);
         if(!amt) return alert("נא להזין סכום");
@@ -170,8 +160,10 @@
     };
 
     document.getElementById('saveCatBtn').onclick = async () => {
+        const name = document.getElementById('cName').value;
+        if(!name) return;
         const cid = document.getElementById('eCatId').value;
-        const data = { name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value) || 0, groupId: gid };
+        const data = { name, budget: parseFloat(document.getElementById('cBudget').value) || 0, groupId: gid };
         cid ? await updateDoc(doc(db, "categories", cid), data) : await addDoc(collection(db, "categories"), data);
         window.closeM('catModal');
     };
@@ -181,42 +173,37 @@
         window.closeM('giftModal');
     };
 
-    // האזנה לשינויים
+    // סנכרון בזמן אמת
     onSnapshot(query(collection(db, "categories"), where("groupId", "==", gid)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
     onSnapshot(query(collection(db, "transactions"), where("groupId", "==", gid)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
     onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", gid)), s => { gifts = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
 
     function render() {
-        // רנדור קטגוריות
+        // קטגוריות - שימוש ב-JSON.stringify למניעת שגיאות גרש
         document.getElementById('catList').innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
-            const color = spent > c.budget ? 'var(--danger)' : 'var(--success)';
             return `<div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div onclick="window.openAddTx('${c.id}','${c.name}')" style="cursor:pointer; flex:1">
-                        <b>${c.name}</b><br>
-                        <small>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</small>
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <div onclick='window.openAddTx("${c.id}", "${c.name.replace(/"/g, '&quot;')}")' style="cursor:pointer; flex:1">
+                        <b>${c.name}</b><br><small>₪${spent} / ₪${c.budget}</small>
                     </div>
-                    <button onclick="window.openCatM('${c.id}')" style="background:none; border:none; cursor:pointer">⚙️</button>
+                    <button onclick='window.openCatM("${c.id}")' style="background:none; border:none; cursor:pointer">⚙️</button>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${color}"></div></div>
+                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
             </div>`;
         }).join('');
 
-        // רנדור היסטוריה
+        // היסטוריה
         document.getElementById('txHistory').innerHTML = txs.slice(0, 10).map(t => `
             <div class="tx-item">
                 <span><b>${t.note}</b><br><small>${t.method}</small></span>
-                <div>
-                    <b>₪${t.amount.toLocaleString()}</b>
-                    <button onclick="window.delTx('${t.id}')" style="border:none; background:none; cursor:pointer; opacity:0.3">🗑️</button>
-                </div>
+                <div><b>₪${t.amount}</b> <button onclick="window.delTx('${t.id}')" style="border:none; background:none; cursor:pointer">🗑️</button></div>
             </div>
         `).join('') || "אין הוצאות...";
 
-        // רנדור גיפטקארד
-        document.getElementById('giftList').innerHTML = gifts.map(g => `<div class="card" style="border-right:5px solid var(--gift)"><b>${g.name}</b>: ₪${g.balance}</div>`).join('');
+        // גיפטקארד
+        document.getElementById('giftList').innerHTML = gifts.map(g => `<div class="card" style="border-right:4px solid var(--gift)"><b>${g.name}</b>: ₪${g.balance}</div>`).join('');
         
         updateChart();
     }
@@ -224,26 +211,10 @@
     function updateChart() {
         const ctx = document.getElementById('mainChart');
         if(!ctx) return;
-        
-        // יצירת נתונים לפי קטגוריות (לראות איפה הכסף מתבזבז)
-        const labels = cats.map(c => c.name);
-        const dataValues = cats.map(c => txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0));
-        
+        const d = txs.reduce((acc, t) => { acc[t.method] = (acc[t.method] || 0) + t.amount; return acc; }, {});
         if(chart) chart.destroy();
-        if(dataValues.every(v => v === 0)) return; // אל תצייר גרף ריק
-
-        chart = new Chart(ctx, { 
-            type: 'doughnut', 
-            data: { 
-                labels: labels, 
-                datasets: [{ data: dataValues, backgroundColor: ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'] }] 
-            },
-            options: { 
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } 
-            }
-        });
+        if(Object.keys(d).length === 0) return;
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(d), datasets: [{ data: Object.values(d), backgroundColor: ['#6366f1', '#ec4899', '#22c55e'] }] }, options: { maintainAspectRatio: false } });
     }
 </script>
 </body>
