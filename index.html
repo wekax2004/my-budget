@@ -52,6 +52,945 @@
             margin: auto; 
         }
 
+        /* ============ אפליקציה ראשית מוסתרת בהתחלה ============ */
+        #mainApp {
+            display: none;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        #mainApp:not(.hidden) {
+            display: block;
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* ============ כותרת עליונה רספונסיבית ============ */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header-section h2 {
+            margin: 0;
+            font-weight: 900;
+            font-size: 1.5rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        @media (max-width: 767px) {
+            .header-section h2 {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* ============ גריד רספונסיבי מתקדם ============ */
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+            margin-top: 20px; 
+        }
+
+        /* טאבלט - 2 עמודות */
+        @media (min-width: 768px) and (max-width: 1023px) { 
+            .dashboard-grid { 
+                grid-template-columns: 1fr 1fr; 
+            }
+            .dashboard-grid > :last-child {
+                grid-column: 1 / -1;
+            }
+        }
+
+        /* דסקטופ - 3 עמודות */
+        @media (min-width: 1024px) { 
+            .dashboard-grid { 
+                grid-template-columns: 350px 1fr 300px; 
+            } 
+        }
+
+        /* ============ כרטיסים ============ */
+        .card { 
+            background: white; 
+            border-radius: 24px; 
+            padding: 20px; 
+            box-shadow: var(--card-shadow); 
+            border: 1px solid rgba(0,0,0,0.02); 
+            height: fit-content; 
+            margin-bottom: 20px;
+            transition: transform var(--transition), box-shadow var(--transition);
+        }
+
+        @media (min-width: 768px) {
+            .card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            }
+        }
+
+        /* ============ כותרת סקשן ============ */
+        .section-title { 
+            font-size: 1.1rem; 
+            font-weight: 800; 
+            margin-bottom: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+
+        @media (max-width: 767px) {
+            .section-title {
+                font-size: 1rem;
+            }
+        }
+
+        /* ============ כרטיס קטגוריה ============ */
+        .category-card { 
+            background: white; 
+            border-radius: 20px; 
+            padding: 18px; 
+            margin-bottom: 15px; 
+            border: 1px solid #f1f5f9; 
+            cursor: pointer; 
+            transition: all var(--transition);
+            user-select: none;
+        }
+
+        .category-card:active {
+            transform: scale(0.98);
+        }
+
+        @media (min-width: 768px) {
+            .category-card:hover {
+                border-color: var(--primary);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+                transform: translateX(-3px);
+            }
+        }
+
+        /* ============ פרוגרס בר ============ */
+        .progress-bg { 
+            background: #f1f5f9; 
+            height: 10px; 
+            border-radius: 10px; 
+            margin: 12px 0; 
+            overflow: hidden; 
+        }
+
+        .progress-fill { 
+            height: 100%; 
+            transition: width 0.6s ease;
+            border-radius: 10px;
+        }
+
+        /* ============ כפתורים - משופרים למובייל ============ */
+        .btn { 
+            border: none; 
+            padding: 16px; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            font-size: 16px; 
+            width: 100%;
+            transition: all var(--transition);
+            touch-action: manipulation;
+            min-height: 50px;
+        }
+
+        @media (max-width: 767px) {
+            .btn { 
+                padding: 18px;
+                font-size: 17px;
+                min-height: 54px;
+            }
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        @media (min-width: 768px) {
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+        }
+
+        .btn-primary { 
+            background: var(--primary); 
+        }
+
+        .btn-primary:hover {
+            background: #5558e3;
+        }
+
+        .btn-gift { 
+            background: var(--gift); 
+        }
+
+        .btn-gift:hover {
+            background: #db2777;
+        }
+
+        .btn-secondary {
+            background: none;
+            border: none;
+            color: #64748b;
+            padding: 12px;
+            font-weight: 600;
+            min-height: auto;
+        }
+
+        .btn-secondary:hover {
+            color: #475569;
+            background: #f1f5f9;
+        }
+
+        /* ============ מודל משופר ============ */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(15, 23, 42, 0.6); 
+            z-index: 1000; 
+            align-items: center; 
+            justify-content: center; 
+            backdrop-filter: blur(6px); 
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-content { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 30px; 
+            width: 100%; 
+            max-width: 420px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (max-width: 767px) {
+            .modal { padding: 15px; }
+            .modal-content { 
+                padding: 25px 20px;
+                border-radius: 25px;
+            }
+        }
+
+        /* ============ אינפוטים משופרים ============ */
+        input, select, textarea { 
+            width: 100%; 
+            padding: 14px 16px; 
+            margin: 8px 0; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 14px; 
+            font-size: 16px; 
+            box-sizing: border-box;
+            font-family: inherit;
+            transition: all var(--transition);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        @media (max-width: 767px) {
+            input, select, textarea {
+                padding: 16px;
+                font-size: 16px;
+            }
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23334155' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 12px center;
+            padding-left: 36px;
+        }
+
+        /* ============ שורת פריט ============ */
+        .item-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 12px 0; 
+            border-bottom: 1px solid #f8fafc;
+            gap: 10px;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 767px) {
+            .item-row {
+                padding: 14px 0;
+            }
+        }
+
+        /* ============ כיתות עזר ============ */
+        .hidden { 
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* ============ כותרת שיתוף ============ */
+        .share-header { 
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white; 
+            padding: 18px; 
+            border-radius: 20px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        @media (max-width: 767px) {
+            .share-header {
+                font-size: 1rem;
+                padding: 15px;
+            }
+        }
+
+        /* ============ כפתור התנתקות ============ */
+        #logoutBtn {
+            background: none;
+            border: 2px solid var(--danger);
+            color: var(--danger);
+            font-weight: bold;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 12px;
+            transition: all var(--transition);
+            touch-action: manipulation;
+            min-height: 44px;
+        }
+
+        #logoutBtn:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        @media (max-width: 767px) {
+            #logoutBtn {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+
+        /* ============ מסך כניסה ============ */
+        #authSection {
+            max-width: 400px;
+            margin: 40px auto;
+            text-align: center;
+            border: 2px solid var(--primary);
+            position: relative;
+            z-index: 100;
+        }
+
+        @media (max-width: 767px) {
+            #authSection {
+                margin: 20px auto;
+            }
+        }
+
+        #authSection h3 {
+            margin-top: 0;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        @media (max-width: 767px) {
+            #authSection h3 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* ============ אזור המרת מטבע ============ */
+        .currency-converter {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        @media (max-width: 767px) {
+            .currency-converter {
+                flex-direction: column;
+            }
+            .currency-converter input,
+            .currency-converter select {
+                margin: 4px 0;
+            }
+        }
+
+        /* ============ Loading State ============ */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* ============ Empty State ============ */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 767px) {
+            .empty-state {
+                padding: 30px 15px;
+                font-size: 14px;
+            }
+        }
+
+        /* ============ Smooth Scrolling ============ */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* ============ כפתור + בכותרת ============ */
+        .add-btn {
+            border: none;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all var(--transition);
+            font-weight: bold;
+        }
+
+        .add-btn:hover {
+            transform: rotate(90deg) scale(1.1);
+            background: #5558e3;
+        }
+
+        .add-btn:active {
+            transform: rotate(90deg) scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- כותרת עליונה -->
+    <div class="header-section">
+        <h2>החשבון המשותף שלנו 💎</h2>
+        <button id="logoutBtn" class="hidden">התנתק</button>
+    </div>
+
+    <!-- מסך כניסה -->
+    <div id="authSection" class="card">
+        <h3>ברוכים הבאים</h3>
+        <input type="text" id="groupCode" placeholder="🔑 קוד שיתוף משפחתי (למשל: כהן2025)" autocomplete="off">
+        <input type="email" id="email" placeholder="📧 אימייל" autocomplete="email">
+        <input type="password" id="pass" placeholder="🔒 סיסמה" autocomplete="current-password">
+        <button class="btn btn-primary" id="loginBtn">התחברות / יצירת חשבון</button>
+    </div>
+
+    <!-- אפליקציה ראשית -->
+    <div id="mainApp" class="hidden">
+        <div class="share-header" id="displayGroup"></div>
+        
+        <div class="dashboard-grid">
+            <!-- היסטוריה -->
+            <div class="card">
+                <div class="section-title">📜 היסטוריה</div>
+                <div id="historyList" class="loading">טוען נתונים</div>
+            </div>
+
+            <!-- קטגוריות -->
+            <div>
+                <button class="btn btn-primary" id="openCatModalBtn" style="margin-bottom: 20px;">
+                    ➕ קטגוריה חדשה
+                </button>
+                <div id="categoriesList"></div>
+            </div>
+
+            <!-- ארנק גיפטקארד -->
+            <div class="card" style="border-top: 4px solid var(--gift);">
+                <div class="section-title">
+                    🎁 ארנק גיפטקארד 
+                    <button id="openGiftModalBtn" class="add-btn">+</button>
+                </div>
+                <div id="giftCardsList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- מודל הוצאה -->
+<div id="expModal" class="modal">
+    <div class="modal-content">
+        <h3 id="expTitle">הוצאה</h3>
+        
+        <!-- המרת מטבע -->
+        <div class="currency-converter">
+            <input type="number" id="foreignAmt" placeholder="סכום במט״ח" oninput="doConvert()" step="0.01">
+            <select id="currType" onchange="doConvert()">
+                <option value="3.72">דולר $ (3.72)</option>
+                <option value="4.05">יורו € (4.05)</option>
+            </select>
+        </div>
+
+        <input type="number" id="expAmount" placeholder="סכום ב-₪" style="font-weight:800; text-align:center;" step="0.01">
+        <select id="paymentMethod" aria-label="אמצעי תשלום"></select>
+        <textarea id="expNotes" placeholder="הערות (אופציונלי)..."></textarea>
+        <input type="hidden" id="activeCatId">
+        
+        <button class="btn btn-primary" id="btnSaveTx">💾 שמור הוצאה</button>
+        <button id="cancelExpBtn" class="btn-secondary">ביטול</button>
+    </div>
+</div>
+
+<!-- מודל קטגוריה חדשה -->
+<div id="catModal" class="modal">
+    <div class="modal-content">
+        <h3>קטגוריה חדשה</h3>
+        <input type="text" id="catName" placeholder="שם הקטגוריה (למשל: מזון)">
+        <input type="number" id="catBudget" placeholder="תקציב חודשי ₪" step="1">
+        <button class="btn btn-primary" id="btnSaveCat">💾 שמור קטגוריה</button>
+        <button id="cancelCatBtn" class="btn-secondary">ביטול</button>
+    </div>
+</div>
+
+<!-- מודל גיפטקארד -->
+<div id="giftModal" class="modal">
+    <div class="modal-content">
+        <h3>הוספת גיפטקארד</h3>
+        <input type="text" id="giftName" placeholder="שם הכרטיס (למשל: איקאה)">
+        <input type="number" id="giftBalance" placeholder="יתרה ₪" step="0.01">
+        <button class="btn btn-gift" id="btnSaveGift">🎁 שמור גיפטקארד</button>
+        <button id="cancelGiftBtn" class="btn-secondary">ביטול</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = { 
+        apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", 
+        authDomain: "expensetrackerpro-d216d.firebaseapp.com", 
+        projectId: "expensetrackerpro-d216d" 
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let activeGid = localStorage.getItem('familyCode') || "";
+    let allCats = [], allTxs = [], allGifts = [];
+
+    // ============ פונקציות גלובליות ============
+    window.openM = (id) => {
+        document.getElementById(id).style.display = 'flex';
+        // הוסף vibration feedback למובייל
+        if ('vibrate' in navigator) navigator.vibrate(10);
+    };
+
+    window.closeM = (id) => {
+        document.getElementById(id).style.display = 'none';
+        // נקה שדות
+        if (id === 'expModal') {
+            document.getElementById('expAmount').value = '';
+            document.getElementById('foreignAmt').value = '';
+            document.getElementById('expNotes').value = '';
+        } else if (id === 'catModal') {
+            document.getElementById('catName').value = '';
+            document.getElementById('catBudget').value = '';
+        } else if (id === 'giftModal') {
+            document.getElementById('giftName').value = '';
+            document.getElementById('giftBalance').value = '';
+        }
+    };
+
+    window.doConvert = () => {
+        const foreign = parseFloat(document.getElementById('foreignAmt').value) || 0;
+        const rate = parseFloat(document.getElementById('currType').value);
+        document.getElementById('expAmount').value = Math.round(foreign * rate * 100) / 100;
+    };
+
+    // ============ כפתורים לפתיחת מודלים ============
+    // המתן לטעינת ה-DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        // כפתור קטגוריה חדשה
+        const openCatBtn = document.getElementById('openCatModalBtn');
+        if (openCatBtn) {
+            openCatBtn.addEventListener('click', () => openM('catModal'));
+        }
+        
+        // כפתור גיפטקארד חדש
+        const openGiftBtn = document.getElementById('openGiftModalBtn');
+        if (openGiftBtn) {
+            openGiftBtn.addEventListener('click', () => openM('giftModal'));
+        }
+
+        // כפתורי ביטול
+        document.getElementById('cancelExpBtn')?.addEventListener('click', () => closeM('expModal'));
+        document.getElementById('cancelCatBtn')?.addEventListener('click', () => closeM('catModal'));
+        document.getElementById('cancelGiftBtn')?.addEventListener('click', () => closeM('giftModal'));
+    });
+
+    // ============ טיפול בחיבור ============
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const mail = document.getElementById('email').value.trim();
+        const p = document.getElementById('pass').value;
+        const code = document.getElementById('groupCode').value.trim();
+        
+        if (!code || !mail || !p) {
+            alert("❌ נא למלא את כל השדות!");
+            return;
+        }
+        
+        activeGid = code;
+        localStorage.setItem('familyCode', code);
+
+        try {
+            await signInWithEmailAndPassword(auth, mail, p);
+        } catch (e) {
+            if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password') {
+                try {
+                    await createUserWithEmailAndPassword(auth, mail, p);
+                    alert("✅ חשבון חדש נוצר בהצלחה!\n📍 קוד השיתוף: " + code);
+                } catch (err) { 
+                    alert("❌ שגיאה: " + err.message); 
+                }
+            } else {
+                alert("❌ שגיאה: " + e.message);
+            }
+        }
+    });
+
+    // כפתור התנתקות
+    document.getElementById('logoutBtn').addEventListener('click', () => { 
+        if (confirm('🚪 האם אתה בטוח שברצונך להתנתק?')) {
+            signOut(auth); 
+            localStorage.removeItem('familyCode'); 
+            location.reload(); 
+        }
+    });
+
+    // האזנה לשינויי אימות
+    onAuthStateChanged(auth, u => {
+        if(u && activeGid) {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('displayGroup').innerText = "📍 שיתוף פעיל: " + activeGid;
+            sync();
+        }
+    });
+
+    // ============ סנכרון עם Firebase ============
+    function sync() {
+        // קטגוריות
+        onSnapshot(query(collection(db, "categories"), where("groupId", "==", activeGid)), s => { 
+            allCats = s.docs.map(d => ({id:d.id, ...d.data()})); 
+            render(); 
+        });
+        
+        // טרנזקציות
+        onSnapshot(query(collection(db, "transactions"), where("groupId", "==", activeGid)), s => { 
+            allTxs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date.seconds - a.date.seconds); 
+            render(); 
+        });
+        
+        // גיפטקארדים
+        onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", activeGid)), s => { 
+            allGifts = s.docs.map(d => ({id:d.id, ...d.data()})); 
+            render(); 
+        });
+    }
+
+    // ============ שמירת קטגוריה חדשה ============
+    document.getElementById('btnSaveCat').addEventListener('click', async () => {
+        const name = document.getElementById('catName').value.trim();
+        const budget = parseFloat(document.getElementById('catBudget').value);
+        
+        if (!name || !budget || budget <= 0) {
+            alert('❌ נא למלא את כל השדות בצורה תקינה');
+            return;
+        }
+        
+        try {
+            await addDoc(collection(db, "categories"), { 
+                name, 
+                budget, 
+                groupId: activeGid,
+                createdAt: Timestamp.now()
+            });
+            closeM('catModal');
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) {
+            alert('❌ שגיאה בשמירה: ' + e.message);
+        }
+    });
+
+    // ============ פתיחת מודל הוצאה ============
+    window.openExpModal = (id, name) => {
+        document.getElementById('activeCatId').value = id;
+        document.getElementById('expTitle').innerText = "הוספה ל: " + name;
+        
+        // בניית רשימת אמצעי תשלום
+        let opts = `
+            <option value="אשראי">💳 אשראי</option>
+            <option value="מזומן">💵 מזומן</option>
+        `;
+        allGifts.forEach(g => { 
+            opts += `<option value="gift_${g.id}">🎁 ${g.name} (₪${g.balance.toFixed(2)})</option>`; 
+        });
+        document.getElementById('paymentMethod').innerHTML = opts;
+        
+        openM('expModal');
+    };
+
+    // ============ שמירת טרנזקציה ============
+    document.getElementById('btnSaveTx').addEventListener('click', async () => {
+        const amt = parseFloat(document.getElementById('expAmount').value);
+        const meth = document.getElementById('paymentMethod').value;
+        const notes = document.getElementById('expNotes').value.trim();
+        
+        if (!amt || amt <= 0) {
+            alert('❌ נא להזין סכום תקין');
+            return;
+        }
+        
+        try {
+            // אם משלמים בגיפטקארד - עדכן יתרה
+            if(meth.startsWith('gift_')) {
+                const gId = meth.split('_')[1];
+                const g = allGifts.find(x => x.id === gId);
+                
+                if (g.balance < amt) {
+                    alert('❌ אין מספיק יתרה בגיפטקארד');
+                    return;
+                }
+                
+                await updateDoc(doc(db, "giftcards", gId), { 
+                    balance: g.balance - amt 
+                });
+            }
+            
+            // שמור טרנזקציה
+            await addDoc(collection(db, "transactions"), { 
+                amount: amt, 
+                catId: document.getElementById('activeCatId').value, 
+                method: meth, 
+                notes: notes || '', 
+                groupId: activeGid, 
+                date: Timestamp.now() 
+            });
+            
+            closeM('expModal');
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) {
+            alert('❌ שגיאה בשמירה: ' + e.message);
+        }
+    });
+
+    // ============ שמירת גיפטקארד ============
+    document.getElementById('btnSaveGift').addEventListener('click', async () => {
+        const name = document.getElementById('giftName').value.trim();
+        const balance = parseFloat(document.getElementById('giftBalance').value);
+        
+        if (!name || !balance || balance <= 0) {
+            alert('❌ נא למלא את כל השדות בצורה תקינה');
+            return;
+        }
+        
+        try {
+            await addDoc(collection(db, "giftcards"), { 
+                name, 
+                balance, 
+                groupId: activeGid,
+                createdAt: Timestamp.now()
+            });
+            closeM('giftModal');
+            if ('vibrate' in navigator) navigator.vibrate(50);
+        } catch (e) {
+            alert('❌ שגיאה בשמירה: ' + e.message);
+        }
+    });
+
+    // ============ רינדור UI ============
+    function render() {
+        // בדוק שהמשתמש מחובר
+        if (!activeGid || !auth.currentUser) return;
+
+        // קטגוריות
+        const catsList = document.getElementById('categoriesList');
+        if (!catsList) return;
+        
+        if (allCats.length === 0) {
+            catsList.innerHTML = '<div class="empty-state">📝 עדיין אין קטגוריות<br>לחץ על "קטגוריה חדשה" כדי להתחיל</div>';
+        } else {
+            catsList.innerHTML = allCats.map(c => {
+                const spent = allTxs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
+                const pct = Math.min((spent / c.budget) * 100, 100);
+                const isOverBudget = spent > c.budget;
+                
+                return `<div class="category-card" onclick="openExpModal('${c.id}','${c.name}')">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                        <strong style="font-size: 1.1rem;">${c.name}</strong>
+                        <span style="font-size: 0.95rem; color: ${isOverBudget ? 'var(--danger)' : '#64748b'};">
+                            ₪${spent.toFixed(2)} / ₪${c.budget.toFixed(2)}
+                        </span>
+                    </div>
+                    <div class="progress-bg">
+                        <div class="progress-fill" style="width:${pct}%; background:${pct > 90 ? 'var(--danger)' : 'var(--success)'}"></div>
+                    </div>
+                    ${isOverBudget ? '<small style="color:var(--danger);">⚠️ חריגה מתקציב!</small>' : ''}
+                </div>`;
+            }).join('');
+        }
+
+        // היסטוריה
+        const histList = document.getElementById('historyList');
+        if (allTxs.length === 0) {
+            histList.innerHTML = '<div class="empty-state">📊 עדיין אין הוצאות</div>';
+        } else {
+            histList.innerHTML = allTxs.slice(0, 15).map(t => {
+                const cat = allCats.find(c => c.id === t.catId);
+                const date = t.date ? new Date(t.date.seconds * 1000) : new Date();
+                const dateStr = date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+                
+                return `<div class="item-row">
+                    <div>
+                        <strong style="font-size: 1rem;">${cat ? cat.name : 'כללי'}</strong>
+                        <br>
+                        <small style="color: #64748b;">${t.method} • ${dateStr}</small>
+                        ${t.notes ? `<br><small style="color: #94a3b8; font-style: italic;">${t.notes}</small>` : ''}
+                    </div>
+                    <strong style="color:var(--danger); font-size: 1.1rem;">₪${t.amount.toFixed(2)}</strong>
+                </div>`;
+            }).join('');
+        }
+
+        // גיפטקארדים
+        const giftList = document.getElementById('giftCardsList');
+        if (allGifts.length === 0) {
+            giftList.innerHTML = '<div class="empty-state" style="padding: 20px;">🎁 אין גיפטקארדים</div>';
+        } else {
+            giftList.innerHTML = allGifts.map(g => 
+                `<div class="item-row" style="padding: 10px 0;">
+                    <span style="font-weight: 600;">${g.name}</span>
+                    <strong style="color: var(--gift); font-size: 1.1rem;">₪${g.balance.toFixed(2)}</strong>
+                </div>`
+            ).join('');
+        }
+    }
+
+    // ============ סגירת מודלים בלחיצה על רקע ============
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+
+    // ============ Enter key support ============
+    document.getElementById('email').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('pass').focus();
+    });
+
+    document.getElementById('pass').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+
+    // נקה שדות אחרי כניסה מוצלחת
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('email').value = '';
+            document.getElementById('pass').value = '';
+        }
+    });
+</script>
+
+</body>
+</html>
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ============ רספונסיבי למסכים שונים ============ */
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+        }
+
+        @media (min-width: 1024px) {
+            body { padding: 30px; }
+        }
+
+        /* ============ קונטיינר ראשי ============ */
+        .container { 
+            max-width: 1200px; 
+            margin: auto; 
+        }
+
         /* ============ כותרת עליונה רספונסיבית ============ */
         .header-section {
             display: flex;
@@ -1080,4 +2019,5 @@
 </script>
 </body>
 </html>
+
 
