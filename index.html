@@ -14,7 +14,8 @@
         @media (min-width: 1024px) { .grid { grid-template-columns: 320px 1fr 300px; } }
 
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; margin-bottom: 15px; }
-        .btn-main { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; }
+        .btn-main { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; transition: 0.2s; }
+        .btn-main:hover { opacity: 0.9; }
         .btn-share { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
         .gift-card { background: linear-gradient(135deg, #ec4899, #be185d); color: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; position: relative; }
@@ -25,8 +26,6 @@
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
         
         .tx-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; align-items: center; }
-        .progress-bar { background: #eee; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 10px; }
-        .progress-fill { height: 100%; transition: 0.3s; }
     </style>
 </head>
 <body>
@@ -63,15 +62,15 @@
 <div id="expModal" class="modal"><div class="modal-content">
     <h3 id="expTitle">הוצאה חדשה</h3>
     <input type="text" id="expNote" placeholder="מה קנית?">
-    <input type="number" id="fAmt" placeholder="₪ סכום סופי">
+    <input type="number" id="fAmt" placeholder="₪ סכום סופי" step="0.01">
     <select id="pMethod">
         <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
         <option value="גיפטקארד">🎁 גיפטקארד</option>
     </select>
     <input type="hidden" id="tCatId">
-    <button class="btn-main" id="saveTxBtn">שמור</button>
-    <button onclick="window.closeM('expModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button class="btn-main" id="saveTxBtn">שמור הוצאה</button>
+    <button onclick="window.closeM('expModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <div id="catModal" class="modal"><div class="modal-content">
@@ -80,7 +79,7 @@
     <input type="number" id="cBudget" placeholder="תקציב ב-₪">
     <input type="hidden" id="eCatId">
     <button class="btn-main" id="saveCatBtn">שמור</button>
-    <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <div id="giftModal" class="modal"><div class="modal-content">
@@ -88,7 +87,7 @@
     <input type="text" id="gName" placeholder="שם הכרטיס">
     <input type="number" id="gBalance" placeholder="סכום ב-₪">
     <button class="btn-main" id="saveGiftBtn" style="background:var(--gift);">שמור</button>
-    <button onclick="window.closeM('giftModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button onclick="window.closeM('giftModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <script type="module">
@@ -104,9 +103,10 @@
 
     let cats = [], txs = [], gifts = [], chart = null;
 
-    // הגדרת פונקציות גלובליות לתיקון ה-ReferenceError
-    window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.openGiftM = () => document.getElementById('giftModal').style.display = 'flex';
+    // הגדרת פונקציות גלובליות בצורה מפורשת על חלון ה-Window
+    window.closeM = (id) => { document.getElementById(id).style.display = 'none'; };
+    window.openGiftM = () => { document.getElementById('giftModal').style.display = 'flex'; };
+    
     window.openCatM = (id = "") => {
         if(id) {
             const c = cats.find(x => x.id === id);
@@ -120,6 +120,7 @@
         }
         document.getElementById('catModal').style.display = 'flex';
     };
+
     window.openAddTx = (id, name) => {
         document.getElementById('tCatId').value = id;
         document.getElementById('expNote').value = "";
@@ -127,71 +128,135 @@
         document.getElementById('expTitle').innerText = "הוספה ל: " + name;
         document.getElementById('expModal').style.display = 'flex';
     };
+
     window.copyShareLink = () => {
         const link = window.location.origin + window.location.pathname + "?group=" + gid;
         navigator.clipboard.writeText(link);
         alert("הקישור הועתק!");
     };
-    window.delTx = async (id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, "transactions", id)); };
 
-    // שמירה
+    window.delTx = async (id) => { if(confirm("למחוק את ההוצאה?")) await deleteDoc(doc(db, "transactions", id)); };
+
+    // חיבור אירועי לחיצה לשמירה
     document.getElementById('saveTxBtn').onclick = async () => {
-        const amt = parseFloat(document.getElementById('fAmt').value);
-        if(!amt) return;
-        await addDoc(collection(db, "transactions"), {
-            note: document.getElementById('expNote').value || "הוצאה",
-            amount: amt,
-            method: document.getElementById('pMethod').value,
-            catId: document.getElementById('tCatId').value,
-            groupId: gid,
-            date: Timestamp.now()
-        });
-        window.closeM('expModal');
+        const amtInput = document.getElementById('fAmt');
+        const amt = parseFloat(amtInput.value);
+        const catId = document.getElementById('tCatId').value;
+        
+        if(!amt || isNaN(amt)) {
+            alert("נא להזין סכום תקין");
+            return;
+        }
+
+        try {
+            await addDoc(collection(db, "transactions"), {
+                note: document.getElementById('expNote').value || "הוצאה כללית",
+                amount: amt,
+                method: document.getElementById('pMethod').value,
+                catId: catId,
+                groupId: gid,
+                date: Timestamp.now()
+            });
+            window.closeM('expModal');
+        } catch (e) {
+            console.error("Error adding transaction: ", e);
+            alert("שגיאה בשמירת ההוצאה");
+        }
     };
 
     document.getElementById('saveCatBtn').onclick = async () => {
         const cid = document.getElementById('eCatId').value;
-        const data = { name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value), groupId: gid };
+        const name = document.getElementById('cName').value;
+        const budget = parseFloat(document.getElementById('cBudget').value) || 0;
+        
+        if(!name) return alert("נא להזין שם לקטגוריה");
+
+        const data = { name, budget, groupId: gid };
         cid ? await updateDoc(doc(db, "categories", cid), data) : await addDoc(collection(db, "categories"), data);
         window.closeM('catModal');
     };
 
     document.getElementById('saveGiftBtn').onclick = async () => {
-        await addDoc(collection(db, "giftcards"), { name: document.getElementById('gName').value, balance: parseFloat(document.getElementById('gBalance').value), groupId: gid });
+        const name = document.getElementById('gName').value;
+        const balance = parseFloat(document.getElementById('gBalance').value) || 0;
+        if(!name) return alert("נא להזין שם לכרטיס");
+        
+        await addDoc(collection(db, "giftcards"), { name, balance, groupId: gid });
         window.closeM('giftModal');
     };
 
-    // סנכרון
-    onSnapshot(query(collection(db, "categories"), where("groupId", "==", gid)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-    onSnapshot(query(collection(db, "transactions"), where("groupId", "==", gid)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
-    onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", gid)), s => { gifts = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
+    // סנכרון נתונים בזמן אמת
+    onSnapshot(query(collection(db, "categories"), where("groupId", "==", gid)), s => { 
+        cats = s.docs.map(d => ({id:d.id, ...d.data()})); 
+        render(); 
+    });
+    
+    onSnapshot(query(collection(db, "transactions"), where("groupId", "==", gid)), s => { 
+        txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); 
+        render(); 
+    });
+    
+    onSnapshot(query(collection(db, "giftcards"), where("groupId", "==", gid)), s => { 
+        gifts = s.docs.map(d => ({id:d.id, ...d.data()})); 
+        render(); 
+    });
 
     function render() {
-        document.getElementById('catList').innerHTML = cats.map(c => {
+        // רנדור קטגוריות
+        const catList = document.getElementById('catList');
+        catList.innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             return `<div class="card">
-                <div style="display:flex; justify-content:space-between">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div onclick="window.openAddTx('${c.id}','${c.name}')" style="cursor:pointer; flex:1">
-                        <b>${c.name}</b><br><small>₪${spent} / ₪${c.budget}</small>
+                        <b style="font-size:1.1em">${c.name}</b><br>
+                        <small style="color:#64748b">₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</small>
                     </div>
-                    <button onclick="window.openCatM('${c.id}')" style="background:none; border:none; cursor:pointer">⚙️</button>
+                    <button onclick="window.openCatM('${c.id}')" style="background:none; border:none; cursor:pointer; font-size:1.2em;">⚙️</button>
                 </div>
             </div>`;
         }).join('');
 
-        document.getElementById('txHistory').innerHTML = txs.slice(0, 10).map(t => `
+        // רנדור היסטוריה
+        const txHistory = document.getElementById('txHistory');
+        txHistory.innerHTML = txs.slice(0, 10).map(t => `
             <div class="tx-item">
-                <span><b>${t.note}</b> (₪${t.amount})</span>
-                <button onclick="window.delTx('${t.id}')" style="border:none; background:none; cursor:pointer">🗑️</button>
+                <span><b>${t.note}</b> <br><small style="color:gray">${t.method}</small></span>
+                <div style="text-align:left">
+                    <b style="color:var(--primary)">₪${t.amount.toLocaleString()}</b>
+                    <button onclick="window.delTx('${t.id}')" style="border:none; background:none; cursor:pointer; margin-right:8px; opacity:0.6">🗑️</button>
+                </div>
+            </div>
+        `).join('') || "אין הוצאות...";
+
+        // רנדור גיפטקארדים
+        document.getElementById('giftList').innerHTML = gifts.map(g => `
+            <div class="gift-card">
+                <b>${g.name}</b><br>
+                <span>יתרה: ₪${g.balance.toLocaleString()}</span>
             </div>
         `).join('');
-
-        document.getElementById('giftList').innerHTML = gifts.map(g => `<div class="gift-card"><b>${g.name}</b>: ₪${g.balance}</div>`).join('');
         
+        // עדכון תרשים
+        updateChart();
+    }
+
+    function updateChart() {
         const ctx = document.getElementById('mainChart');
+        if(!ctx) return;
         const d = txs.reduce((acc, t) => { acc[t.method] = (acc[t.method] || 0) + t.amount; return acc; }, {});
+        
         if(chart) chart.destroy();
-        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(d), datasets: [{ data: Object.values(d), backgroundColor: ['#6366f1', '#ec4899', '#22c55e'] }] } });
+        if(Object.keys(d).length === 0) return;
+
+        chart = new Chart(ctx, { 
+            type: 'doughnut', 
+            data: { 
+                labels: Object.keys(d), 
+                datasets: [{ data: Object.values(d), backgroundColor: ['#6366f1', '#ec4899', '#22c55e', '#f59e0b'] }] 
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
     }
 </script>
 </body>
