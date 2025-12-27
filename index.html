@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro - Final</title>
+    <title>BudgetMaster Pro - Multi-User & Edit</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
@@ -13,8 +13,7 @@
         .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
         #mainApp { display: none; }
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; }
-        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
-        .cat-item:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; position: relative; }
         .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
         .progress-fill { height: 100%; transition: 0.5s ease; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
@@ -22,8 +21,9 @@
         .modal-content { background: white; padding: 25px; border-radius: 24px 24px 0 0; width: 100%; max-width: 450px; }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
         .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
-        .fx-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; text-align: center; font-size: 12px; color: gray; }
-        .history-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .del-btn { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 18px; }
+        .share-btn { font-size: 12px; background: #e2e8f0; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -36,7 +36,6 @@
             <input type="password" id="password" placeholder="סיסמה">
             <button class="btn-main" id="loginBtn">התחברות</button>
             <button class="btn-main" style="background: #94a3b8;" id="signupBtn">הרשמה</button>
-            <p id="statusMsg" style="font-size:12px; margin-top:10px; color:red;"></p>
         </div>
     </div>
 
@@ -50,18 +49,18 @@
             <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h3>📂 קטגוריות</h3>
-                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ קטגוריה</button>
+                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ חדש</button>
                 </div>
                 <div id="catList"></div>
             </div>
             
             <div class="card">
-                <h3>📊 פילוח הוצאות</h3>
-                <div style="height:250px;"><canvas id="mainChart"></canvas></div>
+                <h3>📊 פילוח</h3>
+                <div style="height:200px;"><canvas id="mainChart"></canvas></div>
             </div>
 
             <div class="card">
-                <h3>📜 היסטוריה מלאה</h3>
+                <h3>📜 היסטוריה</h3>
                 <div id="historyList"></div>
             </div>
         </div>
@@ -70,63 +69,32 @@
 
 <div id="expModal" class="modal"><div class="modal-content">
     <h3 id="expTitle">הוספת הוצאה</h3>
-    <div class="fx-grid">
-        <div>₪ שקל</div><div>$ דולר</div><div>€ אירו</div>
-        <input type="number" id="fAmt" placeholder="0">
-        <input type="number" id="fUSD" placeholder="0">
-        <input type="number" id="fEUR" placeholder="0">
-    </div>
+    <input type="number" id="fAmt" placeholder="סכום בשקלים">
     <input type="text" id="expNote" placeholder="מה קנית?">
     <select id="pMethod">
         <option value="💳 אשראי">💳 אשראי</option>
         <option value="💵 מזומן">💵 מזומן</option>
-        <option value="📱 ביט/פייבוקס">📱 ביט/פייבוקס</option>
-        <option value="🏦 העברה">🏦 העברה</option>
+        <option value="📱 ביט">📱 ביט</option>
     </select>
-    <button class="btn-main" id="saveTxBtn">שמור הוצאה</button>
-    <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
+    <button class="btn-main" id="saveTxBtn">שמור</button>
+    <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = { 
-        apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", 
-        authDomain: "expensetrackerpro-d216d.firebaseapp.com", 
-        projectId: "expensetrackerpro-d216d" 
-    };
-
+    const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
     let user = null, cats = [], txs = [], chart = null;
-    let rates = { USD: 3.65, EUR: 3.95 };
 
-    // המרה אוטומטית בין מטבעות
-    document.getElementById('fAmt').oninput = (e) => {
-        document.getElementById('fUSD').value = (e.target.value / rates.USD).toFixed(2);
-        document.getElementById('fEUR').value = (e.target.value / rates.EUR).toFixed(2);
-    };
-    document.getElementById('fUSD').oninput = (e) => {
-        document.getElementById('fAmt').value = (e.target.value * rates.USD).toFixed(2);
-        document.getElementById('fEUR').value = (e.target.value * rates.USD / rates.EUR).toFixed(2);
-    };
-
-    // ניהול מצב התחברות וסנכרון
     onAuthStateChanged(auth, u => {
-        if(u) {
-            user = u;
-            document.getElementById('authScreen').style.display='none';
-            document.getElementById('mainApp').style.display='block';
-            document.getElementById('userGreeting').innerText = "שלום, " + u.email;
-            startSync();
-        } else {
-            document.getElementById('authScreen').style.display='flex';
-            document.getElementById('mainApp').style.display='none';
-        }
+        if(u) { user = u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
+        else { document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
     });
 
     function startSync() {
@@ -134,44 +102,41 @@
             cats = s.docs.map(d => ({id:d.id, ...d.data()}));
             render();
         });
-        
-        // כאן נדרש ה-Index של Firebase כדי שהשאילתה תעבוד
         onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email), orderBy("date", "desc")), s => {
             txs = s.docs.map(d => ({id:d.id, ...d.data()}));
             render();
-        }, err => {
-            console.error("Firebase Query Error:", err);
         });
     }
 
     function render() {
-        // הצגת קטגוריות
         document.getElementById('catList').innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / c.budget) * 100, 100);
             return `
-                <div class="cat-item" onclick="openAddTx('${c.id}', '${c.name}')">
-                    <div style="display:flex; justify-content:space-between">
+                <div class="cat-item">
+                    <div onclick="openAddTx('${c.id}', '${c.name}')" style="cursor:pointer">
                         <b>📂 ${c.name}</b>
-                        <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
+                        <div style="float:left">₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${perc >= 100 ? 'var(--danger)' : 'var(--success)'}"></div></div>
                     </div>
-                    <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${perc >= 100 ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                    <div style="margin-top:10px; display:flex; gap:10px;">
+                        <button class="share-btn" onclick="shareCat('${c.id}')">👥 שיתוף</button>
+                        <button class="share-btn" onclick="editCat('${c.id}', ${c.budget})">⚙️ ערוך תקציב</button>
+                    </div>
                 </div>`;
         }).join('');
 
-        // הצגת היסטוריה עם אמצעי תשלום
-        document.getElementById('historyList').innerHTML = txs.map(t => {
-            const cat = cats.find(c => c.id === t.catId);
-            return `
-                <div class="history-item">
-                    <div>
-                        <strong>${t.note || 'הוצאה'}</strong><br>
-                        <small style="color:gray">${cat ? cat.name : 'כללי'} | ${t.method || 'אשראי'}</small>
-                    </div>
-                    <b style="color:var(--danger)">₪${t.amount.toLocaleString()}</b>
-                </div>`;
-        }).join('');
-
+        document.getElementById('historyList').innerHTML = txs.map(t => `
+            <div class="history-item">
+                <div>
+                    <strong>${t.note}</strong> <small>(${t.method})</small>
+                </div>
+                <div>
+                    <b style="color:var(--danger); margin-left:10px;">₪${t.amount}</b>
+                    <button class="del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
+                </div>
+            </div>
+        `).join('');
         updateChart();
     }
 
@@ -179,65 +144,40 @@
         const ctx = document.getElementById('mainChart').getContext('2d');
         const data = cats.map(c => txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0));
         if(chart) chart.destroy();
-        chart = new Chart(ctx, { 
-            type: 'doughnut', 
-            data: { 
-                labels: cats.map(c => c.name), 
-                datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#ec4899'] }] 
-            },
-            options: { maintainAspectRatio: false }
-        });
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b'] }] }, options: { maintainAspectRatio: false } });
     }
 
-    window.openAddTx = (id, name) => {
-        window.currentCatId = id;
-        document.getElementById('expTitle').innerText = "הוספה ל" + name;
-        document.getElementById('expModal').style.display = 'flex';
+    window.shareCat = async (id) => {
+        const email = prompt("הכנס אימייל של המשתמש לשיתוף:");
+        if(email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) });
     };
+
+    window.editCat = async (id, current) => {
+        const b = prompt("תקציב חדש:", current);
+        if(b) await updateDoc(doc(db, "categories", id), { budget: parseFloat(b) });
+    };
+
+    window.deleteTx = async (id) => {
+        if(confirm("למחוק הוצאה זו?")) await deleteDoc(doc(db, "transactions", id));
+    };
+
+    window.openAddTx = (id, name) => { window.currentCatId = id; document.getElementById('expTitle').innerText = name; document.getElementById('expModal').style.display = 'flex'; };
 
     document.getElementById('saveTxBtn').onclick = async () => {
         const amt = parseFloat(document.getElementById('fAmt').value);
         if(!amt) return;
-        await addDoc(collection(db, "transactions"), {
-            amount: amt,
-            note: document.getElementById('expNote').value || "הוצאה",
-            method: document.getElementById('pMethod').value,
-            catId: window.currentCatId,
-            allowedUsers: [user.email],
-            date: Timestamp.now()
-        });
+        await addDoc(collection(db, "transactions"), { amount: amt, note: document.getElementById('expNote').value || "הוצאה", method: document.getElementById('pMethod').value, catId: window.currentCatId, allowedUsers: [user.email], date: Timestamp.now() });
         document.getElementById('expModal').style.display = 'none';
-        document.getElementById('fAmt').value = ""; 
-        document.getElementById('expNote').value = "";
     };
 
     document.getElementById('addCatBtn').onclick = async () => {
-        const name = prompt("שם קטגוריה:");
-        const budget = prompt("תקציב חודשי (₪):");
-        if(name && budget) {
-            await addDoc(collection(db, "categories"), { 
-                name, 
-                budget: parseFloat(budget), 
-                owner: user.email, 
-                allowedUsers: [user.email],
-                emoji: "📂" 
-            });
-        }
+        const n = prompt("שם קטגוריה:");
+        const b = prompt("תקציב:");
+        if(n && b) await addDoc(collection(db, "categories"), { name: n, budget: parseFloat(b), owner: user.email, allowedUsers: [user.email] });
     };
 
-    document.getElementById('loginBtn').onclick = async () => {
-        try {
-            await setPersistence(auth, browserLocalPersistence);
-            await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
-        } catch (e) { document.getElementById('statusMsg').innerText = "שגיאה: פרטים שגויים"; }
-    };
-
-    document.getElementById('signupBtn').onclick = async () => {
-        try {
-            await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
-        } catch (e) { document.getElementById('statusMsg').innerText = "שגיאה ברישום: " + e.message; }
-    };
-
+    document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
+    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
     document.getElementById('logoutBtn').onclick = () => signOut(auth);
 </script>
 </body>
