@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro v3</title>
-    <link rel="manifest" href="manifest.json">
+    <title>BudgetMaster Pro - Auto FX</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
@@ -25,8 +24,8 @@
         .modal-content { background: white; padding: 25px; border-radius: 24px 24px 0 0; width: 100%; max-width: 450px; position: relative; }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
         .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
-        .currency-box { display: flex; gap: 5px; margin-bottom: 10px; }
-        .currency-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 12px; }
+        .fx-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .fx-grid div { text-align: center; font-size: 12px; color: gray; }
         .tx-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f8fafc; cursor: pointer; border-radius: 10px; }
         .tx-item:hover { background: #f1f5f9; }
     </style>
@@ -97,14 +96,16 @@
     <input type="hidden" id="editTxId">
     <input type="hidden" id="tCatId">
     
-    <label style="font-size:12px; color:gray;">המרת מטבע (מעדכן את הסכום לשקלים):</label>
-    <div class="currency-box">
-        <button class="currency-btn" id="convUSD">🇺🇸 דולר ל-₪</button>
-        <button class="currency-btn" id="convEUR">🇪🇺 אירו ל-₪</button>
+    <div class="fx-grid">
+        <div>סכום ב-₪</div>
+        <div>סכום ב-$</div>
+        <div>סכום ב-€</div>
+        <input type="number" id="fAmt" placeholder="₪">
+        <input type="number" id="fUSD" placeholder="$">
+        <input type="number" id="fEUR" placeholder="€">
     </div>
 
     <input type="text" id="expNote" placeholder="מה קנית?">
-    <input type="number" id="fAmt" placeholder="סכום ב-₪">
     <select id="pMethod">
         <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
@@ -127,33 +128,45 @@
     const db = getFirestore(app);
 
     let user = null, cats = [], txs = [], chart = null;
+    let rates = { USD: 3.65, EUR: 3.95 }; // ברירת מחדל עד שהשרת עונה
 
-    window.closeModals = () => { 
-        document.getElementById('catModal').style.display='none'; 
-        document.getElementById('expModal').style.display='none'; 
+    // משיכת שערים עדכניים
+    async function fetchRates() {
+        try {
+            const res = await fetch('https://api.exchangerate-api.com/v4/latest/ILS');
+            const data = await res.json();
+            rates.USD = 1 / data.rates.USD;
+            rates.EUR = 1 / data.rates.EUR;
+        } catch(e) { console.error("FX Error"); }
+    }
+    fetchRates();
+
+    // המרה אוטומטית תוך כדי הקלדה
+    document.getElementById('fAmt').oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('fUSD').value = (val / rates.USD).toFixed(2);
+        document.getElementById('fEUR').value = (val / rates.EUR).toFixed(2);
+    };
+    document.getElementById('fUSD').oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('fAmt').value = (val * rates.USD).toFixed(2);
+        document.getElementById('fEUR').value = (val * rates.USD / rates.EUR).toFixed(2);
+    };
+    document.getElementById('fEUR').oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('fAmt').value = (val * rates.EUR).toFixed(2);
+        document.getElementById('fUSD').value = (val * rates.EUR / rates.USD).toFixed(2);
     };
 
-    // המרת מטבע
-    async function convertCurrency(type) {
-        const amt = document.getElementById('fAmt').value;
-        if(!amt) return alert("הזן סכום תחילה");
-        try {
-            const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${type}`);
-            const data = await res.json();
-            const rate = data.rates.ILS;
-            document.getElementById('fAmt').value = (amt * rate).toFixed(2);
-        } catch(e) { alert("שגיאה במשיכת שער חליפין"); }
-    }
-    document.getElementById('convUSD').onclick = () => convertCurrency('USD');
-    document.getElementById('convEUR').onclick = () => convertCurrency('EUR');
+    window.closeModals = () => { document.getElementById('catModal').style.display='none'; document.getElementById('expModal').style.display='none'; };
 
-    // פונקציות פתיחת מודאלים
     window.openEditTx = (id) => {
         const t = txs.find(x => x.id === id);
         document.getElementById('editTxId').value = id;
         document.getElementById('tCatId').value = t.catId;
         document.getElementById('expNote').value = t.note;
         document.getElementById('fAmt').value = t.amount;
+        document.getElementById('fAmt').dispatchEvent(new Event('input')); // עדכון השדות של דולר/אירו
         document.getElementById('pMethod').value = t.method;
         document.getElementById('deleteTxBtn').style.display = 'block';
         document.getElementById('expModal').style.display = 'flex';
@@ -167,7 +180,6 @@
         document.getElementById('cName').value = c.name;
         document.getElementById('cBudget').value = c.budget;
         document.getElementById('deleteCatBtn').style.display = 'block';
-        document.getElementById('catModalTitle').innerText = "עריכת קטגוריה";
         document.getElementById('catModal').style.display = 'flex';
     };
 
@@ -176,84 +188,39 @@
         document.getElementById('tCatId').value = id;
         document.getElementById('expTitle').innerText = "הוספה ל" + name;
         document.getElementById('expNote').value = ""; 
-        document.getElementById('fAmt').value = "";
+        document.getElementById('fAmt').value = ""; 
+        document.getElementById('fUSD').value = ""; 
+        document.getElementById('fEUR').value = "";
         document.getElementById('deleteTxBtn').style.display = 'none';
         document.getElementById('expModal').style.display = 'flex';
     };
 
-    // התחברות
-    document.getElementById('loginBtn').onclick = () => {
-        signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value)
-            .catch(e => document.getElementById('authError').innerText = "פרטים שגויים");
-    };
-    document.getElementById('signupBtn').onclick = () => {
-        createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value)
-            .catch(e => document.getElementById('authError').innerText = "שגיאה ברישום");
-    };
+    document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => document.getElementById('authError').innerText = "פרטים שגויים");
+    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => document.getElementById('authError').innerText = "שגיאה ברישום");
     document.getElementById('logoutBtnTop').onclick = () => signOut(auth);
     
     onAuthStateChanged(auth, u => {
-        if(u) { 
-            user = u; 
-            document.getElementById('authScreen').style.display='none'; 
-            document.getElementById('mainApp').style.display='block'; 
-            startSync(); 
-        } else { 
-            document.getElementById('authScreen').style.display='flex'; 
-            document.getElementById('mainApp').style.display='none'; 
-        }
+        if(u) { user = u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
+        else { document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
     });
 
     function startSync() {
-        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => { 
-            cats = s.docs.map(d => ({id:d.id, ...d.data()})); 
-            render(); 
-        });
-        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { 
-            txs = s.docs.map(d => ({id:d.id, ...d.data()})); 
-            render(); 
-        });
+        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
     }
-
-    document.getElementById('addCatBtn').onclick = () => { 
-        document.getElementById('editCatId').value=""; 
-        document.getElementById('cEmoji').value="";
-        document.getElementById('cName').value="";
-        document.getElementById('cBudget').value="";
-        document.getElementById('deleteCatBtn').style.display='none'; 
-        document.getElementById('catModalTitle').innerText = "קטגוריה חדשה";
-        document.getElementById('catModal').style.display='flex'; 
-    };
 
     document.getElementById('saveCatBtn').onclick = async () => {
         const id = document.getElementById('editCatId').value;
-        const data = { 
-            emoji: document.getElementById('cEmoji').value || '📂', 
-            name: document.getElementById('cName').value, 
-            budget: parseFloat(document.getElementById('cBudget').value) || 0 
-        };
-        if(!data.name) return alert("הזן שם קטגוריה");
+        const data = { emoji: document.getElementById('cEmoji').value || '📂', name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value) || 0 };
         if(id) await updateDoc(doc(db,"categories",id), data);
         else await addDoc(collection(db,"categories"), { ...data, owner: user.email, allowedUsers:[user.email] });
         closeModals();
     };
 
-    document.getElementById('deleteCatBtn').onclick = async () => { 
-        if(confirm("למחוק קטגוריה?")) { 
-            await deleteDoc(doc(db,"categories", document.getElementById('editCatId').value)); 
-            closeModals(); 
-        } 
-    };
-
     document.getElementById('saveTxBtn').onclick = async () => {
         const txId = document.getElementById('editTxId').value;
         const catId = document.getElementById('tCatId').value;
-        const data = { 
-            note: document.getElementById('expNote').value || "הוצאה", 
-            amount: parseFloat(document.getElementById('fAmt').value) || 0, 
-            method: document.getElementById('pMethod').value, 
-            catId: catId 
-        };
+        const data = { note: document.getElementById('expNote').value || "הוצאה", amount: parseFloat(document.getElementById('fAmt').value) || 0, method: document.getElementById('pMethod').value, catId: catId };
         if(txId) await updateDoc(doc(db,"transactions", txId), data);
         else {
             const cat = cats.find(c => c.id === catId);
@@ -262,54 +229,4 @@
         closeModals();
     };
 
-    document.getElementById('deleteTxBtn').onclick = async () => { 
-        if(confirm("למחוק הוצאה?")) { 
-            await deleteDoc(doc(db,"transactions", document.getElementById('editTxId').value)); 
-            closeModals(); 
-        } 
-    };
-
-    document.getElementById('shareBtn').onclick = async () => {
-        const mail = document.getElementById('shareEmail').value;
-        if(!mail) return;
-        const myCats = cats.filter(c => c.owner === user.email);
-        for(let c of myCats) { await updateDoc(doc(db,"categories", c.id), { allowedUsers: arrayUnion(mail) }); }
-        alert("הגישה שותפה!");
-    };
-
-    function render() {
-        document.getElementById('catList').innerHTML = cats.map(c => {
-            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
-            const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
-            return `<div class="cat-item" onclick="window.openAddTx('${c.id}','${c.name}')">
-                <button class="edit-btn-small" onclick="window.openEditCat(event, '${c.id}')">⚙️</button>
-                <div style="display:flex; justify-content:space-between; font-weight:bold; padding-right:45px;">
-                    <span>${c.emoji} ${c.name}</span>
-                    <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
-                </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
-            </div>`;
-        }).join('');
-
-        document.getElementById('txHistory').innerHTML = txs.sort((a,b) => b.date - a.date).slice(0,10).map(t => `
-            <div class="tx-item" onclick="window.openEditTx('${t.id}')">
-                <span>${t.note} <small style="color:gray">(${t.method})</small></span>
-                <b style="color:var(--danger)">-₪${t.amount.toLocaleString()}</b>
-            </div>
-        `).join('') || "אין היסטוריה";
-        updateChart();
-    }
-
-    function updateChart() {
-        const ctx = document.getElementById('mainChart'); if(!ctx || cats.length === 0) return;
-        const dataMap = {}; 
-        cats.forEach(c => { 
-            const s = txs.filter(t => t.catId === c.id).reduce((acc,curr) => acc + curr.amount, 0); 
-            if(s > 0) dataMap[c.name] = s; 
-        });
-        if(chart) chart.destroy();
-        chart = new Chart(ctx, { type:'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444','#06b6d4'] }] }, options: { maintainAspectRatio: false } });
-    }
-</script>
-</body>
-</html>
+    document.getElementById('deleteTxBtn').onclick = async () => { if(confirm("למחוק?")) { await deleteDoc(doc(db,"transactions",
