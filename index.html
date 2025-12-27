@@ -2,97 +2,174 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BudgetMaster Pro - Fix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BudgetMaster Pro - Connected</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: system-ui; background: #f8fafc; direction: rtl; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .auth-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 5px; transition: 0.3s; }
-        .btn-login { background: #6366f1; color: white; }
-        .btn-signup { background: #94a3b8; color: white; }
-        #statusMsg { font-size: 13px; margin-top: 15px; min-height: 20px; font-weight: bold; }
-        #mainApp { display: none; padding: 20px; text-align: center; background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; }
+        :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
+        .app-container { max-width: 1100px; margin: 0 auto; }
+        #authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
+        #mainApp { display: none; }
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; position: relative; }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; cursor: pointer; position: relative; transition: 0.2s; }
+        .cat-item:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
+        .progress-fill { height: 100%; transition: 0.5s ease; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
+        @media (min-width: 1024px) { .modal { align-items: center; } }
+        .modal-content { background: white; padding: 25px; border-radius: 24px 24px 0 0; width: 100%; max-width: 450px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
+        .fx-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .tx-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f8fafc; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="authScreen" class="auth-card">
-    <h2>BudgetMaster 💎</h2>
-    <input type="email" id="email" placeholder="אימייל">
-    <input type="password" id="password" placeholder="סיסמה">
-    <button class="btn-login" id="loginBtn">התחברות</button>
-    <button class="btn-signup" id="signupBtn">הרשמה</button>
-    <div id="statusMsg"></div>
+<div class="app-container">
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2>BudgetMaster 💎</h2>
+            <input type="email" id="email" placeholder="אימייל">
+            <input type="password" id="password" placeholder="סיסמה">
+            <button class="btn-main" id="loginBtn">התחברות</button>
+            <button class="btn-main" style="background: #94a3b8;" id="signupBtn">הרשמה</button>
+            <p id="statusMsg" style="font-size:12px; margin-top:10px;"></p>
+        </div>
+    </div>
+
+    <div id="mainApp">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 id="userGreeting">שלום!</h3>
+            <button id="logoutBtn" style="border:none; background:none; color:var(--danger); cursor:pointer; font-weight:bold;">התנתק 🚪</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3>📂 קטגוריות</h3>
+                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ חדש</button>
+                </div>
+                <div id="catList"></div>
+            </div>
+            
+            <div class="card">
+                <h3>📊 פילוח הוצאות</h3>
+                <div style="height:250px;"><canvas id="mainChart"></canvas></div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div id="mainApp">
-    <h2 id="welcome">ברוכים הבאים!</h2>
-    <p>התחברת בהצלחה.</p>
-    <button onclick="handleLogout()" style="background:#ef4444; color:white;">התנתק 🚪</button>
-</div>
+<div id="expModal" class="modal"><div class="modal-content">
+    <h3 id="expTitle">הוספת הוצאה</h3>
+    <div class="fx-grid">
+        <div>₪ שקל</div><div>$ דולר</div><div>€ אירו</div>
+        <input type="number" id="fAmt" placeholder="0">
+        <input type="number" id="fUSD" placeholder="0">
+        <input type="number" id="fEUR" placeholder="0">
+    </div>
+    <input type="text" id="expNote" placeholder="מה קנית?">
+    <button class="btn-main" id="saveTxBtn">שמור הוצאה</button>
+    <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
+</div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = { 
-        apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", 
-        authDomain: "expensetrackerpro-d216d.firebaseapp.com", 
-        projectId: "expensetrackerpro-d216d" 
-    };
-
+    const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const status = document.getElementById('statusMsg');
+    const db = getFirestore(app);
 
-    // מאזין למצב התחברות
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            console.log("Logged in:", user.email);
-            document.getElementById('authScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            document.getElementById('welcome').innerText = "שלום, " + user.email;
+    let user = null, cats = [], txs = [], chart = null;
+    let rates = { USD: 3.65, EUR: 3.95 };
+
+    // המרה אוטומטית
+    document.getElementById('fAmt').oninput = (e) => {
+        document.getElementById('fUSD').value = (e.target.value / rates.USD).toFixed(2);
+        document.getElementById('fEUR').value = (e.target.value / rates.EUR).toFixed(2);
+    };
+    document.getElementById('fUSD').oninput = (e) => {
+        document.getElementById('fAmt').value = (e.target.value * rates.USD).toFixed(2);
+        document.getElementById('fEUR').value = (e.target.value * rates.USD / rates.EUR).toFixed(2);
+    };
+
+    // ניהול מצב משתמש
+    onAuthStateChanged(auth, u => {
+        if(u) {
+            user = u;
+            document.getElementById('authScreen').style.display='none';
+            document.getElementById('mainApp').style.display='block';
+            document.getElementById('userGreeting').innerText = "שלום, " + u.email;
+            startSync();
         } else {
-            document.getElementById('authScreen').style.display = 'block';
-            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('authScreen').style.display='flex';
+            document.getElementById('mainApp').style.display='none';
         }
     });
 
-    // התחברות
-    document.getElementById('loginBtn').onclick = async () => {
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('password').value;
-        status.innerText = "מעבד נתונים...";
-        status.style.color = "blue";
+    function startSync() {
+        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => {
+            cats = s.docs.map(d => ({id:d.id, ...d.data()}));
+            render();
+        });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => {
+            txs = s.docs.map(d => ({id:d.id, ...d.data()}));
+            render();
+        });
+    }
 
-        try {
-            // הגדרת זיכרון מקומי - קריטי למניעת "קיפאון"
-            await setPersistence(auth, browserLocalPersistence);
-            await signInWithEmailAndPassword(auth, email, pass);
-        } catch (error) {
-            console.error(error);
-            status.style.color = "red";
-            status.innerText = "שגיאה: " + (error.code === 'auth/invalid-credential' ? "פרטים שגויים" : error.message);
-        }
+    function render() {
+        const list = document.getElementById('catList');
+        list.innerHTML = cats.map(c => {
+            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
+            const perc = Math.min((spent / c.budget) * 100, 100);
+            return `<div class="cat-item" onclick="openAddTx('${c.id}', '${c.name}')">
+                <b>${c.emoji} ${c.name}</b>
+                <div style="float:left">₪${spent} / ₪${c.budget}</div>
+                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${perc > 100 ? 'red' : 'green'}"></div></div>
+            </div>`;
+        }).join('');
+        updateChart();
+    }
+
+    function updateChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const data = cats.map(c => txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0));
+        if(chart) chart.destroy();
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b'] }] } });
+    }
+
+    window.openAddTx = (id, name) => {
+        window.currentCatId = id;
+        document.getElementById('expTitle').innerText = "הוספה ל" + name;
+        document.getElementById('expModal').style.display = 'flex';
     };
 
-    // הרשמה
-    document.getElementById('signupBtn').onclick = async () => {
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('password').value;
-        status.innerText = "יוצר חשבון...";
-        
-        try {
-            await setPersistence(auth, browserLocalPersistence);
-            await createUserWithEmailAndPassword(auth, email, pass);
-        } catch (error) {
-            status.style.color = "red";
-            status.innerText = error.message;
-        }
+    document.getElementById('saveTxBtn').onclick = async () => {
+        await addDoc(collection(db, "transactions"), {
+            amount: parseFloat(document.getElementById('fAmt').value),
+            note: document.getElementById('expNote').value,
+            catId: window.currentCatId,
+            allowedUsers: [user.email],
+            date: Timestamp.now()
+        });
+        document.getElementById('expModal').style.display = 'none';
     };
 
-    window.handleLogout = () => signOut(auth);
+    document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
+    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+    document.getElementById('addCatBtn').onclick = async () => {
+        const name = prompt("שם קטגוריה:");
+        const budget = prompt("תקציב בשקלים:");
+        if(name && budget) await addDoc(collection(db, "categories"), { name, budget: parseFloat(budget), emoji: "📂", owner: user.email, allowedUsers: [user.email] });
+    };
 </script>
 </body>
 </html>
