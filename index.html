@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro - Multi-Currency Fixed</title>
+    <title>BudgetMaster Pro - Multi-Currency & Full Edit</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
@@ -56,12 +56,12 @@
             </div>
             
             <div class="card">
-                <h3>📊 פילוח (בשקלים ₪)</h3>
+                <h3>📊 פילוח (ב-₪)</h3>
                 <div style="height:200px;"><canvas id="mainChart"></canvas></div>
             </div>
 
             <div class="card">
-                <h3>📜 היסטוריה (הכל מומר ל₪)</h3>
+                <h3>📜 היסטוריה</h3>
                 <div id="historyList"></div>
             </div>
         </div>
@@ -69,7 +69,7 @@
 </div>
 
 <div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle">הוצאה</h3>
+    <h3 id="expTitle">פרטי הוצאה</h3>
     <div style="display: flex; gap: 10px;">
         <input type="number" id="fAmt" placeholder="סכום" style="flex: 2;">
         <select id="fCurr" style="flex: 1;">
@@ -84,7 +84,7 @@
         <option value="💵 מזומן">💵 מזומן</option>
         <option value="📱 ביט">📱 ביט</option>
     </select>
-    <button class="btn-main" id="saveTxBtn">שמור בשקלים</button>
+    <button class="btn-main" id="saveTxBtn">שמור ועדכן שקלים</button>
     <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
@@ -100,7 +100,7 @@
 
     let user = null, cats = [], txs = [], chart = null;
     let editMode = { active: false, id: null };
-    const rates = { ILS: 1, USD: 3.65, EUR: 3.95 };
+    const rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // שערי המרה קבועים
 
     onAuthStateChanged(auth, u => {
         if(u) { user = u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
@@ -119,6 +119,7 @@
     }
 
     function render() {
+        // רשימת קטגוריות
         document.getElementById('catList').innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / c.budget) * 100, 100);
@@ -126,47 +127,51 @@
                 <div class="cat-item">
                     <div onclick="openAddTx('${c.id}', '${c.name}')" style="cursor:pointer">
                         <b>📂 ${c.name}</b>
-                        <div style="float:left">₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</div>
+                        <div style="float:left">₪${Math.round(spent).toLocaleString()} / ₪${c.budget.toLocaleString()}</div>
                         <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${perc >= 100 ? 'var(--danger)' : 'var(--success)'}"></div></div>
                     </div>
                     <div style="margin-top:10px; display:flex; gap:5px;">
                         <button class="action-btn" onclick="shareCat('${c.id}')">👥 שיתוף</button>
-                        <button class="action-btn" onclick="editCatSettings('${c.id}', '${c.name}', ${c.budget})">⚙️ ערוך</button>
+                        <button class="action-btn" onclick="editCatFull('${c.id}', '${c.name}', ${c.budget})">⚙️ ערוך קטגוריה</button>
                     </div>
                 </div>`;
         }).join('');
 
+        // רשימת היסטוריה
         document.getElementById('historyList').innerHTML = txs.map(t => {
-            const symbol = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
-            const originalDisplay = t.currency !== 'ILS' ? `<span class="orig-amt">מקור: ${symbol}${t.originalAmount}</span>` : '';
-            
+            const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+            const subText = t.currency !== 'ILS' ? `<span class="orig-amt">מקור: ${sym}${t.originalAmount}</span>` : '';
             return `
                 <div class="history-item">
                     <div>
                         <strong>${t.note}</strong> <small>(${t.method})</small>
-                        ${originalDisplay}
+                        ${subText}
                     </div>
                     <div style="text-align: left;">
                         <b style="color:var(--danger); margin-left:10px;">₪${Math.round(t.amount).toLocaleString()}</b>
                         <button class="action-btn" onclick="openEditTx('${t.id}')">✏️</button>
                         <button class="action-btn del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
                     </div>
-                </div>
-            `;
+                </div>`;
         }).join('');
         updateChart();
     }
 
-    window.editCatSettings = async (id, oldName, oldBudget) => {
-        const newName = prompt("שם קטגוריה חדש:", oldName);
-        const newBudget = prompt("תקציב חדש:", oldBudget);
-        if(newName && newBudget) await updateDoc(doc(db, "categories", id), { name: newName, budget: parseFloat(newBudget) });
+    // עריכת קטגוריה מלאה (שם ותקציב)
+    window.editCatFull = async (id, oldName, oldBudget) => {
+        const newName = prompt("שנה את שם הקטגוריה:", oldName);
+        const newBudget = prompt("שנה את התקציב (בשקלים):", oldBudget);
+        if (newName && newBudget) {
+            await updateDoc(doc(db, "categories", id), { name: newName, budget: parseFloat(newBudget) });
+        }
     };
 
+    // פתיחת עריכת הוצאה
     window.openEditTx = (id) => {
         const tx = txs.find(t => t.id === id);
         editMode = { active: true, id: id };
         window.currentCatId = tx.catId;
+        document.getElementById('expTitle').innerText = "עריכת הוצאה";
         document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
         document.getElementById('fCurr').value = tx.currency || "ILS";
         document.getElementById('expNote').value = tx.note;
@@ -174,26 +179,28 @@
         document.getElementById('expModal').style.display = 'flex';
     };
 
+    // פתיחת הוספת הוצאה חדשה
     window.openAddTx = (id, name) => {
         editMode = { active: false, id: null };
         window.currentCatId = id;
+        document.getElementById('expTitle').innerText = "הוצאה ל-" + name;
         document.getElementById('fAmt').value = "";
         document.getElementById('fCurr').value = "ILS";
         document.getElementById('expNote').value = "";
         document.getElementById('expModal').style.display = 'flex';
     };
 
+    // שמירה (כולל המרה לשקלים)
     document.getElementById('saveTxBtn').onclick = async () => {
         const rawAmt = parseFloat(document.getElementById('fAmt').value);
         const curr = document.getElementById('fCurr').value;
         if(!rawAmt) return;
         
-        // המרה לשקלים לפני השמירה
-        const convertedInILS = rawAmt * rates[curr];
+        const converted = rawAmt * rates[curr]; // המרה אוטומטית לפי השער
         
         const data = {
-            amount: convertedInILS, // זה מה שהולך לגרף ולתקציב
-            originalAmount: rawAmt, // שומרים את המקור ליופי
+            amount: converted,
+            originalAmount: rawAmt,
             currency: curr,
             note: document.getElementById('expNote').value || "הוצאה",
             method: document.getElementById('pMethod').value,
@@ -208,9 +215,10 @@
         document.getElementById('expModal').style.display = 'none';
     };
 
-    window.deleteTx = async (id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, "transactions", id)); };
+    window.deleteTx = async (id) => { if(confirm("למחוק הוצאה זו?")) await deleteDoc(doc(db, "transactions", id)); };
+    
     window.shareCat = async (id) => { 
-        const email = prompt("אימייל לשיתוף:"); 
+        const email = prompt("הכנס אימייל של משתמש לשיתוף:"); 
         if(email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) }); 
     };
 
@@ -218,12 +226,12 @@
         const ctx = document.getElementById('mainChart').getContext('2d');
         const data = cats.map(c => txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0));
         if(chart) chart.destroy();
-        chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b'] }] }, options: { maintainAspectRatio: false } });
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6'] }] }, options: { maintainAspectRatio: false } });
     }
 
     document.getElementById('addCatBtn').onclick = async () => {
         const n = prompt("שם קטגוריה:");
-        const b = prompt("תקציב:");
+        const b = prompt("תקציב בשקלים:");
         if(n && b) await addDoc(collection(db, "categories"), { name: n, budget: parseFloat(b), owner: user.email, allowedUsers: [user.email] });
     };
 
