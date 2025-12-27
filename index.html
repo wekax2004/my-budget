@@ -3,30 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BudgetMaster Pro - Ultimate Version</title>
+    <title>BudgetMaster Pro - Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --gift: #ec4899; --danger: #ef4444; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
-        
         #authScreen { display: flex; align-items: center; justify-content: center; min-height: 90vh; }
         .auth-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
-        
         #mainApp { display: none; }
         .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media (min-width: 1024px) { .grid { grid-template-columns: 320px 1fr 300px; } }
-        
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 15px; position: relative; }
         .btn-main { width: 100%; padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 9999; padding: 15px; backdrop-filter: blur(5px); }
         .modal-content { background: white; padding: 25px; border-radius: 25px; width: 100%; max-width: 400px; }
-        
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
         .progress-bar { background: #eee; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
         .progress-fill { height: 100%; transition: 0.3s; }
         .tx-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; align-items: center; }
-        .actions { display: flex; gap: 8px; }
     </style>
 </head>
 <body>
@@ -60,12 +55,10 @@
                 <div style="height:200px"><canvas id="mainChart"></canvas></div>
             </div>
         </div>
-
         <div>
             <button class="btn-main" onclick="window.openCatM()">➕ קטגוריה חדשה</button>
             <div id="catList" style="margin-top:20px;"></div>
         </div>
-
         <div class="card">
             <h3>📜 היסטוריה</h3>
             <div id="txHistory"></div>
@@ -87,13 +80,10 @@
     <h3 id="expTitle">הוצאה חדשה</h3>
     <input type="text" id="expNote" placeholder="מה קנית?">
     <div style="background:#f1f5f9; padding:10px; border-radius:12px; margin-bottom:10px;">
-        <small>המרת מט"ח (אופציונלי):</small>
+        <small>המרת מט"ח:</small>
         <div style="display:flex; gap:5px;">
             <input type="number" id="foreignVal" placeholder="סכום" oninput="window.calcEx()" style="margin:0">
-            <select id="curRate" onchange="window.calcEx()" style="width:90px; margin:0">
-                <option value="3.75">$ USD</option>
-                <option value="4.05">€ EUR</option>
-            </select>
+            <select id="curRate" onchange="window.calcEx()" style="width:90px; margin:0"><option value="3.75">$ USD</option><option value="4.05">€ EUR</option></select>
         </div>
     </div>
     <input type="number" id="fAmt" placeholder="₪ סכום סופי בשקלים">
@@ -114,41 +104,60 @@
 
     let currentUser = null, cats = [], txs = [], chart = null;
 
-    // אימות
     window.handleAuth = async (type) => {
-        const email = document.getElementById('email').value, pass = document.getElementById('password').value;
-        try { type === 'login' ? await signInWithEmailAndPassword(auth, email, pass) : await createUserWithEmailAndPassword(auth, email, pass); }
-        catch (e) { document.getElementById('authError').innerText = e.message; }
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        try {
+            if(type === 'login') await signInWithEmailAndPassword(auth, email, pass);
+            else await createUserWithEmailAndPassword(auth, email, pass);
+        } catch (e) { document.getElementById('authError').innerText = e.message; }
     };
+
     window.logout = () => signOut(auth);
 
     onAuthStateChanged(auth, user => {
-        if (user) { currentUser = user; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
-        else { document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
+        if (user) {
+            currentUser = user;
+            document.getElementById('authScreen').style.display='none';
+            document.getElementById('mainApp').style.display='block';
+            document.getElementById('userGreeting').innerText = "שלום, " + user.email.split('@')[0];
+            startSync();
+        } else {
+            document.getElementById('authScreen').style.display='flex';
+            document.getElementById('mainApp').style.display='none';
+        }
     });
 
-    // המרה
     window.calcEx = () => {
         const v = parseFloat(document.getElementById('foreignVal').value) || 0;
         const r = parseFloat(document.getElementById('curRate').value);
-        if(v > 0) document.getElementById('fAmt').value = (v * r).toFixed(2);
+        document.getElementById('fAmt').value = v > 0 ? (v * r).toFixed(2) : "";
     };
 
-    // שיתוף
     window.shareAccess = async () => {
         const email = document.getElementById('shareEmail').value;
-        if(!email) return;
-        cats.forEach(async c => { if(c.owner === currentUser.email) await updateDoc(doc(db, "categories", c.id), { allowedUsers: arrayUnion(email) }); });
-        alert("הגישה שותפה!");
+        if(!email) return alert("הזן אימייל");
+        try {
+            for(let c of cats) {
+                if(c.owner === currentUser.email) {
+                    await updateDoc(doc(db, "categories", c.id), { allowedUsers: arrayUnion(email) });
+                }
+            }
+            alert("הגישה שותפה בהצלחה!");
+        } catch(e) { alert("שגיאה בשיתוף: " + e.message); }
     };
 
-    // סנכרון
     function startSync() {
-        onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", currentUser.email)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-        onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", currentUser.email)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
+        onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", currentUser.email)), s => {
+            cats = s.docs.map(d => ({id:d.id, ...d.data()}));
+            render();
+        });
+        onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", currentUser.email)), s => {
+            txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date);
+            render();
+        });
     }
 
-    // ניהול קטגוריות
     window.openCatM = (id = "") => {
         const delBtn = document.getElementById('delCatBtn');
         if(id) {
@@ -157,43 +166,65 @@
             document.getElementById('cName').value = c.name;
             document.getElementById('cBudget').value = c.budget;
             delBtn.style.display = 'block';
-            delBtn.onclick = async () => { if(confirm("למחוק?")) { await deleteDoc(doc(db, "categories", id)); window.closeM('catModal'); } };
+            delBtn.onclick = async () => { if(confirm("למחוק קטגוריה?")) { await deleteDoc(doc(db, "categories", id)); window.closeM('catModal'); } };
         } else {
-            document.getElementById('eCatId').value = ""; document.getElementById('cName').value = ""; document.getElementById('cBudget').value = "";
+            document.getElementById('eCatId').value = "";
+            document.getElementById('cName').value = "";
+            document.getElementById('cBudget').value = "";
             delBtn.style.display = 'none';
         }
         document.getElementById('catModal').style.display = 'flex';
     };
 
     window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.openAddTx = (id, name) => { document.getElementById('tCatId').value = id; document.getElementById('expTitle').innerText = name; document.getElementById('expModal').style.display = 'flex'; };
+    
+    window.openAddTx = (id, name) => {
+        document.getElementById('tCatId').value = id;
+        document.getElementById('expTitle').innerText = "הוצאה ל: " + name;
+        document.getElementById('expModal').style.display = 'flex';
+    };
 
     document.getElementById('saveCatBtn').onclick = async () => {
         const id = document.getElementById('eCatId').value;
-        const data = { name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value), owner: currentUser.email, allowedUsers: arrayUnion(currentUser.email) };
-        id ? await updateDoc(doc(db, "categories", id), data) : await addDoc(collection(db, "categories"), { ...data, allowedUsers: [currentUser.email] });
+        const name = document.getElementById('cName').value;
+        const budget = parseFloat(document.getElementById('cBudget').value) || 0;
+        if(!name) return alert("הזן שם");
+        
+        const data = { name, budget, owner: currentUser.email };
+        if(id) {
+            await updateDoc(doc(db, "categories", id), data);
+        } else {
+            await addDoc(collection(db, "categories"), { ...data, allowedUsers: [currentUser.email] });
+        }
         window.closeM('catModal');
     };
 
     document.getElementById('saveTxBtn').onclick = async () => {
-        const cat = cats.find(c => c.id === document.getElementById('tCatId').value);
+        const catId = document.getElementById('tCatId').value;
+        const note = document.getElementById('expNote').value || "הוצאה";
+        const amt = parseFloat(document.getElementById('fAmt').value);
+        if(!amt) return alert("הזן סכום");
+        
+        const cat = cats.find(c => c.id === catId);
         await addDoc(collection(db, "transactions"), {
-            note: document.getElementById('expNote').value, amount: parseFloat(document.getElementById('fAmt').value),
-            catId: cat.id, allowedUsers: cat.allowedUsers, date: Timestamp.now()
+            note, amount: amt, catId, allowedUsers: cat.allowedUsers, date: Timestamp.now()
         });
         window.closeM('expModal');
     };
 
-    window.delTx = async (id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, "transactions", id)); };
+    window.delTx = async (id) => { if(confirm("למחוק הוצאה?")) await deleteDoc(doc(db, "transactions", id)); };
 
     function render() {
-        document.getElementById('catList').innerHTML = cats.map(c => {
+        const list = document.getElementById('catList');
+        list.innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
             return `<div class="card">
-                <div style="display:flex; justify-content:space-between;">
-                    <b onclick='window.openAddTx("${c.id}", "${c.name}")' style="cursor:pointer; flex:1">${c.name} (₪${spent}/₪${c.budget})</b>
-                    <button onclick='window.openCatM("${c.id}")' style="background:none; border:none; cursor:pointer">⚙️</button>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div onclick='window.openAddTx("${c.id}", "${c.name}")' style="cursor:pointer; flex:1">
+                        <b>${c.name}</b><br><small>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</small>
+                    </div>
+                    <button onclick='window.openCatM("${c.id}")' style="background:none; border:none; cursor:pointer; font-size:18px;">⚙️</button>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
             </div>`;
@@ -204,15 +235,21 @@
                 <span>${t.note} (₪${t.amount})</span>
                 <button onclick="window.delTx('${t.id}')" style="border:none; background:none; cursor:pointer">🗑️</button>
             </div>
-        `).join('');
+        `).join('') || "אין הוצאות...";
         updateChart();
     }
 
     function updateChart() {
-        const ctx = document.getElementById('mainChart'); if(!ctx) return;
-        const d = cats.map(c => txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0));
+        const ctx = document.getElementById('mainChart');
+        if(!ctx) return;
+        const dataMap = {};
+        cats.forEach(c => {
+            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
+            if(spent > 0) dataMap[c.name] = spent;
+        });
         if(chart) chart.destroy();
-        chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data: d, backgroundColor: ['#6366f1', '#ec4899', '#22c55e'] }] }, options: { maintainAspectRatio: false } });
+        if(Object.keys(dataMap).length === 0) return;
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444'] }] }, options: { maintainAspectRatio: false } });
     }
 </script>
 </body>
