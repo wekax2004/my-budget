@@ -12,9 +12,7 @@
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
         .app-container { max-width: 1100px; margin: 0 auto; }
         .main-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media (min-width: 1024px) {
-            .main-grid { grid-template-columns: 1fr 380px; align-items: start; }
-        }
+        @media (min-width: 1024px) { .main-grid { grid-template-columns: 1fr 380px; align-items: start; } }
         #authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; }
         #mainApp { display: none; }
@@ -22,14 +20,18 @@
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; border: 1px solid #f1f5f9; }
         .chart-wrapper { height: 250px; position: relative; width: 100%; }
         .btn-main { width: 100%; padding: 14px; border-radius: 16px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; margin-top: 10px; }
-        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; cursor: pointer; border: 1px solid #f1f5f9; }
+        .btn-danger { background: var(--danger) !important; margin-top: 5px; }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; position: relative; }
+        .cat-content { cursor: pointer; }
+        .edit-btn { position: absolute; left: 15px; top: 15px; background: #f1f5f9; border: none; border-radius: 8px; padding: 5px; cursor: pointer; font-size: 14px; }
         .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
         .progress-fill { height: 100%; transition: 0.6s ease-out; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
         @media (min-width: 1024px) { .modal { align-items: center; } }
         .modal-content { background: white; padding: 25px; border-radius: 30px 30px 0 0; width: 100%; max-width: 450px; }
         input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 14px; box-sizing: border-box; font-size: 16px; }
-        .tx-item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #f8fafc; }
+        .tx-item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #f8fafc; cursor: pointer; }
+        .tx-item:hover { background: #fff1f1; }
     </style>
 </head>
 <body>
@@ -67,7 +69,7 @@
                     <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card">
-                    <h3>📜 היסטוריה</h3>
+                    <h3>📜 היסטוריה <small style="font-weight:normal; font-size:11px;">(לחץ למחיקה)</small></h3>
                     <div id="txHistory"></div>
                 </div>
             </div>
@@ -76,11 +78,13 @@
 </div>
 
 <div id="catModal" class="modal"><div class="modal-content">
-    <h3>קטגוריה חדשה</h3>
+    <h3 id="catModalTitle">קטגוריה חדשה</h3>
+    <input type="hidden" id="editCatId">
     <input type="text" id="cEmoji" placeholder="אמוג'י">
     <input type="text" id="cName" placeholder="שם הקטגוריה">
     <input type="number" id="cBudget" placeholder="תקציב ב-₪">
     <button class="btn-main" id="saveCatBtn">שמור</button>
+    <button class="btn-main btn-danger" id="deleteCatBtn" style="display:none;">מחק קטגוריה</button>
     <button onclick="document.getElementById('catModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
@@ -100,7 +104,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
@@ -109,65 +113,87 @@
 
     let user = null, cats = [], txs = [], chart = null;
 
-    // פונקציות עזר גלובליות
+    // פונקציות גלובליות לחלונות
     window.openTxM = (id, name) => {
         document.getElementById('tCatId').value = id;
         document.getElementById('expTitle').innerText = "הוספה ל" + name;
         document.getElementById('expModal').style.display = 'flex';
     };
 
+    window.openEditCat = (e, id) => {
+        e.stopPropagation();
+        const cat = cats.find(c => c.id === id);
+        document.getElementById('editCatId').value = id;
+        document.getElementById('cEmoji').value = cat.emoji;
+        document.getElementById('cName').value = cat.name;
+        document.getElementById('cBudget').value = cat.budget;
+        document.getElementById('catModalTitle').innerText = "עריכת קטגוריה";
+        document.getElementById('deleteCatBtn').style.display = 'block';
+        document.getElementById('catModal').style.display = 'flex';
+    };
+
+    window.confirmDeleteTx = async (id, note, amount) => {
+        if(confirm(`למחוק את ההוצאה "${note}" על סך ₪${amount}?`)) {
+            await deleteDoc(doc(db, "transactions", id));
+        }
+    };
+
     // אירועי כפתורים
     document.getElementById('loginBtn').onclick = () => {
         const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        signInWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = err.message);
+        signInWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = "שגיאת התחברות");
     };
 
     document.getElementById('signupBtn').onclick = () => {
         const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        createUserWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = err.message);
+        createUserWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = "שגיאה ברישום");
     };
 
     document.getElementById('logoutBtn').onclick = () => signOut(auth);
-    document.getElementById('addCatBtn').onclick = () => document.getElementById('catModal').style.display = 'flex';
+    
+    document.getElementById('addCatBtn').onclick = () => {
+        document.getElementById('editCatId').value = "";
+        document.getElementById('catModalTitle').innerText = "קטגוריה חדשה";
+        document.getElementById('deleteCatBtn').style.display = 'none';
+        document.getElementById('cEmoji').value = ""; document.getElementById('cName').value = ""; document.getElementById('cBudget').value = "";
+        document.getElementById('catModal').style.display = 'flex';
+    };
 
     onAuthStateChanged(auth, u => {
-        if(u){ 
-            user = u; 
-            document.getElementById('authScreen').style.display = 'none'; 
-            document.getElementById('mainApp').style.display = 'block'; 
-            startSync(); 
-        } else { 
-            document.getElementById('authScreen').style.display = 'flex'; 
-            document.getElementById('mainApp').style.display = 'none'; 
-        }
+        if(u){ user = u; document.getElementById('authScreen').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; startSync(); }
+        else { document.getElementById('authScreen').style.display = 'flex'; document.getElementById('mainApp').style.display = 'none'; }
     });
 
     function startSync() {
-        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => { 
-            cats = s.docs.map(d => ({id:d.id, ...d.data()})); 
-            render(); 
-        });
-        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { 
-            txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); 
-            render(); 
-        });
+        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
     }
 
     document.getElementById('saveCatBtn').onclick = async () => {
-        const name = document.getElementById('cName').value;
-        if(!name) return;
-        await addDoc(collection(db,"categories"), { 
+        const id = document.getElementById('editCatId').value;
+        const data = { 
             emoji: document.getElementById('cEmoji').value || '📂', 
-            name: name, budget: parseFloat(document.getElementById('cBudget').value) || 0, 
-            owner: user.email, allowedUsers: [user.email] 
-        });
+            name: document.getElementById('cName').value, 
+            budget: parseFloat(document.getElementById('cBudget').value) || 0 
+        };
+        if(!data.name) return;
+        if(id) await updateDoc(doc(db, "categories", id), data);
+        else await addDoc(collection(db,"categories"), { ...data, owner: user.email, allowedUsers: [user.email] });
         document.getElementById('catModal').style.display = 'none';
     };
 
+    document.getElementById('deleteCatBtn').onclick = async () => {
+        const id = document.getElementById('editCatId').value;
+        if(id && confirm("למחוק את הקטגוריה? כל ההוצאות המשויכות אליה לא יימחקו אך לא ישויכו יותר.")) {
+            await deleteDoc(doc(db, "categories", id));
+            document.getElementById('catModal').style.display = 'none';
+        }
+    };
+
     document.getElementById('saveTxBtn').onclick = async () => {
-        const catId = document.getElementById('tCatId').value;
         const amount = parseFloat(document.getElementById('fAmt').value);
         if(!amount) return;
+        const catId = document.getElementById('tCatId').value;
         const cat = cats.find(c => c.id === catId);
         await addDoc(collection(db,"transactions"), {
             note: document.getElementById('expNote').value || "הוצאה",
@@ -181,21 +207,24 @@
         document.getElementById('catList').innerHTML = cats.map(c => {
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
-            return `<div class="cat-item" onclick="window.openTxM('${c.id}','${c.name}')">
-                <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                    <span>${c.emoji} ${c.name}</span>
-                    <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
+            return `<div class="cat-item">
+                <button class="edit-btn" onclick="window.openEditCat(event, '${c.id}')">⚙️</button>
+                <div class="cat-content" onclick="window.openTxM('${c.id}','${c.name}')">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; padding-left: 30px;">
+                        <span>${c.emoji} ${c.name}</span>
+                        <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
             </div>`;
         }).join('');
 
-        document.getElementById('txHistory').innerHTML = txs.slice(0,5).map(t => `
-            <div class="tx-item">
+        document.getElementById('txHistory').innerHTML = txs.slice(0,10).map(t => `
+            <div class="tx-item" onclick="window.confirmDeleteTx('${t.id}', '${t.note}', ${t.amount})">
                 <span>${t.note}</span>
-                <b>₪${t.amount.toLocaleString()}</b>
+                <b style="color:var(--danger)">-₪${t.amount.toLocaleString()}</b>
             </div>
-        `).join('');
+        `).join('') || "אין היסטוריה.";
         updateChart();
     }
 
@@ -208,7 +237,7 @@
             if(s > 0) dataMap[c.name] = s; 
         });
         if(chart) chart.destroy();
-        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b'] }] }, options: { maintainAspectRatio: false } });
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444'] }] }, options: { maintainAspectRatio: false } });
     }
 </script>
 </body>
