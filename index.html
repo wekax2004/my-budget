@@ -12,118 +12,107 @@
 
   <style>
     :root {
-      --primary:#6366f1;
-      --bg:#f8fafc;
-      --danger:#ef4444;
+      --primary: #6366f1;
+      --bg: #f8fafc;
+      --danger: #ef4444;
+      --success: #22c55e;
     }
     body {
-      font-family: system-ui, sans-serif;
-      background:var(--bg);
-      margin:0;
-      padding:15px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 15px;
       direction: rtl;
     }
     .card {
-      background:#fff;
-      border-radius:20px;
-      padding:20px;
-      margin-bottom:15px;
-      box-shadow:0 4px 15px rgba(0,0,0,.05);
+      background: #fff;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,.05);
     }
     .btn {
-      width:100%;
-      padding:12px;
-      border:none;
-      border-radius:12px;
-      background:var(--primary);
-      color:#fff;
-      font-weight:bold;
-      cursor:pointer;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
       margin-top: 5px;
+      transition: opacity 0.2s;
     }
+    .btn:active { opacity: 0.8; }
     input {
-      width:100%;
-      padding:12px;
-      border-radius:12px;
-      border:1px solid #e5e7eb;
-      margin:6px 0;
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      margin: 8px 0;
       box-sizing: border-box;
+      font-size: 16px;
     }
-    #mainApp { display:none; }
-    .tx {
-      display:flex;
-      justify-content:space-between;
-      padding:10px;
-      border-bottom:1px solid #eee;
+    #mainApp { display: none; }
+    .tx-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid #f1f5f9;
     }
-    /* תיקון הגודל של הגרף */
+    /* תיקון הגובה של הגרף - זה יפתור את הבעיה מהתמונה */
     .chart-container {
       position: relative;
-      height: 250px; /* הגבלת גובה */
+      height: 220px;
       width: 100%;
+      margin: 0 auto;
     }
+    #authErr { color: var(--danger); text-align: center; font-size: 14px; margin-top: 10px; }
   </style>
 </head>
 
 <body>
 
-<div id="authScreen" class="card">
+<div id="authScreen" class="card" style="max-width: 400px; margin: 50px auto;">
   <h2 style="text-align:center">💎 BudgetMaster</h2>
   <input id="email" type="email" placeholder="אימייל">
   <input id="pass" type="password" placeholder="סיסמה">
   <button class="btn" id="loginBtn">התחברות</button>
   <button class="btn" style="background:#94a3b8" id="signupBtn">הרשמה</button>
-  <p id="authErr" style="color:red;text-align:center"></p>
+  <p id="authErr"></p>
 </div>
 
 <div id="mainApp">
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 id="hello" style="margin:0"></h3>
-        <button id="logoutBtn" style="color:red;background:none;border:none;cursor:pointer;font-weight:bold;">התנתק</button>
-    </div>
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+    <h3 id="hello" style="margin:0"></h3>
+    <button id="logoutBtn" style="color:var(--danger); background:none; border:none; cursor:pointer; font-weight:bold;">התנתק</button>
   </div>
 
   <div class="card">
-    <h3>📊 סיכום</h3>
+    <h3 style="margin-top:0">📊 סיכום הוצאות</h3>
     <div class="chart-container">
         <canvas id="chart"></canvas>
     </div>
   </div>
 
   <div class="card">
-    <h3>➕ הוצאה חדשה</h3>
+    <h3 style="margin-top:0">➕ הוספת הוצאה</h3>
     <input id="note" placeholder="מה קנית?">
-    <input id="amount" type="number" placeholder="₪ סכום">
+    <input id="amount" type="number" placeholder="סכום ב-₪">
     <button class="btn" id="addTxBtn">שמור הוצאה</button>
   </div>
 
   <div class="card">
-    <h3>📜 היסטוריה</h3>
+    <h3 style="margin-top:0">📜 היסטוריה אחרונה</h3>
     <div id="txList"></div>
   </div>
 </div>
 
 <script type="module">
-  // ה-Imports חייבים להיות בראש הדף מחוץ לכל פונקציה
+  // ייבוא פונקציות פיירבייס - חייב להיות בראש הסקריפט
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    onAuthStateChanged, 
-    signOut 
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    onSnapshot, 
-    query, 
-    where, 
-    orderBy,
-    Timestamp 
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU",
@@ -135,6 +124,7 @@
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
+  // אלמנטים
   const authScreen = document.getElementById("authScreen");
   const mainApp    = document.getElementById("mainApp");
   const emailEl    = document.getElementById("email");
@@ -150,80 +140,70 @@
   let txs   = [];
   let chart = null;
 
-  // פונקציות אימות
-  async function authAction(type) {
+  // פונקציות כניסה/הרשמה
+  async function handleAuth(type) {
     authErr.innerText = "";
-    const email = emailEl.value;
-    const pass = passEl.value;
-    if(!email || !pass) { authErr.innerText = "נא להזין אימייל וסיסמה"; return; }
-    
     try {
       if (type === "login") {
-        await signInWithEmailAndPassword(auth, email, pass);
+        await signInWithEmailAndPassword(auth, emailEl.value, passEl.value);
       } else {
-        await createUserWithEmailAndPassword(auth, email, pass);
+        await createUserWithEmailAndPassword(auth, emailEl.value, passEl.value);
       }
     } catch (e) {
       authErr.innerText = "שגיאה: " + e.message;
     }
   }
 
-  document.getElementById("loginBtn").onclick = () => authAction("login");
-  document.getElementById("signupBtn").onclick = () => authAction("signup");
+  document.getElementById("loginBtn").onclick = () => handleAuth("login");
+  document.getElementById("signupBtn").onclick = () => handleAuth("signup");
   document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
   // האזנה למצב המשתמש
   onAuthStateChanged(auth, u => {
-    if (!u) {
-      authScreen.style.display = "block";
-      mainApp.style.display = "none";
-      user = null;
-    } else {
+    if (u) {
       user = u;
       authScreen.style.display = "none";
       mainApp.style.display = "block";
       hello.innerText = "שלום, " + u.email.split('@')[0];
-      sync();
+      startSync();
+    } else {
+      user = null;
+      authScreen.style.display = "block";
+      mainApp.style.display = "none";
     }
   });
 
-  // סנכרון מול פיירבייס
-  function sync() {
-    // הוספתי מיון לפי תאריך כדי שההיסטוריה תהיה מסודרת
+  // סנכרון נתונים
+  function startSync() {
     const q = query(collection(db, "transactions"), where("user", "==", user.email), orderBy("date", "desc"));
     onSnapshot(q, snap => {
-        txs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        render();
-      }, (error) => {
-        console.error("שגיאת סנכרון:", error);
-      });
+      txs = snap.docs.map(d => d.data());
+      updateUI();
+    });
   }
 
   // הוספת הוצאה
   async function addTx() {
-    const val = Number(amountEl.value);
-    if (!val || val <= 0) return;
+    const amount = parseFloat(amountEl.value);
+    if (!amount || amount <= 0) return;
 
-    try {
-      await addDoc(collection(db, "transactions"), {
-        note: noteEl.value || "הוצאה כללית",
-        amount: val,
-        user: user.email,
-        date: Timestamp.now()
-      });
-      noteEl.value = "";
-      amountEl.value = "";
-    } catch (e) {
-      alert("שגיאה בשמירה: " + e.message);
-    }
+    await addDoc(collection(db, "transactions"), {
+      note: noteEl.value || "הוצאה כללית",
+      amount: amount,
+      user: user.email,
+      date: Timestamp.now()
+    });
+
+    noteEl.value = "";
+    amountEl.value = "";
   }
   document.getElementById("addTxBtn").onclick = addTx;
 
-  // רינדור גרף ורשימה
-  function render() {
-    // עדכון רשימה
-    txList.innerHTML = txs.map(t => `
-      <div class="tx">
+  // עדכון הממשק (רשימה וגרף)
+  function updateUI() {
+    // רשימה
+    txList.innerHTML = txs.slice(0, 10).map(t => `
+      <div class="tx-item">
         <span>${t.note}</span>
         <b>₪${t.amount.toLocaleString()}</b>
       </div>
@@ -231,22 +211,22 @@
 
     const total = txs.reduce((s, t) => s + t.amount, 0);
 
-    // עדכון גרף
+    // גרף
     if (chart) chart.destroy();
     chart = new Chart(chartCanvas, {
       type: "doughnut",
       data: {
-        labels: ["סה״כ הוצאות"],
-        datasets: [{ 
-            data: [total],
-            backgroundColor: ['#6366f1'],
-            borderWidth: 0
+        labels: ["הוצאות"],
+        datasets: [{
+          data: [total],
+          backgroundColor: ['#6366f1'],
+          borderWidth: 0
         }]
       },
       options: {
-        maintainAspectRatio: false, // מאפשר שליטה בגובה דרך ה-CSS
+        maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'bottom' }
+          legend: { display: true, position: 'bottom' }
         }
       }
     });
@@ -254,11 +234,11 @@
 </script>
 
 <script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(err => console.log("SW error:", err));
-  });
-}
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js");
+    });
+  }
 </script>
 
 </body>
