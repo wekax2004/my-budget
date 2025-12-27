@@ -1,22 +1,22 @@
 {
   "short_name": "BudgetPro",
   "name": "BudgetMaster Pro",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
   "icons": [
     {
       "src": "icons/icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
     },
     {
       "src": "icons/icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
     }
-  ],
-  "start_url": "./index.html",
-  "background_color": "#f8fafc",
-  "display": "standalone",
-  "scope": "./",
-  "theme_color": "#6366f1",
-  "description": "ניהול תקציב חכם ופשוט"
+  ]
 }
