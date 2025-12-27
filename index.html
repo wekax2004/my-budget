@@ -3,40 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro</title>
+    <title>BudgetMaster Pro v3</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6366f1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
         .app-container { max-width: 1100px; margin: 0 auto; }
         .main-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media (min-width: 1024px) { .main-grid { grid-template-columns: 1fr 380px; align-items: start; } }
-        
         #authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; }
         #mainApp { display: none; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
-        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; border: 1px solid #f1f5f9; }
-        
-        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; position: relative; cursor: pointer; }
-        .edit-icon { position: absolute; left: 15px; top: 15px; background: #f1f5f9; border-radius: 8px; padding: 5px; font-size: 14px; z-index: 5; }
-        
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; position: relative; }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; cursor: pointer; position: relative; }
+        .edit-btn-small { position: absolute; left: 10px; top: 10px; background: #eee; border: none; border-radius: 5px; padding: 4px 8px; cursor: pointer; font-size: 12px; z-index: 10; }
         .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
-        .progress-fill { height: 100%; transition: 0.6s ease-out; }
-        
+        .progress-fill { height: 100%; transition: 0.5s ease; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
         @media (min-width: 1024px) { .modal { align-items: center; } }
-        .modal-content { background: white; padding: 25px; border-radius: 30px 30px 0 0; width: 100%; max-width: 450px; }
-        
-        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 14px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { width: 100%; padding: 14px; border-radius: 16px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; margin-top: 10px; }
-        .btn-danger { background: var(--danger) !important; }
-        
-        .tx-item { display: flex; justify-content: space-between; padding: 12px 10px; border-bottom: 1px solid #f8fafc; cursor: pointer; }
-        .tx-item:hover { background: #f1f5f9; border-radius: 10px; }
+        .modal-content { background: white; padding: 25px; border-radius: 24px 24px 0 0; width: 100%; max-width: 450px; position: relative; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
+        .currency-box { display: flex; gap: 5px; margin-bottom: 10px; }
+        .currency-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 12px; }
+        .tx-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f8fafc; cursor: pointer; border-radius: 10px; }
+        .tx-item:hover { background: #f1f5f9; }
     </style>
 </head>
 <body>
@@ -49,21 +41,21 @@
             <input type="password" id="password" placeholder="סיסמה">
             <button class="btn-main" id="loginBtn">התחברות</button>
             <button class="btn-main" style="background: #94a3b8;" id="signupBtn">הרשמה</button>
-            <p id="authError" style="color: var(--danger); text-align: center;"></p>
+            <p id="authError" style="color:red; font-size:12px; text-align:center;"></p>
         </div>
     </div>
 
     <div id="mainApp">
-        <div class="header">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h3 id="userGreeting">שלום!</h3>
-            <button id="logoutBtn" style="background:none; border:none; color: var(--danger); font-weight:bold; cursor:pointer;">התנתק 🚪</button>
+            <button onclick="auth.signOut()" style="border:none; background:none; color:var(--danger); cursor:pointer;">התנתק 🚪</button>
         </div>
 
         <div class="main-grid">
-            <div class="content-panel">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin:0">📂 הקטגוריות שלי</h3>
-                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:14px; font-weight:bold; cursor:pointer;">+ חדש</button>
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0">📂 קטגוריות</h3>
+                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ חדש</button>
                 </div>
                 <div id="catList"></div>
             </div>
@@ -71,17 +63,17 @@
             <div class="side-panel">
                 <div class="card">
                     <h3>📊 פילוח</h3>
-                    <div style="height:250px;"><canvas id="mainChart"></canvas></div>
+                    <div style="height:220px;"><canvas id="mainChart"></canvas></div>
                 </div>
                 <div class="card">
                     <h3>📜 היסטוריה (לחץ לעריכה)</h3>
                     <div id="txHistory"></div>
                 </div>
-                <div class="card" style="background: #f1f5f9; border: none;">
-                    <h4 style="margin-top:0">👥 שיתוף גישה</h4>
-                    <div style="display: flex; gap: 5px;">
+                <div class="card" style="background:#f1f5f9; border:none;">
+                    <h4>👥 שיתוף גישה</h4>
+                    <div style="display:flex; gap:5px;">
                         <input type="email" id="shareEmail" placeholder="אימייל שותף" style="margin:0; flex:1;">
-                        <button id="shareBtn" style="background:var(--success); color:white; border:none; padding:10px; border-radius:12px; cursor:pointer;">שתף</button>
+                        <button id="shareBtn" style="background:var(--success); color:white; border:none; padding:10px; border-radius:10px; cursor:pointer;">שתף</button>
                     </div>
                 </div>
             </div>
@@ -92,29 +84,36 @@
 <div id="catModal" class="modal"><div class="modal-content">
     <h3 id="catModalTitle">ניהול קטגוריה</h3>
     <input type="hidden" id="editCatId">
-    <input type="text" id="cEmoji" placeholder="אמוג'י (🍔, 🏠)">
+    <input type="text" id="cEmoji" placeholder="אמוג'י">
     <input type="text" id="cName" placeholder="שם הקטגוריה">
     <input type="number" id="cBudget" placeholder="תקציב ב-₪">
     <button class="btn-main" id="saveCatBtn">שמור</button>
-    <button class="btn-main btn-danger" id="deleteCatBtn" style="display:none;">מחק קטגוריה</button>
-    <button onclick="closeAllModals()" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button class="btn-main" id="deleteCatBtn" style="background:var(--danger); display:none;">מחק קטגוריה</button>
+    <button onclick="closeModals()" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle">הוצאה</h3>
+    <h3 id="expTitle">פרטי הוצאה</h3>
     <input type="hidden" id="editTxId">
     <input type="hidden" id="tCatId">
+    
+    <label style="font-size:12px; color:gray;">המרת מטבע (מעדכן את הסכום לשקלים):</label>
+    <div class="currency-box">
+        <button class="currency-btn" onclick="convertCurrency('USD')">🇺🇸 דולר ל-₪</button>
+        <button class="currency-btn" onclick="convertCurrency('EUR')">🇪🇺 אירו ל-₪</button>
+    </div>
+
     <input type="text" id="expNote" placeholder="מה קנית?">
-    <input type="number" id="fAmt" placeholder="סכום">
+    <input type="number" id="fAmt" placeholder="סכום ב-₪">
     <select id="pMethod">
         <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
-        <option value="העברה">🏦 העברה</option>
         <option value="ביט">📱 ביט/פייבוקס</option>
+        <option value="העברה">🏦 העברה</option>
     </select>
     <button class="btn-main" id="saveTxBtn">שמור</button>
-    <button class="btn-main btn-danger" id="deleteTxBtn" style="display:none;">מחק הוצאה</button>
-    <button onclick="closeAllModals()" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button class="btn-main" id="deleteTxBtn" style="background:var(--danger); display:none;">מחק הוצאה</button>
+    <button onclick="closeModals()" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <script type="module">
@@ -129,132 +128,101 @@
 
     let user = null, cats = [], txs = [], chart = null;
 
-    // פונקציות סגירה
-    window.closeAllModals = () => {
-        document.getElementById('catModal').style.display = 'none';
-        document.getElementById('expModal').style.display = 'none';
+    window.closeModals = () => { document.getElementById('catModal').style.display='none'; document.getElementById('expModal').style.display='none'; };
+
+    // המרת מטבע
+    window.convertCurrency = async (type) => {
+        const amt = document.getElementById('fAmt').value;
+        if(!amt) return alert("הזן סכום תחילה");
+        try {
+            const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${type}`);
+            const data = await res.json();
+            const rate = data.rates.ILS;
+            document.getElementById('fAmt').value = (amt * rate).toFixed(2);
+            alert(`הומר לפי שער: ${rate}`);
+        } catch(e) { alert("שגיאה במשיכת שער חליפין"); }
     };
 
-    // פונקציות פתיחה (הצמדה לחלון הגלובלי)
-    window.openAddTx = (catId, catName) => {
-        document.getElementById('editTxId').value = "";
-        document.getElementById('tCatId').value = catId;
-        document.getElementById('expTitle').innerText = "הוספה ל" + catName;
-        document.getElementById('expNote').value = "";
-        document.getElementById('fAmt').value = "";
-        document.getElementById('deleteTxBtn').style.display = 'none';
-        document.getElementById('expModal').style.display = 'flex';
-    };
-
-    window.openEditTx = (txId) => {
-        const tx = txs.find(t => t.id === txId);
-        document.getElementById('editTxId').value = txId;
-        document.getElementById('tCatId').value = tx.catId;
-        document.getElementById('expTitle').innerText = "עריכת הוצאה";
-        document.getElementById('expNote').value = tx.note;
-        document.getElementById('fAmt').value = tx.amount;
-        document.getElementById('pMethod').value = tx.method;
+    // עריכת הוצאה
+    window.openEditTx = (id) => {
+        const t = txs.find(x => x.id === id);
+        document.getElementById('editTxId').value = id;
+        document.getElementById('tCatId').value = t.catId;
+        document.getElementById('expNote').value = t.note;
+        document.getElementById('fAmt').value = t.amount;
+        document.getElementById('pMethod').value = t.method;
         document.getElementById('deleteTxBtn').style.display = 'block';
         document.getElementById('expModal').style.display = 'flex';
     };
 
-    window.openEditCat = (e, catId) => {
+    // עריכת קטגוריה
+    window.openEditCat = (e, id) => {
         e.stopPropagation();
-        const cat = cats.find(c => c.id === catId);
-        document.getElementById('editCatId').value = catId;
-        document.getElementById('cEmoji').value = cat.emoji;
-        document.getElementById('cName').value = cat.name;
-        document.getElementById('cBudget').value = cat.budget;
-        document.getElementById('catModalTitle').innerText = "עריכת קטגוריה";
+        const c = cats.find(x => x.id === id);
+        document.getElementById('editCatId').value = id;
+        document.getElementById('cEmoji').value = c.emoji;
+        document.getElementById('cName').value = c.name;
+        document.getElementById('cBudget').value = c.budget;
         document.getElementById('deleteCatBtn').style.display = 'block';
         document.getElementById('catModal').style.display = 'flex';
     };
 
-    // אירועי Auth
-    document.getElementById('loginBtn').onclick = () => {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        signInWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = "פרטים שגויים");
+    window.openAddTx = (id, name) => {
+        document.getElementById('editTxId').value = "";
+        document.getElementById('tCatId').value = id;
+        document.getElementById('expTitle').innerText = "הוספה ל" + name;
+        document.getElementById('expNote').value = ""; document.getElementById('fAmt').value = "";
+        document.getElementById('deleteTxBtn').style.display = 'none';
+        document.getElementById('expModal').style.display = 'flex';
     };
-    document.getElementById('signupBtn').onclick = () => {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        createUserWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = "שגיאה ברישום");
-    };
-    document.getElementById('logoutBtn').onclick = () => signOut(auth);
 
+    // Firebase Auth Events
+    document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => document.getElementById('authError').innerText = "טעות בפרטים");
+    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => document.getElementById('authError').innerText = "שגיאה ברישום");
+    
     onAuthStateChanged(auth, u => {
-        if(u){ user = u; document.getElementById('authScreen').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; startSync(); }
-        else { document.getElementById('authScreen').style.display = 'flex'; document.getElementById('mainApp').style.display = 'none'; }
+        if(u) { user = u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
+        else { document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
     });
 
     function startSync() {
         onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
     }
 
-    // ניהול קטגוריות
-    document.getElementById('addCatBtn').onclick = () => {
-        document.getElementById('editCatId').value = "";
-        document.getElementById('catModalTitle').innerText = "קטגוריה חדשה";
-        document.getElementById('deleteCatBtn').style.display = 'none';
-        document.getElementById('cEmoji').value = ""; document.getElementById('cName').value = ""; document.getElementById('cBudget').value = "";
-        document.getElementById('catModal').style.display = 'flex';
-    };
-
+    // שמירת קטגוריה
     document.getElementById('saveCatBtn').onclick = async () => {
         const id = document.getElementById('editCatId').value;
         const data = { emoji: document.getElementById('cEmoji').value || '📂', name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value) || 0 };
-        if(!data.name) return;
-        if(id) await updateDoc(doc(db, "categories", id), data);
-        else await addDoc(collection(db,"categories"), { ...data, owner: user.email, allowedUsers: [user.email] });
-        closeAllModals();
+        if(id) await updateDoc(doc(db,"categories",id), data);
+        else await addDoc(collection(db,"categories"), { ...data, owner: user.email, allowedUsers:[user.email] });
+        closeModals();
     };
 
-    document.getElementById('deleteCatBtn').onclick = async () => {
-        if(confirm("למחוק קטגוריה? (ההוצאות ישארו בהיסטוריה אך ללא קטגוריה)")) {
-            await deleteDoc(doc(db, "categories", document.getElementById('editCatId').value));
-            closeAllModals();
-        }
-    };
+    document.getElementById('deleteCatBtn').onclick = async () => { if(confirm("למחוק קטגוריה?")) { await deleteDoc(doc(db,"categories", document.getElementById('editCatId').value)); closeModals(); } };
 
-    // ניהול הוצאות
+    // שמירת הוצאה
     document.getElementById('saveTxBtn').onclick = async () => {
         const txId = document.getElementById('editTxId').value;
         const catId = document.getElementById('tCatId').value;
-        const data = {
-            note: document.getElementById('expNote').value || "הוצאה",
-            amount: parseFloat(document.getElementById('fAmt').value) || 0,
-            method: document.getElementById('pMethod').value,
-            catId: catId
-        };
-        if(txId) await updateDoc(doc(db, "transactions", txId), data);
+        const data = { note: document.getElementById('expNote').value || "הוצאה", amount: parseFloat(document.getElementById('fAmt').value) || 0, method: document.getElementById('pMethod').value, catId: catId };
+        if(txId) await updateDoc(doc(db,"transactions", txId), data);
         else {
             const cat = cats.find(c => c.id === catId);
-            await addDoc(collection(db,"transactions"), { ...data, allowedUsers: cat.allowedUsers, date: Timestamp.now() });
+            await addDoc(collection(db, "transactions"), { ...data, allowedUsers: cat.allowedUsers, date: Timestamp.now() });
         }
-        closeAllModals();
+        closeModals();
     };
 
-    document.getElementById('deleteTxBtn').onclick = async () => {
-        if(confirm("למחוק הוצאה זו?")) {
-            await deleteDoc(doc(db, "transactions", document.getElementById('editTxId').value));
-            closeAllModals();
-        }
-    };
+    document.getElementById('deleteTxBtn').onclick = async () => { if(confirm("למחוק הוצאה?")) { await deleteDoc(doc(db,"transactions", document.getElementById('editTxId').value)); closeModals(); } };
 
     // שיתוף
     document.getElementById('shareBtn').onclick = async () => {
-        const email = document.getElementById('shareEmail').value;
-        if(!email) return;
-        const batch = cats.filter(c => c.owner === user.email);
-        for(let c of batch) {
-            await updateDoc(doc(db, "categories", c.id), { allowedUsers: arrayUnion(email) });
-        }
-        // מעדכן גם עסקאות קיימות
-        txs.forEach(async t => {
-           if(batch.some(c => c.id === t.catId)) await updateDoc(doc(db,"transactions", t.id), { allowedUsers: arrayUnion(email) });
-        });
-        alert("הגישה שותפה בהצלחה!");
-        document.getElementById('shareEmail').value = "";
+        const mail = document.getElementById('shareEmail').value;
+        if(!mail) return;
+        const myCats = cats.filter(c => c.owner === user.email);
+        for(let c of myCats) { await updateDoc(doc(db,"categories", c.id), { allowedUsers: arrayUnion(mail) }); }
+        alert("הגישה שותפה!");
     };
 
     function render() {
@@ -262,8 +230,8 @@
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
             return `<div class="cat-item" onclick="window.openAddTx('${c.id}','${c.name}')">
-                <div class="edit-icon" onclick="window.openEditCat(event, '${c.id}')">⚙️</div>
-                <div style="display:flex; justify-content:space-between; font-weight:bold; padding-right: 40px;">
+                <button class="edit-btn-small" onclick="window.openEditCat(event, '${c.id}')">⚙️</button>
+                <div style="display:flex; justify-content:space-between; font-weight:bold; padding-right:45px;">
                     <span>${c.emoji} ${c.name}</span>
                     <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
                 </div>
@@ -271,27 +239,23 @@
             </div>`;
         }).join('');
 
-        document.getElementById('txHistory').innerHTML = txs.slice(0,10).map(t => `
+        document.getElementById('txHistory').innerHTML = txs.sort((a,b) => b.date - a.date).slice(0,10).map(t => `
             <div class="tx-item" onclick="window.openEditTx('${t.id}')">
                 <span>${t.note} <small style="color:gray">(${t.method})</small></span>
                 <b style="color:var(--danger)">-₪${t.amount.toLocaleString()}</b>
             </div>
-        `).join('') || "אין הוצאות...";
-        
+        `).join('');
         updateChart();
     }
 
     function updateChart() {
-        const ctx = document.getElementById('mainChart');
-        if(!ctx || cats.length === 0) return;
-        const dataMap = {}; 
-        cats.forEach(c => { 
-            const s = txs.filter(t => t.catId === c.id).reduce((acc,curr) => acc + curr.amount, 0); 
-            if(s > 0) dataMap[c.name] = s; 
-        });
+        const ctx = document.getElementById('mainChart'); if(!ctx || cats.length === 0) return;
+        const dataMap = {}; cats.forEach(c => { const s = txs.filter(t => t.catId === c.id).reduce((acc,curr) => acc + curr.amount, 0); if(s > 0) dataMap[c.name] = s; });
         if(chart) chart.destroy();
-        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444','#06b6d4'], borderWidth: 2 }] }, options: { maintainAspectRatio: false } });
+        chart = new Chart(ctx, { type:'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444','#06b6d4'] }] }, options: { maintainAspectRatio: false } });
     }
+    
+    document.getElementById('addCatBtn').onclick = () => { document.getElementById('editCatId').value=""; document.getElementById('deleteCatBtn').style.display='none'; document.getElementById('catModal').style.display='flex'; };
 </script>
 </body>
 </html>
