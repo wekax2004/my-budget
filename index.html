@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BudgetMaster Pro - Full Features</title>
+    <title>BudgetMaster Pro - Fixed & Final</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --gift: #ec4899; --danger: #ef4444; --warning: #f59e0b; }
@@ -22,8 +22,8 @@
         .progress-bar { background: #eee; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
         .progress-fill { height: 100%; transition: 0.3s; }
         .tx-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f1f5f9; align-items: center; cursor: pointer; }
-        .tx-item:hover { background: #f8fafc; }
-        .method-tag { font-size: 10px; padding: 2px 6px; border-radius: 6px; background: #eee; margin-right: 5px; }
+        .tx-item:hover { background: #f1f5f9; border-radius: 8px; }
+        .method-tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #e2e8f0; color: #475569; margin-right: 8px; }
     </style>
 </head>
 <body>
@@ -64,7 +64,7 @@
         </div>
 
         <div class="card">
-            <h3>📜 היסטוריה (15 אחרונות)</h3>
+            <h3>📜 היסטוריה</h3>
             <div id="txHistory"></div>
         </div>
     </div>
@@ -77,7 +77,7 @@
     <input type="hidden" id="eCatId">
     <button class="btn-main" id="saveCatBtn">שמור</button>
     <button id="delCatBtn" class="btn-main" style="background:var(--danger); display:none;">מחק קטגוריה</button>
-    <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <div id="expModal" class="modal"><div class="modal-content">
@@ -86,8 +86,8 @@
     <input type="hidden" id="tCatId">
     <input type="text" id="expNote" placeholder="מה קנית?">
     
-    <div id="converterBox" style="background:#f1f5f9; padding:10px; border-radius:12px; margin-bottom:10px;">
-        <small>המרת מט"ח:</small>
+    <div id="convRow" style="background:#f1f5f9; padding:10px; border-radius:12px; margin-bottom:10px;">
+        <small>מחשבון המרה:</small>
         <div style="display:flex; gap:5px;">
             <input type="number" id="foreignVal" placeholder="סכום" oninput="window.calcEx()" style="margin:0">
             <select id="curRate" onchange="window.calcEx()" style="width:90px; margin:0"><option value="3.75">$ USD</option><option value="4.05">€ EUR</option></select>
@@ -104,7 +104,7 @@
 
     <button class="btn-main" id="saveTxBtn">שמור הוצאה</button>
     <button id="delTxBtn" class="btn-main" style="background:var(--danger); display:none;">מחק הוצאה</button>
-    <button onclick="window.closeM('expModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+    <button onclick="window.closeM('expModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray; cursor:pointer;">ביטול</button>
 </div></div>
 
 <script type="module">
@@ -119,123 +119,112 @@
 
     let currentUser = null, cats = [], txs = [], chart = null;
 
-    window.handleAuth = async (type) => {
-        const email = document.getElementById('email').value, pass = document.getElementById('password').value;
-        try { type === 'login' ? await signInWithEmailAndPassword(auth, email, pass) : await createUserWithEmailAndPassword(auth, email, pass); }
-        catch (e) { document.getElementById('authError').innerText = e.message; }
+    window.handleAuth = async (t) => {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        try { t==='login'? await signInWithEmailAndPassword(auth,e,p) : await createUserWithEmailAndPassword(auth,e,p); }
+        catch(err){ document.getElementById('authError').innerText = err.message; }
     };
     window.logout = () => signOut(auth);
 
-    onAuthStateChanged(auth, user => {
-        if (user) { currentUser = user; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
-        else { document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
+    onAuthStateChanged(auth, u => {
+        if(u){ currentUser=u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
+        else{ document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
     });
 
     window.calcEx = () => {
-        const v = parseFloat(document.getElementById('foreignVal').value) || 0;
-        const r = parseFloat(document.getElementById('curRate').value);
-        document.getElementById('fAmt').value = v > 0 ? (v * r).toFixed(2) : "";
+        const v = parseFloat(document.getElementById('foreignVal').value)||0, r = parseFloat(document.getElementById('curRate').value);
+        if(v>0) document.getElementById('fAmt').value = (v*r).toFixed(2);
     };
 
     window.shareAccess = async () => {
-        const email = document.getElementById('shareEmail').value;
-        if(!email) return;
-        cats.forEach(async c => { if(c.owner === currentUser.email) await updateDoc(doc(db, "categories", c.id), { allowedUsers: arrayUnion(email) }); });
-        alert("הגישה שותפה!");
+        const e = document.getElementById('shareEmail').value; if(!e) return;
+        for(let c of cats) if(c.owner === currentUser.email) await updateDoc(doc(db,"categories",c.id), {allowedUsers: arrayUnion(e)});
+        alert("שותף בהצלחה!");
     };
 
     function startSync() {
-        onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", currentUser.email)), s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
-        onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", currentUser.email)), s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
+        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",currentUser.email)), s => { cats=s.docs.map(d=>({id:d.id,...d.data()})); render(); });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",currentUser.email)), s => { txs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date-a.date); render(); });
     }
 
-    window.closeM = (id) => document.getElementById(id).style.display = 'none';
+    window.closeM = (id) => document.getElementById(id).style.display='none';
 
-    window.openCatM = (id = "") => {
-        const delBtn = document.getElementById('delCatBtn');
-        if(id) {
-            const c = cats.find(x => x.id === id);
-            document.getElementById('eCatId').value = id;
-            document.getElementById('cName').value = c.name;
-            document.getElementById('cBudget').value = c.budget;
-            delBtn.style.display = 'block';
-            delBtn.onclick = async () => { if(confirm("למחוק קטגוריה?")) { await deleteDoc(doc(db, "categories", id)); window.closeM('catModal'); } };
+    window.openCatM = (id="") => {
+        const del = document.getElementById('delCatBtn');
+        if(id){
+            const c = cats.find(x=>x.id===id);
+            document.getElementById('eCatId').value=id;
+            document.getElementById('cName').value=c.name;
+            document.getElementById('cBudget').value=c.budget;
+            del.style.display='block';
+            del.onclick=async()=>{ if(confirm("למחוק קטגוריה?")){ await deleteDoc(doc(db,"categories",id)); closeM('catModal'); }};
         } else {
-            document.getElementById('eCatId').value = ""; document.getElementById('cName').value = ""; document.getElementById('cBudget').value = "";
-            delBtn.style.display = 'none';
+            document.getElementById('eCatId').value=""; document.getElementById('cName').value=""; document.getElementById('cBudget').value="";
+            del.style.display='none';
         }
-        document.getElementById('catModal').style.display = 'flex';
+        document.getElementById('catModal').style.display='flex';
     };
 
-    window.openTxM = (txId = "", catId = "", catName = "") => {
-        const delBtn = document.getElementById('delTxBtn');
-        const convBox = document.getElementById('converterBox');
-        
-        if(txId) { // עריכה
-            const t = txs.find(x => x.id === txId);
-            document.getElementById('tTxId').value = txId;
-            document.getElementById('tCatId').value = t.catId;
-            document.getElementById('expNote').value = t.note;
-            document.getElementById('fAmt').value = t.amount;
-            document.getElementById('pMethod').value = t.method || "אשראי";
-            document.getElementById('expTitle').innerText = "עריכת הוצאה";
-            delBtn.style.display = 'block';
-            convBox.style.display = 'none';
-            delBtn.onclick = async () => { if(confirm("למחוק?")) { await deleteDoc(doc(db, "transactions", txId)); window.closeM('expModal'); } };
-        } else { // חדש
-            document.getElementById('tTxId').value = "";
-            document.getElementById('tCatId').value = catId;
-            document.getElementById('expNote').value = "";
-            document.getElementById('fAmt').value = "";
-            document.getElementById('foreignVal').value = "";
-            document.getElementById('expTitle').innerText = "הוצאה ל: " + catName;
-            delBtn.style.display = 'none';
-            convBox.style.display = 'block';
+    window.openTxM = (txId="", catId="", catName="") => {
+        const del = document.getElementById('delTxBtn');
+        const conv = document.getElementById('convRow');
+        if(txId){
+            const t = txs.find(x=>x.id===txId);
+            document.getElementById('tTxId').value=txId;
+            document.getElementById('tCatId').value=t.catId;
+            document.getElementById('expNote').value=t.note;
+            document.getElementById('fAmt').value=t.amount;
+            document.getElementById('pMethod').value=t.method||"אשראי";
+            document.getElementById('expTitle').innerText="עריכת הוצאה";
+            del.style.display='block'; conv.style.display='none';
+            del.onclick=async()=>{ if(confirm("למחוק הוצאה?")){ await deleteDoc(doc(db,"transactions",txId)); closeM('expModal'); }};
+        } else {
+            document.getElementById('tTxId').value=""; document.getElementById('tCatId').value=catId;
+            document.getElementById('expNote').value=""; document.getElementById('fAmt').value="";
+            document.getElementById('foreignVal').value=""; document.getElementById('expTitle').innerText="הוצאה ל: "+catName;
+            del.style.display='none'; conv.style.display='block';
         }
-        document.getElementById('expModal').style.display = 'flex';
+        document.getElementById('expModal').style.display='flex';
     };
 
     document.getElementById('saveCatBtn').onclick = async () => {
         const id = document.getElementById('eCatId').value;
-        const data = { name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value) || 0, owner: currentUser.email };
-        id ? await updateDoc(doc(db, "categories", id), data) : await addDoc(collection(db, "categories"), { ...data, allowedUsers: [currentUser.email] });
-        window.closeM('catModal');
+        const data = { name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value)||0, owner: currentUser.email };
+        id ? await updateDoc(doc(db,"categories",id), data) : await addDoc(collection(db,"categories"), {...data, allowedUsers:[currentUser.email]});
+        closeM('catModal');
     };
 
     document.getElementById('saveTxBtn').onclick = async () => {
-        const txId = document.getElementById('tTxId').value;
-        const catId = document.getElementById('tCatId').value;
-        const cat = cats.find(c => c.id === catId);
+        const txId = document.getElementById('tTxId').value, catId = document.getElementById('tCatId').value;
+        const cat = cats.find(c=>c.id===catId);
         const data = {
-            note: document.getElementById('expNote').value || "הוצאה",
-            amount: parseFloat(document.getElementById('fAmt').value),
+            note: document.getElementById('expNote').value||"הוצאה",
+            amount: parseFloat(document.getElementById('fAmt').value)||0,
             method: document.getElementById('pMethod').value,
-            catId: catId,
-            allowedUsers: cat.allowedUsers,
-            date: Timestamp.now()
+            catId: catId, allowedUsers: cat.allowedUsers, date: Timestamp.now()
         };
-        txId ? await updateDoc(doc(db, "transactions", txId), data) : await addDoc(collection(db, "transactions"), data);
-        window.closeM('expModal');
+        txId ? await updateDoc(doc(db,"transactions",txId), data) : await addDoc(collection(db,"transactions"), data);
+        closeM('expModal');
     };
 
     function render() {
         document.getElementById('catList').innerHTML = cats.map(c => {
-            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
-            const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
+            const spent = txs.filter(t=>t.catId===c.id).reduce((s,t)=>s+t.amount,0);
+            const perc = Math.min((spent/(c.budget||1))*100,100);
             return `<div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div onclick='window.openTxM("", "${c.id}", "${c.name}")' style="cursor:pointer; flex:1">
+                    <div onclick="window.openTxM('','${c.id}','${c.name}')" style="cursor:pointer; flex:1">
                         <b>${c.name}</b><br><small>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</small>
                     </div>
-                    <button onclick='window.openCatM("${c.id}")' style="background:none; border:none; cursor:pointer; font-size:18px;">⚙️</button>
+                    <button onclick="window.openCatM('${c.id}')" style="background:none; border:none; cursor:pointer; font-size:18px;">⚙️</button>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent>c.budget?'var(--danger)':'var(--success)'}"></div></div>
             </div>`;
         }).join('');
 
         document.getElementById('txHistory').innerHTML = txs.slice(0,15).map(t => `
             <div class="tx-item" onclick="window.openTxM('${t.id}')">
-                <span>${t.note} <span class="method-tag">${t.method || '💳'}</span></span>
+                <span>${t.note} <span class="method-tag">${t.method||'💳'}</span></span>
                 <b>₪${t.amount.toLocaleString()}</b>
             </div>
         `).join('') || "אין הוצאות...";
@@ -244,14 +233,9 @@
 
     function updateChart() {
         const ctx = document.getElementById('mainChart'); if(!ctx) return;
-        const dataMap = {};
-        cats.forEach(c => {
-            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
-            if(spent > 0) dataMap[c.name] = spent;
-        });
-        if(chart) chart.destroy();
-        if(Object.keys(dataMap).length === 0) return;
-        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#ef4444'] }] }, options: { maintainAspectRatio: false } });
+        const dMap = {}; cats.forEach(c=>{ const s=txs.filter(t=>t.catId===c.id).reduce((acc,curr)=>acc+curr.amount,0); if(s>0) dMap[c.name]=s; });
+        if(chart) chart.destroy(); if(Object.keys(dMap).length===0) return;
+        chart = new Chart(ctx, { type:'doughnut', data:{ labels:Object.keys(dMap), datasets:[{data:Object.values(dMap), backgroundColor:['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444']}]}, options:{maintainAspectRatio:false}});
     }
 </script>
 </body>
