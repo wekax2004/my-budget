@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BudgetMaster Pro</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#6366f1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -16,9 +16,9 @@
         #mainApp { display: none; }
         .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; }
         .card { background: white; border-radius: 20px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; }
-        .chart-wrapper { height: 220px; position: relative; width: 100%; }
+        .chart-wrapper { height: 200px; position: relative; }
         .btn-main { width: 100%; padding: 14px; border-radius: 16px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; margin-top: 10px; }
-        .cat-item { border: 1px solid #f1f5f9; border-radius: 16px; padding: 15px; margin-bottom: 12px; cursor: pointer; }
+        .cat-item { border: 1px solid #f1f5f9; border-radius: 16px; padding: 15px; margin-bottom: 12px; }
         .progress-bar { background: #f1f5f9; height: 8px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
         .progress-fill { height: 100%; transition: 0.5s ease-out; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
@@ -37,26 +37,26 @@
             <input type="password" id="password" placeholder="סיסמה">
             <button class="btn-main" onclick="window.handleAuth('login')">התחברות</button>
             <button class="btn-main" style="background: #94a3b8;" onclick="window.handleAuth('signup')">הרשמה</button>
-            <p id="authError" style="color: red; text-align: center; font-size: 12px;"></p>
+            <p id="authError" style="color: red; text-align: center;"></p>
         </div>
     </div>
 
     <div id="mainApp">
         <div class="header">
-            <h3 id="userGreeting" style="margin:0">שלום!</h3>
+            <h3 id="userGreeting">שלום!</h3>
             <button onclick="window.logout()" style="background:none; border:none; color: var(--danger); font-weight:bold;">התנתק 🚪</button>
         </div>
 
         <div style="margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="margin:0">📂 קטגוריות</h3>
+                <h3 style="margin:0">📂 הקטגוריות שלי</h3>
                 <button onclick="window.openCatM()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:12px; font-weight:bold;">+ חדש</button>
             </div>
             <div id="catList"></div>
         </div>
 
         <div class="card">
-            <h3>📊 פילוח הוצאות</h3>
+            <h3>📊 פילוח</h3>
             <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
         </div>
 
@@ -65,8 +65,8 @@
             <div id="txHistory"></div>
         </div>
 
-        <div class="card" style="background: #f1f5f9; border: none;">
-            <h3 style="font-size: 14px; margin-bottom: 10px;">👥 שיתוף גישה</h3>
+        <div class="card" style="background: #f1f5f9;">
+            <h3 style="font-size: 14px;">👥 שיתוף גישה</h3>
             <div style="display: flex; gap: 5px;">
                 <input type="email" id="shareEmail" placeholder="אימייל שותף" style="margin:0; flex:1;">
                 <button onclick="window.shareAccess()" style="background:var(--success); color:white; border:none; padding:10px; border-radius:12px;">שתף</button>
@@ -87,6 +87,7 @@
 
 <div id="expModal" class="modal"><div class="modal-content">
     <h3 id="expTitle">הוצאה חדשה</h3>
+    <input type="hidden" id="tTxId">
     <input type="hidden" id="tCatId">
     <input type="text" id="expNote" placeholder="מה קנית?">
     <input type="number" id="fAmt" placeholder="סכום ב-₪">
@@ -102,133 +103,94 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, arrayUnion, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, arrayUnion, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let user = null, cats = [], txs = [], chart = null;
+    let currentUser = null, cats = [], txs = [], chart = null;
 
-    window.handleAuth = async (type) => {
+    window.handleAuth = async (t) => {
         const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        try { 
-            type === 'login' ? await signInWithEmailAndPassword(auth, e, p) : await createUserWithEmailAndPassword(auth, e, p); 
-        } catch(err) { 
-            document.getElementById('authError').innerText = "שגיאה: " + err.message; 
-        }
+        try { t==='login'? await signInWithEmailAndPassword(auth,e,p) : await createUserWithEmailAndPassword(auth,e,p); }
+        catch(err){ document.getElementById('authError').innerText = err.message; }
     };
     window.logout = () => signOut(auth);
 
     onAuthStateChanged(auth, u => {
-        if(u){ 
-            user = u; 
-            document.getElementById('authScreen').style.display = 'none'; 
-            document.getElementById('mainApp').style.display = 'block'; 
-            document.getElementById('userGreeting').innerText = "שלום, " + u.email.split('@')[0];
-            startSync(); 
-        } else { 
-            document.getElementById('authScreen').style.display = 'flex'; 
-            document.getElementById('mainApp').style.display = 'none'; 
-        }
+        if(u){ currentUser=u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
+        else{ document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
     });
 
     function startSync() {
-        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => { 
-            cats = s.docs.map(d => ({id:d.id, ...d.data()})); 
-            render(); 
-        });
-        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email)), s => { 
-            txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); 
-            render(); 
-        });
+        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",currentUser.email)), s => { cats=s.docs.map(d=>({id:d.id,...d.data()})); render(); });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",currentUser.email)), s => { txs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date-a.date); render(); });
     }
 
-    window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.openCatM = () => {
-        document.getElementById('cEmoji').value=""; document.getElementById('cName').value=""; document.getElementById('cBudget').value="";
-        document.getElementById('catModal').style.display = 'flex';
+    window.closeM = (id) => document.getElementById(id).style.display='none';
+    window.openCatM = (id="") => {
+        document.getElementById('eCatId').value=""; document.getElementById('cEmoji').value=""; document.getElementById('cName').value=""; document.getElementById('cBudget').value="";
+        document.getElementById('catModal').style.display='flex';
     };
-    window.openTxM = (catId, catName) => {
-        document.getElementById('tCatId').value = catId;
-        document.getElementById('expNote').value = ""; document.getElementById('fAmt').value = "";
-        document.getElementById('expTitle').innerText = "הוספה ל: " + catName;
-        document.getElementById('expModal').style.display = 'flex';
+    window.openTxM = (txId="", catId="", catName="") => {
+        document.getElementById('tTxId').value=""; document.getElementById('tCatId').value=catId;
+        document.getElementById('expNote').value=""; document.getElementById('fAmt').value="";
+        document.getElementById('expTitle').innerText="הוספה ל: "+catName;
+        document.getElementById('expModal').style.display='flex';
     };
 
     document.getElementById('saveCatBtn').onclick = async () => {
-        const name = document.getElementById('cName').value;
-        if(!name) return;
-        await addDoc(collection(db,"categories"), { 
-            emoji: document.getElementById('cEmoji').value || '📂', 
-            name: name, 
-            budget: parseFloat(document.getElementById('cBudget').value) || 0, 
-            owner: user.email, 
-            allowedUsers: [user.email] 
-        });
+        const data = { emoji: document.getElementById('cEmoji').value||'📂', name: document.getElementById('cName').value, budget: parseFloat(document.getElementById('cBudget').value)||0, owner: currentUser.email, allowedUsers:[currentUser.email] };
+        await addDoc(collection(db,"categories"), data);
         closeM('catModal');
     };
 
     document.getElementById('saveTxBtn').onclick = async () => {
         const catId = document.getElementById('tCatId').value;
-        const amount = parseFloat(document.getElementById('fAmt').value);
-        if(!amount) return;
-        const cat = cats.find(c => c.id === catId);
+        const cat = cats.find(c=>c.id===catId);
         await addDoc(collection(db,"transactions"), {
-            note: document.getElementById('expNote').value || "הוצאה",
-            amount: amount,
+            note: document.getElementById('expNote').value,
+            amount: parseFloat(document.getElementById('fAmt').value)||0,
             method: document.getElementById('pMethod').value,
-            catId: catId, 
-            allowedUsers: cat.allowedUsers, 
-            date: Timestamp.now()
+            catId: catId, allowedUsers: cat.allowedUsers, date: Timestamp.now()
         });
         closeM('expModal');
     };
 
     function render() {
         document.getElementById('catList').innerHTML = cats.map(c => {
-            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
-            const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
-            return `<div class="card cat-item" onclick="window.openTxM('${c.id}','${c.name}')">
-                <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                    <span>${c.emoji} ${c.name}</span>
+            const spent = txs.filter(t=>t.catId===c.id).reduce((s,t)=>s+t.amount,0);
+            const perc = Math.min((spent/(c.budget||1))*100,100);
+            return `<div class="card cat-item" onclick="window.openTxM('','${c.id}','${c.name}')">
+                <div style="display:flex; justify-content:space-between;">
+                    <b>${c.emoji} ${c.name}</b>
                     <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent>c.budget?'var(--danger)':'var(--success)'}"></div></div>
             </div>`;
         }).join('');
 
-        document.getElementById('txHistory').innerHTML = txs.slice(0,8).map(t => `
+        document.getElementById('txHistory').innerHTML = txs.slice(0,5).map(t => `
             <div class="tx-item">
-                <span>${t.note} <small style="color:gray">(${t.method})</small></span>
-                <b>₪${t.amount.toLocaleString()}</b>
+                <span>${t.note}</span>
+                <b>₪${t.amount}</b>
             </div>
-        `).join('') || "אין הוצאות...";
+        `).join('');
         updateChart();
     }
 
     function updateChart() {
         const ctx = document.getElementById('mainChart');
-        if(!ctx || cats.length === 0) return;
-        const dataMap = {}; 
-        cats.forEach(c => { 
-            const s = txs.filter(t => t.catId === c.id).reduce((acc,curr) => acc + curr.amount, 0); 
-            if(s > 0) dataMap[c.name] = s; 
-        });
+        const data = {}; cats.forEach(c=>{ const s=txs.filter(t=>t.catId===c.id).reduce((acc,curr)=>acc+curr.amount,0); if(s>0) data[c.name]=s; });
         if(chart) chart.destroy();
-        if(Object.keys(dataMap).length === 0) return;
-        chart = new Chart(ctx, { 
-            type: 'doughnut', 
-            data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444'], borderWidth: 0 }]}, 
-            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
-        });
+        chart = new Chart(ctx, { type:'doughnut', data:{ labels:Object.keys(data), datasets:[{data:Object.values(data), backgroundColor:['#6366f1','#ec4899','#22c55e']}]}, options:{maintainAspectRatio:false}});
     }
 
+    // רישום Service Worker להתקנה
     if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-            navigator.serviceWorker.register("sw.js").catch(err => console.log("SW error:", err));
-        });
+        navigator.serviceWorker.register("./sw.js");
     }
 </script>
 </body>
