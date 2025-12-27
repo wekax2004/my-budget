@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro - Multi-Currency & Edit</title>
+    <title>BudgetMaster Pro - Multi-Currency Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
@@ -24,6 +24,7 @@
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; }
         .action-btn { background: #f1f5f9; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 5px; }
         .del-btn { color: var(--danger); }
+        .orig-amt { font-size: 11px; color: gray; display: block; }
     </style>
 </head>
 <body>
@@ -55,12 +56,12 @@
             </div>
             
             <div class="card">
-                <h3>📊 פילוח</h3>
+                <h3>📊 פילוח (בשקלים ₪)</h3>
                 <div style="height:200px;"><canvas id="mainChart"></canvas></div>
             </div>
 
             <div class="card">
-                <h3>📜 היסטוריה</h3>
+                <h3>📜 היסטוריה (הכל מומר ל₪)</h3>
                 <div id="historyList"></div>
             </div>
         </div>
@@ -83,7 +84,7 @@
         <option value="💵 מזומן">💵 מזומן</option>
         <option value="📱 ביט">📱 ביט</option>
     </select>
-    <button class="btn-main" id="saveTxBtn">שמור</button>
+    <button class="btn-main" id="saveTxBtn">שמור בשקלים</button>
     <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
@@ -135,16 +136,24 @@
                 </div>`;
         }).join('');
 
-        document.getElementById('historyList').innerHTML = txs.map(t => `
-            <div class="history-item">
-                <div><strong>${t.note}</strong> <small>(${t.method})</small></div>
-                <div>
-                    <b style="color:var(--danger); margin-left:10px;">₪${t.amount.toLocaleString()}</b>
-                    <button class="action-btn" onclick="openEditTx('${t.id}')">✏️</button>
-                    <button class="action-btn del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
+        document.getElementById('historyList').innerHTML = txs.map(t => {
+            const symbol = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+            const originalDisplay = t.currency !== 'ILS' ? `<span class="orig-amt">מקור: ${symbol}${t.originalAmount}</span>` : '';
+            
+            return `
+                <div class="history-item">
+                    <div>
+                        <strong>${t.note}</strong> <small>(${t.method})</small>
+                        ${originalDisplay}
+                    </div>
+                    <div style="text-align: left;">
+                        <b style="color:var(--danger); margin-left:10px;">₪${Math.round(t.amount).toLocaleString()}</b>
+                        <button class="action-btn" onclick="openEditTx('${t.id}')">✏️</button>
+                        <button class="action-btn del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         updateChart();
     }
 
@@ -169,6 +178,7 @@
         editMode = { active: false, id: null };
         window.currentCatId = id;
         document.getElementById('fAmt').value = "";
+        document.getElementById('fCurr').value = "ILS";
         document.getElementById('expNote').value = "";
         document.getElementById('expModal').style.display = 'flex';
     };
@@ -178,11 +188,12 @@
         const curr = document.getElementById('fCurr').value;
         if(!rawAmt) return;
         
-        const convertedAmount = rawAmt * rates[curr];
+        // המרה לשקלים לפני השמירה
+        const convertedInILS = rawAmt * rates[curr];
         
         const data = {
-            amount: convertedAmount,
-            originalAmount: rawAmt,
+            amount: convertedInILS, // זה מה שהולך לגרף ולתקציב
+            originalAmount: rawAmt, // שומרים את המקור ליופי
             currency: curr,
             note: document.getElementById('expNote').value || "הוצאה",
             method: document.getElementById('pMethod').value,
