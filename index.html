@@ -10,7 +10,7 @@
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
         
         /* דף התחברות */
-        #authScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        #authScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
         .auth-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
         
         /* ממשק ראשי */
@@ -24,8 +24,7 @@
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 9999; padding: 15px; backdrop-filter: blur(5px); }
         .modal-content { background: white; padding: 25px; border-radius: 25px; width: 100%; max-width: 400px; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
-        
-        .user-tag { background: #eef2ff; color: var(--primary); padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .tx-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; }
     </style>
 </head>
 <body>
@@ -45,21 +44,20 @@
     <div class="header">
         <div>
             <h3 id="userGreeting" style="margin:0;">שלום!</h3>
-            <span id="myIdDisplay" style="font-size: 10px; color: gray;"></span>
         </div>
-        <button onclick="window.logout()" style="background:none; border:none; cursor:pointer; color: var(--danger);">התנתק 🚪</button>
+        <button onclick="window.logout()" style="background:none; border:none; cursor:pointer; color: var(--danger); font-weight: bold;">התנתק 🚪</button>
     </div>
 
     <div class="grid">
         <div>
             <div class="card">
-                <h3>👥 שיתוף עם משתמש</h3>
-                <p style="font-size: 12px; color: gray;">הכנס אימייל של חבר כדי לשתף איתו את התקציב:</p>
+                <h3>👥 שיתוף עם חבר</h3>
                 <input type="email" id="shareEmail" placeholder="אימייל של החבר">
-                <button class="btn-main" style="background: var(--success);" onclick="window.shareWithUser()">שתף גישה</button>
+                <button class="btn-main" style="background: var(--success);" onclick="window.shareAccess()">תן גישה</button>
+                <p style="font-size: 11px; color: gray; margin-top: 5px;">* החבר יוכל לראות את הקטגוריות שלך</p>
             </div>
             <div class="card">
-                <h3>📊 פילוח</h3>
+                <h3>📊 פילוח הוצאות</h3>
                 <canvas id="mainChart"></canvas>
             </div>
         </div>
@@ -71,7 +69,7 @@
 
         <div class="card">
             <h3>📜 היסטוריה</h3>
-            <div id="txHistory"></div>
+            <div id="txHistory">אין נתונים...</div>
         </div>
     </div>
 </div>
@@ -81,25 +79,29 @@
     <input type="text" id="expNote" placeholder="מה קנית?">
     <input type="number" id="fAmt" placeholder="סכום ב-₪">
     <input type="hidden" id="tCatId">
-    <button class="btn-main" id="saveTxBtn">שמור</button>
+    <button class="btn-main" id="saveTxBtn">שמור הוצאה</button>
     <button onclick="window.closeM('expModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <div id="catModal" class="modal"><div class="modal-content">
-    <h3>ניהול קטגוריה</h3>
-    <input type="text" id="cName" placeholder="שם הקטגוריה">
-    <input type="number" id="cBudget" placeholder="תקציב">
-    <input type="hidden" id="eCatId">
-    <button class="btn-main" id="saveCatBtn">שמור</button>
-    <button onclick="window.closeM('catModal')">ביטול</button>
+    <h3>קטגוריה חדשה</h3>
+    <input type="text" id="cName" placeholder="שם (למשל: אוכל)">
+    <input type="number" id="cBudget" placeholder="תקציב חודשי">
+    <button class="btn-main" id="saveCatBtn">צור קטגוריה</button>
+    <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, arrayUnion, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, updateDoc, arrayUnion, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
+    const firebaseConfig = { 
+        apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", 
+        authDomain: "expensetrackerpro-d216d.firebaseapp.com", 
+        projectId: "expensetrackerpro-d216d" 
+    };
+    
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -107,7 +109,7 @@
     let currentUser = null;
     let cats = [], txs = [], chart = null;
 
-    // --- מערכת משתמשים ---
+    // --- אימות ---
     window.handleAuth = async (type) => {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
@@ -133,73 +135,81 @@
         }
     });
 
-    // --- שיתוף עם משתמש אחר ---
-    window.shareWithUser = async () => {
-        const emailToShare = document.getElementById('shareEmail').value;
-        if(!emailToShare) return;
+    // --- שיתוף ---
+    window.shareAccess = async () => {
+        const email = document.getElementById('shareEmail').value;
+        if(!email) return alert("הכנס אימייל");
         
-        // כאן אנחנו יוצרים "קישור" בתוך מסמך הקטגוריות שמאפשר למשתמש הנוסף לראות אותן
-        // בגרסה פשוטה זו, אנחנו משתמשים ב-SharedID ששניכם תהיו רשומים עליו
-        alert("הגישה עודכנה. המשתמש " + emailToShare + " יוכל לראות את הנתונים אם תשתמשו באותו מזהה קבוצה.");
+        // מעדכן את כל הקטגוריות של המשתמש הנוכחי שגם המשתמש השני יוכל לראות
+        cats.forEach(async (c) => {
+            if(c.owner === currentUser.email) {
+                await updateDoc(doc(db, "categories", c.id), {
+                    allowedUsers: arrayUnion(email)
+                });
+            }
+        });
+        alert("הגישה שותפה עם " + email);
     };
 
-    // --- סנכרון נתונים ---
+    // --- סנכרון ---
     function startSync() {
-        // אנחנו מחפשים נתונים ששייכים לאימייל של המשתמש
         const qCats = query(collection(db, "categories"), where("allowedUsers", "array-contains", currentUser.email));
-        onSnapshot(qCats, s => { cats = s.docs.map(d => ({id:d.id, ...d.data()})); render(); });
+        onSnapshot(qCats, s => { 
+            cats = s.docs.map(d => ({id:d.id, ...d.data()})); 
+            render(); 
+        });
 
         const qTxs = query(collection(db, "transactions"), where("allowedUsers", "array-contains", currentUser.email));
-        onSnapshot(qTxs, s => { txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); render(); });
+        onSnapshot(qTxs, s => { 
+            txs = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => b.date - a.date); 
+            render(); 
+        });
     }
 
-    // --- פונקציות עזר (חלונות) ---
     window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.openCatM = () => {
-        document.getElementById('eCatId').value = "";
-        document.getElementById('catModal').style.display = 'flex';
-    };
+    window.openCatM = () => document.getElementById('catModal').style.display = 'flex';
     window.openAddTx = (id, name) => {
         document.getElementById('tCatId').value = id;
-        document.getElementById('expTitle').innerText = "הוספה ל: " + name;
+        document.getElementById('expTitle').innerText = "הוצאה ל: " + name;
         document.getElementById('expModal').style.display = 'flex';
     };
 
-    // --- שמירה ---
     document.getElementById('saveCatBtn').onclick = async () => {
         const name = document.getElementById('cName').value;
+        const budget = parseFloat(document.getElementById('cBudget').value) || 0;
         await addDoc(collection(db, "categories"), {
-            name,
-            budget: parseFloat(document.getElementById('cBudget').value) || 0,
-            allowedUsers: [currentUser.email], // רק המשתמש הנוכחי יכול לראות בהתחלה
-            owner: currentUser.email
+            name, budget, owner: currentUser.email, allowedUsers: [currentUser.email], date: Timestamp.now()
         });
         window.closeM('catModal');
     };
 
     document.getElementById('saveTxBtn').onclick = async () => {
+        const amt = parseFloat(document.getElementById('fAmt').value);
+        const catId = document.getElementById('tCatId').value;
+        const cat = cats.find(c => c.id === catId);
+        
         await addDoc(collection(db, "transactions"), {
-            note: document.getElementById('expNote').value,
-            amount: parseFloat(document.getElementById('fAmt').value),
-            catId: document.getElementById('tCatId').value,
-            allowedUsers: [currentUser.email],
+            note: document.getElementById('expNote').value || "הוצאה",
+            amount: amt,
+            catId: catId,
+            allowedUsers: cat.allowedUsers, // משתף את ההוצאה עם כל מי שרואה את הקטגוריה
             date: Timestamp.now()
         });
         window.closeM('expModal');
     };
 
     function render() {
-        document.getElementById('catList').innerHTML = cats.map(c => `
-            <div class="card" onclick='window.openAddTx("${c.id}", "${c.name}")' style="cursor:pointer">
-                <b>${c.name}</b><br><small>₪${c.budget}</small>
-            </div>
-        `).join('');
+        document.getElementById('catList').innerHTML = cats.map(c => {
+            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
+            return `<div class="card" onclick='window.openAddTx("${c.id}", "${c.name}")' style="cursor:pointer">
+                <b>${c.name}</b><br><small>₪${spent} / ₪${c.budget}</small>
+            </div>`;
+        }).join('');
 
         document.getElementById('txHistory').innerHTML = txs.map(t => `
-            <div style="border-bottom:1px solid #eee; padding:5px;">${t.note} - ₪${t.amount}</div>
-        `).join('');
+            <div class="tx-item"><span>${t.note}</span><b>₪${t.amount}</b></div>
+        `).join('') || "אין הוצאות...";
     }
-
 </script>
 </body>
 </html>
