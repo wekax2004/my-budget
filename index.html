@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BudgetMaster Pro</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#6366f1">
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -23,6 +21,7 @@
       background:var(--bg);
       margin:0;
       padding:15px;
+      direction: rtl;
     }
     .card {
       background:#fff;
@@ -40,6 +39,7 @@
       color:#fff;
       font-weight:bold;
       cursor:pointer;
+      margin-top: 5px;
     }
     input {
       width:100%;
@@ -47,6 +47,7 @@
       border-radius:12px;
       border:1px solid #e5e7eb;
       margin:6px 0;
+      box-sizing: border-box;
     }
     #mainApp { display:none; }
     .tx {
@@ -55,12 +56,17 @@
       padding:10px;
       border-bottom:1px solid #eee;
     }
+    /* תיקון הגודל של הגרף */
+    .chart-container {
+      position: relative;
+      height: 250px; /* הגבלת גובה */
+      width: 100%;
+    }
   </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
 <div id="authScreen" class="card">
   <h2 style="text-align:center">💎 BudgetMaster</h2>
   <input id="email" type="email" placeholder="אימייל">
@@ -70,23 +76,26 @@
   <p id="authErr" style="color:red;text-align:center"></p>
 </div>
 
-<!-- APP -->
 <div id="mainApp">
   <div class="card">
-    <h3 id="hello"></h3>
-    <button id="logoutBtn" style="color:red;background:none;border:none">התנתק</button>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="hello" style="margin:0"></h3>
+        <button id="logoutBtn" style="color:red;background:none;border:none;cursor:pointer;font-weight:bold;">התנתק</button>
+    </div>
   </div>
 
   <div class="card">
     <h3>📊 סיכום</h3>
-    <canvas id="chart" height="200"></canvas>
+    <div class="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
   </div>
 
   <div class="card">
-    <h3>➕ הוצאה</h3>
-    <input id="note" placeholder="פירוט">
+    <h3>➕ הוצאה חדשה</h3>
+    <input id="note" placeholder="מה קנית?">
     <input id="amount" type="number" placeholder="₪ סכום">
-    <button class="btn" id="addTxBtn">שמור</button>
+    <button class="btn" id="addTxBtn">שמור הוצאה</button>
   </div>
 
   <div class="card">
@@ -95,27 +104,25 @@
   </div>
 </div>
 
-<!-- MAIN SCRIPT -->
 <script type="module">
-window.addEventListener("DOMContentLoaded", async () => {
-
+  // ה-Imports חייבים להיות בראש הדף מחוץ לכל פונקציה
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { 
-    getAuth,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    onAuthStateChanged,
-    signOut
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    onAuthStateChanged, 
+    signOut 
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-  import {
-    getFirestore,
-    collection,
-    addDoc,
-    onSnapshot,
-    query,
-    where,
-    Timestamp
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    onSnapshot, 
+    query, 
+    where, 
+    orderBy,
+    Timestamp 
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -128,7 +135,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
-  // Elements
   const authScreen = document.getElementById("authScreen");
   const mainApp    = document.getElementById("mainApp");
   const emailEl    = document.getElementById("email");
@@ -144,92 +150,113 @@ window.addEventListener("DOMContentLoaded", async () => {
   let txs   = [];
   let chart = null;
 
-  // Buttons
-  document.getElementById("loginBtn").onclick  = () => authAction("login");
-  document.getElementById("signupBtn").onclick = () => authAction("signup");
-  document.getElementById("logoutBtn").onclick = () => signOut(auth);
-  document.getElementById("addTxBtn").onclick  = addTx;
-
+  // פונקציות אימות
   async function authAction(type) {
     authErr.innerText = "";
+    const email = emailEl.value;
+    const pass = passEl.value;
+    if(!email || !pass) { authErr.innerText = "נא להזין אימייל וסיסמה"; return; }
+    
     try {
       if (type === "login") {
-        await signInWithEmailAndPassword(auth, emailEl.value, passEl.value);
+        await signInWithEmailAndPassword(auth, email, pass);
       } else {
-        await createUserWithEmailAndPassword(auth, emailEl.value, passEl.value);
+        await createUserWithEmailAndPassword(auth, email, pass);
       }
     } catch (e) {
-      authErr.innerText = e.message;
+      authErr.innerText = "שגיאה: " + e.message;
     }
   }
 
+  document.getElementById("loginBtn").onclick = () => authAction("login");
+  document.getElementById("signupBtn").onclick = () => authAction("signup");
+  document.getElementById("logoutBtn").onclick = () => signOut(auth);
+
+  // האזנה למצב המשתמש
   onAuthStateChanged(auth, u => {
     if (!u) {
       authScreen.style.display = "block";
       mainApp.style.display = "none";
-      return;
+      user = null;
+    } else {
+      user = u;
+      authScreen.style.display = "none";
+      mainApp.style.display = "block";
+      hello.innerText = "שלום, " + u.email.split('@')[0];
+      sync();
     }
-
-    user = u;
-    authScreen.style.display = "none";
-    mainApp.style.display = "block";
-    hello.innerText = "שלום " + u.email;
-
-    sync();
   });
 
+  // סנכרון מול פיירבייס
   function sync() {
-    onSnapshot(
-      query(collection(db, "transactions"), where("user", "==", user.email)),
-      snap => {
-        txs = snap.docs.map(d => d.data());
+    // הוספתי מיון לפי תאריך כדי שההיסטוריה תהיה מסודרת
+    const q = query(collection(db, "transactions"), where("user", "==", user.email), orderBy("date", "desc"));
+    onSnapshot(q, snap => {
+        txs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         render();
-      }
-    );
+      }, (error) => {
+        console.error("שגיאת סנכרון:", error);
+      });
   }
 
+  // הוספת הוצאה
   async function addTx() {
-    if (!amountEl.value) return;
+    const val = Number(amountEl.value);
+    if (!val || val <= 0) return;
 
-    await addDoc(collection(db, "transactions"), {
-      note: noteEl.value || "הוצאה",
-      amount: Number(amountEl.value),
-      user: user.email,
-      date: Timestamp.now()
-    });
-
-    noteEl.value = "";
-    amountEl.value = "";
+    try {
+      await addDoc(collection(db, "transactions"), {
+        note: noteEl.value || "הוצאה כללית",
+        amount: val,
+        user: user.email,
+        date: Timestamp.now()
+      });
+      noteEl.value = "";
+      amountEl.value = "";
+    } catch (e) {
+      alert("שגיאה בשמירה: " + e.message);
+    }
   }
+  document.getElementById("addTxBtn").onclick = addTx;
 
+  // רינדור גרף ורשימה
   function render() {
+    // עדכון רשימה
     txList.innerHTML = txs.map(t => `
       <div class="tx">
         <span>${t.note}</span>
-        <b>₪${t.amount}</b>
+        <b>₪${t.amount.toLocaleString()}</b>
       </div>
     `).join("");
 
     const total = txs.reduce((s, t) => s + t.amount, 0);
 
+    // עדכון גרף
     if (chart) chart.destroy();
     chart = new Chart(chartCanvas, {
       type: "doughnut",
       data: {
         labels: ["סה״כ הוצאות"],
-        datasets: [{ data: [total] }]
+        datasets: [{ 
+            data: [total],
+            backgroundColor: ['#6366f1'],
+            borderWidth: 0
+        }]
+      },
+      options: {
+        maintainAspectRatio: false, // מאפשר שליטה בגובה דרך ה-CSS
+        plugins: {
+            legend: { position: 'bottom' }
+        }
       }
     });
   }
-
-});
 </script>
 
-<!-- Service Worker -->
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js");
+    navigator.serviceWorker.register("./sw.js").catch(err => console.log("SW error:", err));
   });
 }
 </script>
