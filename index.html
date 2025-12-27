@@ -11,29 +11,22 @@
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
         .app-container { max-width: 1100px; margin: 0 auto; }
-        
-        /* לוגיקת מסכים: מחשב מול טלפון */
         .main-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media (min-width: 1024px) {
             .main-grid { grid-template-columns: 1fr 380px; align-items: start; }
-            .side-panel { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 20px; }
         }
-
         #authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; }
         #mainApp { display: none; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin-bottom: 10px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; border: 1px solid #f1f5f9; }
         .chart-wrapper { height: 250px; position: relative; width: 100%; }
         .btn-main { width: 100%; padding: 14px; border-radius: 16px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; font-size: 16px; margin-top: 10px; }
-        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; cursor: pointer; border: 1px solid #f1f5f9; transition: 0.2s; }
-        .cat-item:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; cursor: pointer; border: 1px solid #f1f5f9; }
         .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
-        .progress-fill { height: 100%; transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        /* מודאלים */
+        .progress-fill { height: 100%; transition: 0.6s ease-out; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
-        @media (min-width: 1024px) { .modal { align-items: center; } .modal-content { border-radius: 24px; } }
+        @media (min-width: 1024px) { .modal { align-items: center; } }
         .modal-content { background: white; padding: 25px; border-radius: 30px 30px 0 0; width: 100%; max-width: 450px; }
         input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 14px; box-sizing: border-box; font-size: 16px; }
         .tx-item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #f8fafc; }
@@ -44,47 +37,38 @@
 <div class="app-container">
     <div id="authScreen">
         <div class="auth-card">
-            <h2 style="text-align: center; margin-bottom: 20px;">BudgetMaster 💎</h2>
+            <h2 style="text-align: center;">BudgetMaster 💎</h2>
             <input type="email" id="email" placeholder="אימייל">
             <input type="password" id="password" placeholder="סיסמה">
-            <button class="btn-main" onclick="window.handleAuth('login')">התחברות</button>
-            <button class="btn-main" style="background: #94a3b8;" onclick="window.handleAuth('signup')">הרשמה</button>
+            <button class="btn-main" id="loginBtn">התחברות</button>
+            <button class="btn-main" style="background: #94a3b8;" id="signupBtn">הרשמה</button>
             <p id="authError" style="color: var(--danger); text-align: center; font-size: 13px; margin-top: 10px;"></p>
         </div>
     </div>
 
     <div id="mainApp">
         <div class="header">
-            <h3 id="userGreeting" style="margin:0">שלום!</h3>
-            <button onclick="window.logout()" style="background:none; border:none; color: var(--danger); font-weight:bold; cursor:pointer;">התנתק 🚪</button>
+            <h3 id="userGreeting">שלום!</h3>
+            <button id="logoutBtn" style="background:none; border:none; color: var(--danger); font-weight:bold; cursor:pointer;">התנתק 🚪</button>
         </div>
 
         <div class="main-grid">
             <div class="content-panel">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin:0">📂 קטגוריות הוצאה</h3>
-                    <button onclick="window.openCatM()" style="background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:14px; font-weight:bold; cursor:pointer;">+ חדש</button>
+                    <h3 style="margin:0">📂 קטגוריות</h3>
+                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:14px; font-weight:bold; cursor:pointer;">+ חדש</button>
                 </div>
                 <div id="catList"></div>
             </div>
 
             <div class="side-panel">
                 <div class="card">
-                    <h3 style="margin-top:0">📊 פילוח</h3>
+                    <h3>📊 פילוח</h3>
                     <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
                 </div>
-
                 <div class="card">
-                    <h3 style="margin-top:0">📜 היסטוריה אחרונה</h3>
+                    <h3>📜 היסטוריה</h3>
                     <div id="txHistory"></div>
-                </div>
-
-                <div class="card" style="background: #f1f5f9; border: none;">
-                    <h3 style="font-size: 14px; margin-bottom: 10px; color: #475569;">👥 שיתוף עם בן/בת זוג</h3>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="email" id="shareEmail" placeholder="אימייל לשותף" style="margin:0; flex:1; height: 48px;">
-                        <button onclick="window.shareAccess()" style="background:var(--success); color:white; border:none; padding:0 15px; border-radius:12px; font-weight:bold; cursor:pointer;">שתף</button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -92,32 +76,31 @@
 </div>
 
 <div id="catModal" class="modal"><div class="modal-content">
-    <h3 style="margin-top:0">יצירת קטגוריה</h3>
-    <input type="text" id="cEmoji" placeholder="אמוג'י (למשל: 🏠, 🛒, 🚗)">
-    <input type="text" id="cName" placeholder="שם הקטגוריה (למשל: סופרמרקט)">
-    <input type="number" id="cBudget" placeholder="תקציב חודשי ב-₪">
-    <button class="btn-main" id="saveCatBtn">שמור קטגוריה</button>
-    <button onclick="window.closeM('catModal')" style="width:100%; border:none; background:none; margin-top:15px; color:gray; cursor:pointer;">ביטול</button>
+    <h3>קטגוריה חדשה</h3>
+    <input type="text" id="cEmoji" placeholder="אמוג'י">
+    <input type="text" id="cName" placeholder="שם הקטגוריה">
+    <input type="number" id="cBudget" placeholder="תקציב ב-₪">
+    <button class="btn-main" id="saveCatBtn">שמור</button>
+    <button onclick="document.getElementById('catModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle" style="margin-top:0">הוספת הוצאה</h3>
+    <h3 id="expTitle">הוספת הוצאה</h3>
     <input type="hidden" id="tCatId">
-    <input type="text" id="expNote" placeholder="תיאור (למשל: קניות לשבת)">
-    <input type="number" id="fAmt" placeholder="סכום ב-₪">
+    <input type="text" id="expNote" placeholder="תיאור">
+    <input type="number" id="fAmt" placeholder="סכום">
     <select id="pMethod">
-        <option value="אשראי">💳 כרטיס אשראי</option>
+        <option value="אשראי">💳 אשראי</option>
         <option value="מזומן">💵 מזומן</option>
-        <option value="העברה">🏦 העברה בנקאית</option>
     </select>
-    <button class="btn-main" id="saveTxBtn">הוסף הוצאה</button>
-    <button onclick="window.closeM('expModal')" style="width:100%; border:none; background:none; margin-top:15px; color:gray; cursor:pointer;">ביטול</button>
+    <button class="btn-main" id="saveTxBtn">שמור הוצאה</button>
+    <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
 </div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, arrayUnion, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
     const app = initializeApp(firebaseConfig);
@@ -126,23 +109,32 @@
 
     let user = null, cats = [], txs = [], chart = null;
 
-    window.handleAuth = async (mode) => {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        if(!e || !p) return;
-        try { 
-            mode === 'login' ? await signInWithEmailAndPassword(auth, e, p) : await createUserWithEmailAndPassword(auth, e, p); 
-        } catch(err) { 
-            document.getElementById('authError').innerText = "שגיאה: " + err.message; 
-        }
+    // פונקציות עזר גלובליות
+    window.openTxM = (id, name) => {
+        document.getElementById('tCatId').value = id;
+        document.getElementById('expTitle').innerText = "הוספה ל" + name;
+        document.getElementById('expModal').style.display = 'flex';
     };
-    window.logout = () => signOut(auth);
+
+    // אירועי כפתורים
+    document.getElementById('loginBtn').onclick = () => {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        signInWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = err.message);
+    };
+
+    document.getElementById('signupBtn').onclick = () => {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        createUserWithEmailAndPassword(auth, e, p).catch(err => document.getElementById('authError').innerText = err.message);
+    };
+
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+    document.getElementById('addCatBtn').onclick = () => document.getElementById('catModal').style.display = 'flex';
 
     onAuthStateChanged(auth, u => {
         if(u){ 
             user = u; 
             document.getElementById('authScreen').style.display = 'none'; 
             document.getElementById('mainApp').style.display = 'block'; 
-            document.getElementById('userGreeting').innerText = "שלום, " + u.email.split('@')[0];
             startSync(); 
         } else { 
             document.getElementById('authScreen').style.display = 'flex'; 
@@ -161,28 +153,15 @@
         });
     }
 
-    window.closeM = (id) => document.getElementById(id).style.display = 'none';
-    window.openCatM = () => {
-        document.getElementById('cEmoji').value=""; document.getElementById('cName').value=""; document.getElementById('cBudget').value="";
-        document.getElementById('catModal').style.display = 'flex';
-    };
-    window.openTxM = (catId, catName) => {
-        document.getElementById('tCatId').value = catId;
-        document.getElementById('expNote').value = ""; document.getElementById('fAmt').value = "";
-        document.getElementById('expTitle').innerText = "הוצאה ל" + catName;
-        document.getElementById('expModal').style.display = 'flex';
-    };
-
     document.getElementById('saveCatBtn').onclick = async () => {
         const name = document.getElementById('cName').value;
-        const budget = parseFloat(document.getElementById('cBudget').value);
-        if(!name || !budget) return;
+        if(!name) return;
         await addDoc(collection(db,"categories"), { 
             emoji: document.getElementById('cEmoji').value || '📂', 
-            name: name, budget: budget, 
+            name: name, budget: parseFloat(document.getElementById('cBudget').value) || 0, 
             owner: user.email, allowedUsers: [user.email] 
         });
-        closeM('catModal');
+        document.getElementById('catModal').style.display = 'none';
     };
 
     document.getElementById('saveTxBtn').onclick = async () => {
@@ -191,11 +170,11 @@
         if(!amount) return;
         const cat = cats.find(c => c.id === catId);
         await addDoc(collection(db,"transactions"), {
-            note: document.getElementById('expNote').value || "הוצאה כללית",
+            note: document.getElementById('expNote').value || "הוצאה",
             amount: amount, method: document.getElementById('pMethod').value,
             catId: catId, allowedUsers: cat.allowedUsers, date: Timestamp.now()
         });
-        closeM('expModal');
+        document.getElementById('expModal').style.display = 'none';
     };
 
     function render() {
@@ -203,20 +182,20 @@
             const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
             const perc = Math.min((spent / (c.budget || 1)) * 100, 100);
             return `<div class="cat-item" onclick="window.openTxM('${c.id}','${c.name}')">
-                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size: 16px;">
+                <div style="display:flex; justify-content:space-between; font-weight:bold;">
                     <span>${c.emoji} ${c.name}</span>
                     <span>₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</span>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${spent > c.budget ? 'var(--danger)' : 'var(--success)'}"></div></div>
             </div>`;
-        }).join('') || '<p style="text-align:center; color:gray;">אין קטגוריות. לחץ על + כדי להתחיל.</p>';
+        }).join('');
 
-        document.getElementById('txHistory').innerHTML = txs.slice(0,6).map(t => `
+        document.getElementById('txHistory').innerHTML = txs.slice(0,5).map(t => `
             <div class="tx-item">
-                <span>${t.note} <small style="display:block; color:gray; font-size:11px;">${t.method}</small></span>
-                <b style="color:#334155;">₪${t.amount.toLocaleString()}</b>
+                <span>${t.note}</span>
+                <b>₪${t.amount.toLocaleString()}</b>
             </div>
-        `).join('') || "אין היסטוריה.";
+        `).join('');
         updateChart();
     }
 
@@ -229,18 +208,7 @@
             if(s > 0) dataMap[c.name] = s; 
         });
         if(chart) chart.destroy();
-        if(Object.keys(dataMap).length === 0) return;
-        chart = new Chart(ctx, { 
-            type: 'doughnut', 
-            data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b','#ef4444','#06b6d4'], borderWidth: 2, borderColor: '#fff' }]}, 
-            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 15, font: { size: 12 } } } }, cutout: '70%' }
-        });
-    }
-
-    if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-            navigator.serviceWorker.register("sw.js").catch(e => console.error(e));
-        });
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dataMap), datasets: [{ data: Object.values(dataMap), backgroundColor: ['#6366f1','#ec4899','#22c55e','#f59e0b'] }] }, options: { maintainAspectRatio: false } });
     }
 </script>
 </body>
