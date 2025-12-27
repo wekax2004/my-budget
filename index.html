@@ -2,121 +2,95 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro - Fixed Login</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetMaster Pro - Login Fix</title>
     <style>
-        :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
-        .app-container { max-width: 1100px; margin: 0 auto; }
-        #authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; }
-        #mainApp { display: none; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
-        /* שאר הסטייל מהקוד הקודם שלך נשמר כאן */
-        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; position: relative; }
-        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; cursor: pointer; position: relative; }
-        .edit-btn-small { position: absolute; left: 10px; top: 10px; background: #eee; border: none; border-radius: 5px; padding: 4px 8px; cursor: pointer; font-size: 12px; z-index: 10; }
-        .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
-        .progress-fill { height: 100%; transition: 0.5s ease; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
-        @media (min-width: 1024px) { .modal { align-items: center; } }
-        .modal-content { background: white; padding: 25px; border-radius: 24px 24px 0 0; width: 100%; max-width: 450px; position: relative; }
-        .fx-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-        .fx-grid div { text-align: center; font-size: 12px; color: gray; }
-        .tx-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f8fafc; cursor: pointer; border-radius: 10px; }
-        .tx-item:hover { background: #f1f5f9; }
+        body { font-family: system-ui; background: #f8fafc; direction: rtl; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .auth-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        .btn-login { background: #6366f1; color: white; }
+        .btn-signup { background: #94a3b8; color: white; }
+        #statusMsg { font-size: 13px; margin-top: 15px; min-height: 20px; }
+        #mainApp { display: none; padding: 20px; text-align: center; }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div id="authScreen">
-        <div class="auth-card">
-            <h2 style="text-align: center;">BudgetMaster 💎</h2>
-            <input type="email" id="email" placeholder="אימייל">
-            <input type="password" id="password" placeholder="סיסמה">
-            <button class="btn-main" id="loginBtn">התחברות</button>
-            <button class="btn-main" style="background: #94a3b8;" id="signupBtn">הרשמה</button>
-            <p id="authError" style="color:red; font-size:13px; text-align:center; margin-top:10px;"></p>
-        </div>
-    </div>
+<div id="authScreen" class="auth-card">
+    <h2>BudgetMaster 💎</h2>
+    <input type="email" id="email" placeholder="אימייל">
+    <input type="password" id="password" placeholder="סיסמה">
+    <button class="btn-login" id="loginBtn">התחברות</button>
+    <button class="btn-signup" id="signupBtn">הרשמה (משתמש חדש)</button>
+    <div id="statusMsg"></div>
+</div>
 
-    <div id="mainApp">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 id="userGreeting">שלום!</h3>
-            <button id="logoutBtnTop" style="border:none; background:none; color:var(--danger); cursor:pointer; font-weight:bold;">התנתק 🚪</button>
-        </div>
-        <div id="catList"></div>
-        <div id="txHistory"></div>
-    </div>
+<div id="mainApp">
+    <h2 id="welcome">ברוכים הבאים!</h2>
+    <p>התחברת בהצלחה.</p>
+    <button onclick="location.reload()" style="background:#ef4444; color:white;">התנתק</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, arrayUnion, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+    // הגדרות הפרויקט שלך
     const firebaseConfig = { 
         apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", 
         authDomain: "expensetrackerpro-d216d.firebaseapp.com", 
         projectId: "expensetrackerpro-d216d" 
     };
-    
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const status = document.getElementById('statusMsg');
 
-    // כפתור התחברות
-    document.getElementById('loginBtn').onclick = async () => {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const errTag = document.getElementById('authError');
-        
-        if(!email || !password) { errTag.innerText = "נא למלא אימייל וסיסמה"; return; }
-        
-        try {
-            errTag.innerText = "מתחבר...";
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-            console.error(error);
-            if(error.code === 'auth/invalid-credential') errTag.innerText = "אימייל או סיסמה לא נכונים";
-            else if(error.code === 'auth/user-not-found') errTag.innerText = "משתמש לא קיים";
-            else errTag.innerText = "שגיאה: " + error.message;
-        }
-    };
-
-    // כפתור הרשמה
-    document.getElementById('signupBtn').onclick = async () => {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const errTag = document.getElementById('authError');
-
-        try {
-            errTag.innerText = "יוצר חשבון...";
-            await createUserWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-            if(error.code === 'auth/email-already-in-use') errTag.innerText = "האימייל כבר קיים במערכת";
-            else if(error.code === 'auth/weak-password') errTag.innerText = "סיסמה חייבת להיות לפחות 6 תווים";
-            else errTag.innerText = "שגיאה: " + error.message;
-        }
-    };
-
-    // האזנה למצב המשתמש
-    onAuthStateChanged(auth, u => {
-        if(u) {
-            document.getElementById('authScreen').style.display='none';
-            document.getElementById('mainApp').style.display='block';
-            document.getElementById('userGreeting').innerText = "שלום, " + u.email;
-            // כאן קוראים לפונקציות הסנכרון שלך...
-        } else {
-            document.getElementById('authScreen').style.display='flex';
-            document.getElementById('mainApp').style.display='none';
+    // האזנה למצב המשתמש - אם הוא מחובר, להסתיר את מסך הכניסה
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('welcome').innerText = "שלום, " + user.email;
         }
     });
 
-    document.getElementById('logoutBtnTop').onclick = () => signOut(auth);
+    // פונקציית התחברות
+    document.getElementById('loginBtn').onclick = async () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        status.innerText = "מנסה להתחבר...";
+        status.style.color = "blue";
+
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (error) {
+            console.error(error);
+            status.style.color = "red";
+            if (error.code === 'auth/invalid-credential') status.innerText = "אימייל או סיסמה שגויים";
+            else status.innerText = "שגיאה: " + error.message;
+        }
+    };
+
+    // פונקציית הרשמה
+    document.getElementById('signupBtn').onclick = async () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        status.innerText = "יוצר חשבון...";
+        status.style.color = "blue";
+
+        try {
+            await createUserWithEmailAndPassword(auth, email, pass);
+            status.innerText = "נרשמת בהצלחה!";
+            status.style.color = "green";
+        } catch (error) {
+            status.style.color = "red";
+            if (error.code === 'auth/email-already-in-use') status.innerText = "האימייל כבר קיים במערכת";
+            else if (error.code === 'auth/weak-password') status.innerText = "הסיסמה חייבת להיות 6 תווים לפחות";
+            else status.innerText = "שגיאה ברישום: " + error.message;
+        }
+    };
 </script>
 </body>
 </html>
