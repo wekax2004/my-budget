@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BudgetMaster Pro - Login Fix</title>
+    <title>BudgetMaster Pro - Fix</title>
     <style>
         body { font-family: system-ui; background: #f8fafc; direction: rtl; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .auth-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 5px; transition: 0.3s; }
         .btn-login { background: #6366f1; color: white; }
         .btn-signup { background: #94a3b8; color: white; }
-        #statusMsg { font-size: 13px; margin-top: 15px; min-height: 20px; }
-        #mainApp { display: none; padding: 20px; text-align: center; }
+        #statusMsg { font-size: 13px; margin-top: 15px; min-height: 20px; font-weight: bold; }
+        #mainApp { display: none; padding: 20px; text-align: center; background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; }
     </style>
 </head>
 <body>
@@ -22,21 +22,20 @@
     <input type="email" id="email" placeholder="אימייל">
     <input type="password" id="password" placeholder="סיסמה">
     <button class="btn-login" id="loginBtn">התחברות</button>
-    <button class="btn-signup" id="signupBtn">הרשמה (משתמש חדש)</button>
+    <button class="btn-signup" id="signupBtn">הרשמה</button>
     <div id="statusMsg"></div>
 </div>
 
 <div id="mainApp">
     <h2 id="welcome">ברוכים הבאים!</h2>
     <p>התחברת בהצלחה.</p>
-    <button onclick="location.reload()" style="background:#ef4444; color:white;">התנתק</button>
+    <button onclick="handleLogout()" style="background:#ef4444; color:white;">התנתק 🚪</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    // הגדרות הפרויקט שלך
     const firebaseConfig = { 
         apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", 
         authDomain: "expensetrackerpro-d216d.firebaseapp.com", 
@@ -47,50 +46,53 @@
     const auth = getAuth(app);
     const status = document.getElementById('statusMsg');
 
-    // האזנה למצב המשתמש - אם הוא מחובר, להסתיר את מסך הכניסה
+    // מאזין למצב התחברות
     onAuthStateChanged(auth, (user) => {
         if (user) {
+            console.log("Logged in:", user.email);
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('welcome').innerText = "שלום, " + user.email;
+        } else {
+            document.getElementById('authScreen').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'none';
         }
     });
 
-    // פונקציית התחברות
+    // התחברות
     document.getElementById('loginBtn').onclick = async () => {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
-        status.innerText = "מנסה להתחבר...";
+        status.innerText = "מעבד נתונים...";
         status.style.color = "blue";
 
         try {
+            // הגדרת זיכרון מקומי - קריטי למניעת "קיפאון"
+            await setPersistence(auth, browserLocalPersistence);
             await signInWithEmailAndPassword(auth, email, pass);
         } catch (error) {
             console.error(error);
             status.style.color = "red";
-            if (error.code === 'auth/invalid-credential') status.innerText = "אימייל או סיסמה שגויים";
-            else status.innerText = "שגיאה: " + error.message;
+            status.innerText = "שגיאה: " + (error.code === 'auth/invalid-credential' ? "פרטים שגויים" : error.message);
         }
     };
 
-    // פונקציית הרשמה
+    // הרשמה
     document.getElementById('signupBtn').onclick = async () => {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
         status.innerText = "יוצר חשבון...";
-        status.style.color = "blue";
-
+        
         try {
+            await setPersistence(auth, browserLocalPersistence);
             await createUserWithEmailAndPassword(auth, email, pass);
-            status.innerText = "נרשמת בהצלחה!";
-            status.style.color = "green";
         } catch (error) {
             status.style.color = "red";
-            if (error.code === 'auth/email-already-in-use') status.innerText = "האימייל כבר קיים במערכת";
-            else if (error.code === 'auth/weak-password') status.innerText = "הסיסמה חייבת להיות 6 תווים לפחות";
-            else status.innerText = "שגיאה ברישום: " + error.message;
+            status.innerText = error.message;
         }
     };
+
+    window.handleLogout = () => signOut(auth);
 </script>
 </body>
 </html>
