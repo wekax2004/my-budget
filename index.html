@@ -9,6 +9,7 @@
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#6366f1">
 
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -20,7 +21,8 @@
     body {
       font-family: system-ui, sans-serif;
       background:var(--bg);
-      margin:0; padding:15px;
+      margin:0;
+      padding:15px;
     }
     .card {
       background:#fff;
@@ -60,7 +62,7 @@
 
 <!-- AUTH -->
 <div id="authScreen" class="card">
-  <h2 style="text-align:center">BudgetMaster 💎</h2>
+  <h2 style="text-align:center">💎 BudgetMaster</h2>
   <input id="email" type="email" placeholder="אימייל">
   <input id="pass" type="password" placeholder="סיסמה">
   <button class="btn" id="loginBtn">התחברות</button>
@@ -93,104 +95,137 @@
   </div>
 </div>
 
+<!-- MAIN SCRIPT -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+window.addEventListener("DOMContentLoaded", async () => {
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU",
-  authDomain: "expensetrackerpro-d216d.firebaseapp.com",
-  projectId: "expensetrackerpro-d216d"
-};
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { 
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    onSnapshot,
+    query,
+    where,
+    Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Elements
-const authScreen = document.getElementById("authScreen");
-const mainApp = document.getElementById("mainApp");
-const emailEl = document.getElementById("email");
-const passEl = document.getElementById("pass");
-const authErr = document.getElementById("authErr");
-const hello = document.getElementById("hello");
-const txList = document.getElementById("txList");
-const noteEl = document.getElementById("note");
-const amountEl = document.getElementById("amount");
-const chartCanvas = document.getElementById("chart");
+  const firebaseConfig = {
+    apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU",
+    authDomain: "expensetrackerpro-d216d.firebaseapp.com",
+    projectId: "expensetrackerpro-d216d"
+  };
 
-let user = null;
-let txs = [];
-let chart = null;
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
 
-// Auth buttons
-document.getElementById("loginBtn").onclick = () => authAction("login");
-document.getElementById("signupBtn").onclick = () => authAction("signup");
-document.getElementById("logoutBtn").onclick = () => signOut(auth);
-document.getElementById("addTxBtn").onclick = addTx;
+  // Elements
+  const authScreen = document.getElementById("authScreen");
+  const mainApp    = document.getElementById("mainApp");
+  const emailEl    = document.getElementById("email");
+  const passEl     = document.getElementById("pass");
+  const authErr    = document.getElementById("authErr");
+  const hello      = document.getElementById("hello");
+  const txList     = document.getElementById("txList");
+  const noteEl     = document.getElementById("note");
+  const amountEl   = document.getElementById("amount");
+  const chartCanvas= document.getElementById("chart");
 
-async function authAction(type) {
-  try {
-    type === "login"
-      ? await signInWithEmailAndPassword(auth, emailEl.value, passEl.value)
-      : await createUserWithEmailAndPassword(auth, emailEl.value, passEl.value);
-  } catch (e) {
-    authErr.innerText = e.message;
+  let user  = null;
+  let txs   = [];
+  let chart = null;
+
+  // Buttons
+  document.getElementById("loginBtn").onclick  = () => authAction("login");
+  document.getElementById("signupBtn").onclick = () => authAction("signup");
+  document.getElementById("logoutBtn").onclick = () => signOut(auth);
+  document.getElementById("addTxBtn").onclick  = addTx;
+
+  async function authAction(type) {
+    authErr.innerText = "";
+    try {
+      if (type === "login") {
+        await signInWithEmailAndPassword(auth, emailEl.value, passEl.value);
+      } else {
+        await createUserWithEmailAndPassword(auth, emailEl.value, passEl.value);
+      }
+    } catch (e) {
+      authErr.innerText = e.message;
+    }
   }
-}
 
-onAuthStateChanged(auth, u => {
-  if (!u) return;
-  user = u;
-  authScreen.style.display = "none";
-  mainApp.style.display = "block";
-  hello.innerText = "שלום " + u.email;
-  sync();
+  onAuthStateChanged(auth, u => {
+    if (!u) {
+      authScreen.style.display = "block";
+      mainApp.style.display = "none";
+      return;
+    }
+
+    user = u;
+    authScreen.style.display = "none";
+    mainApp.style.display = "block";
+    hello.innerText = "שלום " + u.email;
+
+    sync();
+  });
+
+  function sync() {
+    onSnapshot(
+      query(collection(db, "transactions"), where("user", "==", user.email)),
+      snap => {
+        txs = snap.docs.map(d => d.data());
+        render();
+      }
+    );
+  }
+
+  async function addTx() {
+    if (!amountEl.value) return;
+
+    await addDoc(collection(db, "transactions"), {
+      note: noteEl.value || "הוצאה",
+      amount: Number(amountEl.value),
+      user: user.email,
+      date: Timestamp.now()
+    });
+
+    noteEl.value = "";
+    amountEl.value = "";
+  }
+
+  function render() {
+    txList.innerHTML = txs.map(t => `
+      <div class="tx">
+        <span>${t.note}</span>
+        <b>₪${t.amount}</b>
+      </div>
+    `).join("");
+
+    const total = txs.reduce((s, t) => s + t.amount, 0);
+
+    if (chart) chart.destroy();
+    chart = new Chart(chartCanvas, {
+      type: "doughnut",
+      data: {
+        labels: ["סה״כ הוצאות"],
+        datasets: [{ data: [total] }]
+      }
+    });
+  }
+
 });
-
-function sync() {
-  onSnapshot(
-    query(collection(db, "transactions"), where("user", "==", user.email)),
-    snap => {
-      txs = snap.docs.map(d => d.data());
-      render();
-    }
-  );
-}
-
-async function addTx() {
-  await addDoc(collection(db, "transactions"), {
-    note: noteEl.value || "הוצאה",
-    amount: +amountEl.value || 0,
-    user: user.email,
-    date: Timestamp.now()
-  });
-  noteEl.value = "";
-  amountEl.value = "";
-}
-
-function render() {
-  txList.innerHTML = txs.map(t => `
-    <div class="tx">
-      <span>${t.note}</span>
-      <b>₪${t.amount}</b>
-    </div>
-  `).join("");
-
-  const total = txs.reduce((s, t) => s + t.amount, 0);
-
-  if (chart) chart.destroy();
-  chart = new Chart(chartCanvas, {
-    type: "doughnut",
-    data: {
-      labels: ["סה\"כ הוצאות"],
-      datasets: [{ data: [total] }]
-    }
-  });
-}
 </script>
 
+<!-- Service Worker -->
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
