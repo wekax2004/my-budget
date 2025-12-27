@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BudgetMaster Pro - Multi-User & Edit</title>
+    <title>BudgetMaster Pro - Advanced Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
@@ -13,7 +13,7 @@
         .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
         #mainApp { display: none; }
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; }
-        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; position: relative; }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; }
         .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
         .progress-fill { height: 100%; transition: 0.5s ease; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
@@ -22,8 +22,8 @@
         input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
         .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; }
-        .del-btn { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 18px; }
-        .share-btn { font-size: 12px; background: #e2e8f0; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+        .action-btn { background: #f1f5f9; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 5px; }
+        .del-btn { color: var(--danger); }
     </style>
 </head>
 <body>
@@ -49,7 +49,7 @@
             <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h3>📂 קטגוריות</h3>
-                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ חדש</button>
+                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ קטגוריה</button>
                 </div>
                 <div id="catList"></div>
             </div>
@@ -68,9 +68,16 @@
 </div>
 
 <div id="expModal" class="modal"><div class="modal-content">
-    <h3 id="expTitle">הוספת הוצאה</h3>
-    <input type="number" id="fAmt" placeholder="סכום בשקלים">
-    <input type="text" id="expNote" placeholder="מה קנית?">
+    <h3 id="expTitle">הוצאה</h3>
+    <div style="display: flex; gap: 10px;">
+        <input type="number" id="fAmt" placeholder="סכום" style="flex: 2;">
+        <select id="fCurr" style="flex: 1;">
+            <option value="ILS">₪</option>
+            <option value="USD">$</option>
+            <option value="EUR">€</option>
+        </select>
+    </div>
+    <input type="text" id="expNote" placeholder="תיאור">
     <select id="pMethod">
         <option value="💳 אשראי">💳 אשראי</option>
         <option value="💵 מזומן">💵 מזומן</option>
@@ -91,6 +98,8 @@
     const db = getFirestore(app);
 
     let user = null, cats = [], txs = [], chart = null;
+    let editMode = { active: false, id: null };
+    const rates = { ILS: 1, USD: 3.65, EUR: 3.95 };
 
     onAuthStateChanged(auth, u => {
         if(u) { user = u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
@@ -119,26 +128,78 @@
                         <div style="float:left">₪${spent.toLocaleString()} / ₪${c.budget.toLocaleString()}</div>
                         <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${perc >= 100 ? 'var(--danger)' : 'var(--success)'}"></div></div>
                     </div>
-                    <div style="margin-top:10px; display:flex; gap:10px;">
-                        <button class="share-btn" onclick="shareCat('${c.id}')">👥 שיתוף</button>
-                        <button class="share-btn" onclick="editCat('${c.id}', ${c.budget})">⚙️ ערוך תקציב</button>
+                    <div style="margin-top:10px; display:flex; gap:5px;">
+                        <button class="action-btn" onclick="shareCat('${c.id}')">👥 שיתוף</button>
+                        <button class="action-btn" onclick="editCatSettings('${c.id}', '${c.name}', ${c.budget})">⚙️ ערוך</button>
                     </div>
                 </div>`;
         }).join('');
 
         document.getElementById('historyList').innerHTML = txs.map(t => `
             <div class="history-item">
-                <div>
-                    <strong>${t.note}</strong> <small>(${t.method})</small>
-                </div>
+                <div><strong>${t.note}</strong> <small>(${t.method})</small></div>
                 <div>
                     <b style="color:var(--danger); margin-left:10px;">₪${t.amount}</b>
-                    <button class="del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
+                    <button class="action-btn" onclick="openEditTx('${t.id}')">✏️</button>
+                    <button class="action-btn del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
                 </div>
             </div>
         `).join('');
         updateChart();
     }
+
+    window.editCatSettings = async (id, oldName, oldBudget) => {
+        const newName = prompt("שם קטגוריה חדש:", oldName);
+        const newBudget = prompt("תקציב חדש:", oldBudget);
+        if(newName && newBudget) await updateDoc(doc(db, "categories", id), { name: newName, budget: parseFloat(newBudget) });
+    };
+
+    window.openEditTx = (id) => {
+        const tx = txs.find(t => t.id === id);
+        editMode = { active: true, id: id };
+        window.currentCatId = tx.catId;
+        document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
+        document.getElementById('fCurr').value = tx.currency || "ILS";
+        document.getElementById('expNote').value = tx.note;
+        document.getElementById('pMethod').value = tx.method;
+        document.getElementById('expModal').style.display = 'flex';
+    };
+
+    window.openAddTx = (id, name) => {
+        editMode = { active: false, id: null };
+        window.currentCatId = id;
+        document.getElementById('fAmt').value = "";
+        document.getElementById('expNote').value = "";
+        document.getElementById('expModal').style.display = 'flex';
+    };
+
+    document.getElementById('saveTxBtn').onclick = async () => {
+        const rawAmt = parseFloat(document.getElementById('fAmt').value);
+        const curr = document.getElementById('fCurr').value;
+        if(!rawAmt) return;
+        
+        const data = {
+            amount: rawAmt * rates[curr],
+            originalAmount: rawAmt,
+            currency: curr,
+            note: document.getElementById('expNote').value || "הוצאה",
+            method: document.getElementById('pMethod').value,
+            catId: window.currentCatId,
+            allowedUsers: [user.email],
+            date: Timestamp.now()
+        };
+
+        if(editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
+        else await addDoc(collection(db, "transactions"), data);
+        
+        document.getElementById('expModal').style.display = 'none';
+    };
+
+    window.deleteTx = async (id) => { if(confirm("למחוק?")) await deleteDoc(doc(db, "transactions", id)); };
+    window.shareCat = async (id) => { 
+        const email = prompt("אימייל לשיתוף:"); 
+        if(email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) }); 
+    };
 
     function updateChart() {
         const ctx = document.getElementById('mainChart').getContext('2d');
@@ -146,29 +207,6 @@
         if(chart) chart.destroy();
         chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b'] }] }, options: { maintainAspectRatio: false } });
     }
-
-    window.shareCat = async (id) => {
-        const email = prompt("הכנס אימייל של המשתמש לשיתוף:");
-        if(email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) });
-    };
-
-    window.editCat = async (id, current) => {
-        const b = prompt("תקציב חדש:", current);
-        if(b) await updateDoc(doc(db, "categories", id), { budget: parseFloat(b) });
-    };
-
-    window.deleteTx = async (id) => {
-        if(confirm("למחוק הוצאה זו?")) await deleteDoc(doc(db, "transactions", id));
-    };
-
-    window.openAddTx = (id, name) => { window.currentCatId = id; document.getElementById('expTitle').innerText = name; document.getElementById('expModal').style.display = 'flex'; };
-
-    document.getElementById('saveTxBtn').onclick = async () => {
-        const amt = parseFloat(document.getElementById('fAmt').value);
-        if(!amt) return;
-        await addDoc(collection(db, "transactions"), { amount: amt, note: document.getElementById('expNote').value || "הוצאה", method: document.getElementById('pMethod').value, catId: window.currentCatId, allowedUsers: [user.email], date: Timestamp.now() });
-        document.getElementById('expModal').style.display = 'none';
-    };
 
     document.getElementById('addCatBtn').onclick = async () => {
         const n = prompt("שם קטגוריה:");
