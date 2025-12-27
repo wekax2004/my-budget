@@ -3,20 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>BudgetMaster Pro</title>
 
   <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#6366f1">
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root {
-      --primary:#6366f1; --bg:#f8fafc;
-      --success:#22c55e; --danger:#ef4444;
+      --primary:#6366f1;
+      --bg:#f8fafc;
+      --danger:#ef4444;
     }
     body {
       font-family: system-ui, sans-serif;
@@ -24,28 +23,35 @@
       margin:0; padding:15px;
     }
     .card {
-      background:#fff; border-radius:20px;
-      padding:20px; margin-bottom:15px;
+      background:#fff;
+      border-radius:20px;
+      padding:20px;
+      margin-bottom:15px;
       box-shadow:0 4px 15px rgba(0,0,0,.05);
     }
     .btn {
-      width:100%; padding:12px;
-      border:none; border-radius:12px;
+      width:100%;
+      padding:12px;
+      border:none;
+      border-radius:12px;
       background:var(--primary);
-      color:#fff; font-weight:bold;
+      color:#fff;
+      font-weight:bold;
       cursor:pointer;
     }
-    input,select {
-      width:100%; padding:12px;
+    input {
+      width:100%;
+      padding:12px;
       border-radius:12px;
       border:1px solid #e5e7eb;
       margin:6px 0;
     }
     #mainApp { display:none; }
     .tx {
-      display:flex; justify-content:space-between;
-      padding:10px; border-bottom:1px solid #eee;
-      cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      padding:10px;
+      border-bottom:1px solid #eee;
     }
   </style>
 </head>
@@ -53,12 +59,12 @@
 <body>
 
 <!-- AUTH -->
-<div id="auth" class="card">
+<div id="authScreen" class="card">
   <h2 style="text-align:center">BudgetMaster 💎</h2>
   <input id="email" type="email" placeholder="אימייל">
   <input id="pass" type="password" placeholder="סיסמה">
-  <button class="btn" onclick="authAction('login')">התחברות</button>
-  <button class="btn" style="background:#94a3b8" onclick="authAction('signup')">הרשמה</button>
+  <button class="btn" id="loginBtn">התחברות</button>
+  <button class="btn" style="background:#94a3b8" id="signupBtn">הרשמה</button>
   <p id="authErr" style="color:red;text-align:center"></p>
 </div>
 
@@ -66,7 +72,7 @@
 <div id="mainApp">
   <div class="card">
     <h3 id="hello"></h3>
-    <button onclick="logout()" style="color:red;background:none;border:none">התנתק</button>
+    <button id="logoutBtn" style="color:red;background:none;border:none">התנתק</button>
   </div>
 
   <div class="card">
@@ -78,7 +84,7 @@
     <h3>➕ הוצאה</h3>
     <input id="note" placeholder="פירוט">
     <input id="amount" type="number" placeholder="₪ סכום">
-    <button class="btn" onclick="addTx()">שמור</button>
+    <button class="btn" id="addTxBtn">שמור</button>
   </div>
 
   <div class="card">
@@ -87,7 +93,6 @@
   </div>
 </div>
 
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -103,68 +108,89 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-let user=null, txs=[], chart=null;
+// Elements
+const authScreen = document.getElementById("authScreen");
+const mainApp = document.getElementById("mainApp");
+const emailEl = document.getElementById("email");
+const passEl = document.getElementById("pass");
+const authErr = document.getElementById("authErr");
+const hello = document.getElementById("hello");
+const txList = document.getElementById("txList");
+const noteEl = document.getElementById("note");
+const amountEl = document.getElementById("amount");
+const chartCanvas = document.getElementById("chart");
 
-window.authAction = async type => {
-  const e=email.value, p=pass.value;
+let user = null;
+let txs = [];
+let chart = null;
+
+// Auth buttons
+document.getElementById("loginBtn").onclick = () => authAction("login");
+document.getElementById("signupBtn").onclick = () => authAction("signup");
+document.getElementById("logoutBtn").onclick = () => signOut(auth);
+document.getElementById("addTxBtn").onclick = addTx;
+
+async function authAction(type) {
   try {
-    type==="login"
-      ? await signInWithEmailAndPassword(auth,e,p)
-      : await createUserWithEmailAndPassword(auth,e,p);
-  } catch(err) {
-    authErr.innerText = err.message;
+    type === "login"
+      ? await signInWithEmailAndPassword(auth, emailEl.value, passEl.value)
+      : await createUserWithEmailAndPassword(auth, emailEl.value, passEl.value);
+  } catch (e) {
+    authErr.innerText = e.message;
   }
-};
+}
 
-window.logout = () => signOut(auth);
-
-onAuthStateChanged(auth,u=>{
-  if(!u) return;
-  user=u;
-  auth.style.display="none";
-  mainApp.style.display="block";
-  hello.innerText="שלום "+u.email;
+onAuthStateChanged(auth, u => {
+  if (!u) return;
+  user = u;
+  authScreen.style.display = "none";
+  mainApp.style.display = "block";
+  hello.innerText = "שלום " + u.email;
   sync();
 });
 
-function sync(){
+function sync() {
   onSnapshot(
-    query(collection(db,"transactions"), where("user","==",user.email)),
-    s=>{
-      txs=s.docs.map(d=>d.data());
+    query(collection(db, "transactions"), where("user", "==", user.email)),
+    snap => {
+      txs = snap.docs.map(d => d.data());
       render();
     }
   );
 }
 
-window.addTx = async ()=>{
-  await addDoc(collection(db,"transactions"),{
-    note:note.value||"הוצאה",
-    amount:+amount.value||0,
-    user:user.email,
-    date:Timestamp.now()
+async function addTx() {
+  await addDoc(collection(db, "transactions"), {
+    note: noteEl.value || "הוצאה",
+    amount: +amountEl.value || 0,
+    user: user.email,
+    date: Timestamp.now()
   });
-  note.value=""; amount.value="";
-};
+  noteEl.value = "";
+  amountEl.value = "";
+}
 
-function render(){
-  txList.innerHTML = txs.map(t=>`
+function render() {
+  txList.innerHTML = txs.map(t => `
     <div class="tx">
       <span>${t.note}</span>
       <b>₪${t.amount}</b>
     </div>
   `).join("");
 
-  const total = txs.reduce((s,t)=>s+t.amount,0);
-  if(chart) chart.destroy();
-  chart = new Chart(chartEl,{
-    type:"doughnut",
-    data:{labels:["סה\"כ"],datasets:[{data:[total]}]}
+  const total = txs.reduce((s, t) => s + t.amount, 0);
+
+  if (chart) chart.destroy();
+  chart = new Chart(chartCanvas, {
+    type: "doughnut",
+    data: {
+      labels: ["סה\"כ הוצאות"],
+      datasets: [{ data: [total] }]
+    }
   });
 }
 </script>
 
-<!-- SERVICE WORKER -->
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
