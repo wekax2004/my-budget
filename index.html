@@ -541,6 +541,10 @@
                     style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
                     📥 ייצוא CSV
                 </button>
+                <button onclick="openRecurring()" class="icon-btn" title="הוצאות קבועות"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
+                    🔄 הוראות קבע
+                </button>
             </div>
 
             <div class="summary-chips">
@@ -687,6 +691,34 @@
         </div>
     </div>
 
+    <div id="recurringModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>הוראות קבע 🔄</h3>
+                <span class="close-btn" onclick="closeModal('recurringModal')">&times;</span>
+            </div>
+
+            <div style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:20px;">
+                <h4 style="margin:0 0 10px 0;">הוסף חדש</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <input type="text" id="recName" placeholder="שם (למשל: נטפליקס)">
+                    <input type="number" id="recAmount" placeholder="סכום">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <select id="recCat"></select>
+                    <input type="date" id="recNextDate">
+                </div>
+                <button onclick="addRecurring()" class="btn-main" style="margin-top:10px;">הוספה</button>
+            </div>
+
+            <h4 style="margin-bottom:10px;">פעילים</h4>
+            <div id="recurringList"
+                style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;">
+                <!-- List -->
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -698,6 +730,7 @@
         const db = getFirestore(app);
 
         let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
+        let recurring = [];
         let editMode = { active: false, id: null };
         let catEditMode = { active: false, id: null };
         let rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // Initial Fallback
@@ -743,6 +776,87 @@
             render(); // Re-render with new filter
         });
 
+        window.openRecurring = () => {
+            document.getElementById('recurringModal').style.display = 'flex';
+            renderRecCats();
+            renderRecurring();
+        }
+
+        function renderRecCats() {
+            const sel = document.getElementById('recCat');
+            sel.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        window.addRecurring = async () => {
+            const name = document.getElementById('recName').value;
+            const amount = parseFloat(document.getElementById('recAmount').value);
+            const catId = document.getElementById('recCat').value;
+            const nextDate = document.getElementById('recNextDate').value;
+
+            if (!name || isNaN(amount) || !nextDate) return alert("חסרים נתונים");
+
+            await addDoc(collection(db, "recurring"), {
+                uid: user.uid,
+                name, amount, catId, nextDate, frequency: 'monthly'
+            });
+
+            // Clear inputs
+            document.getElementById('recName').value = '';
+            document.getElementById('recAmount').value = '';
+        };
+
+        window.deleteRecurring = async (id) => {
+            if (confirm('למחוק הוראת קבע זו?')) {
+                await deleteDoc(doc(db, "recurring", id));
+            }
+        };
+
+        function renderRecurring() {
+            const el = document.getElementById('recurringList');
+            el.innerHTML = recurring.map(r => {
+                const cat = cats.find(c => c.id === r.catId);
+                return `
+                <div class="cat-item" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:bold;">${r.name}</div>
+                        <div style="font-size:12px; color:var(--text-sub);">
+                            ${cat?.name || '?'} • ₪${r.amount}
+                            <br> הבא: ${r.nextDate}
+                        </div>
+                    </div>
+                    <button onclick="deleteRecurring('${r.id}')" style="background:none; border:none; cursor:pointer;">🗑️</button>
+                </div>`;
+            }).join('');
+        }
+
+        async function checkRecurring() {
+            const today = new Date().toISOString().slice(0, 10);
+
+            for (const r of recurring) {
+                if (r.nextDate <= today) {
+                    // 1. Create Transaction
+                    await addDoc(collection(db, "transactions"), {
+                        allowedUsers: [user.email], // Use allowedUsers for transactions
+                        amount: r.amount,
+                        catId: r.catId,
+                        note: `הוראת קבע: ${r.name}`,
+                        date: Timestamp.fromDate(new Date(r.nextDate)), // Convert to Firebase Timestamp
+                        method: 'אשראי', // Default to credit
+                        currency: 'ILS'
+                    });
+
+                    // 2. Update Next Date (Add 1 Month)
+                    const next = new Date(r.nextDate);
+                    next.setMonth(next.getMonth() + 1);
+                    await updateDoc(doc(db, "recurring", r.id), {
+                        nextDate: next.toISOString().slice(0, 10)
+                    });
+
+                    alert(`הוראת קבע בוצעה: ${r.name}`);
+                }
+            }
+        }
+
         onAuthStateChanged(auth, u => {
             if (u) {
                 user = u;
@@ -762,6 +876,13 @@
             onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
                 cats = s.docs.map(d => ({ id: d.id, ...d.data() }));
                 render();
+            });
+
+            // Sync Recurring
+            onSnapshot(query(collection(db, "recurring"), where("uid", "==", user.uid)), s => {
+                recurring = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderRecurring();
+                checkRecurring();
             });
 
             // Sync Transactions (Fetch ALL, filter locally for simplicity in this version)
