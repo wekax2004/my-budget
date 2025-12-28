@@ -652,8 +652,10 @@
             </div>
 
             <div
-                style="font-size:12px; color:var(--text-sub); margin-top:10px; background:#F3F4F6; padding:10px; border-radius:8px;">
-                ℹ️ הסכום יומר אוטומטית לשקלים לפי שער קבוע במידה ונבחר מט"ח.
+                style="font-size:12px; color:var(--text-sub); margin-top:10px; background:var(--bg); padding:10px; border-radius:8px; border: 1px solid var(--input-border);">
+                ℹ️ הסכום יומר אוטומטית לשקלים.
+                <br>
+                <span id="rateInfo">מקור שערים: ברירת מחדל (קבוע)</span>
             </div>
 
             <button class="btn-main" id="saveTxBtn">שמירה וסיום</button>
@@ -698,7 +700,26 @@
         let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
         let editMode = { active: false, id: null };
         let catEditMode = { active: false, id: null };
-        const rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // Fixed Rates for simplicity
+        let rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // Initial Fallback
+
+        async function fetchRates() {
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/ILS');
+                const data = await res.json();
+                if (data && data.rates) {
+                    // API returns 1 ILS = x USD. We need 1 USD = y ILS.
+                    rates.USD = 1 / data.rates.USD;
+                    rates.EUR = 1 / data.rates.EUR;
+                    document.getElementById('rateInfo').innerText = `מקור שערים: חי (עודכן ${new Date().toLocaleTimeString()})`;
+                    document.getElementById('rateInfo').style.color = 'var(--success)';
+                }
+            } catch (e) {
+                console.log("Failed to fetch rates", e);
+            }
+        }
+
+        // Init
+        fetchRates();
 
         // Theme Init
         if (localStorage.getItem('theme') === 'dark') {
