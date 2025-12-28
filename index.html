@@ -815,13 +815,15 @@
             const el = document.getElementById('recurringList');
             el.innerHTML = recurring.map(r => {
                 const cat = cats.find(c => c.id === r.catId);
+                const [y, m, d] = r.nextDate.split('-');
+                const fmtDate = `${d}/${m}/${y}`;
                 return `
                 <div class="cat-item" style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <div style="font-weight:bold;">${r.name}</div>
                         <div style="font-size:12px; color:var(--text-sub);">
                             ${cat?.name || '?'} • ₪${r.amount}
-                            <br> הבא: ${r.nextDate}
+                            <br> הבא: ${fmtDate}
                         </div>
                     </div>
                     <button onclick="deleteRecurring('${r.id}')" style="background:none; border:none; cursor:pointer;">🗑️</button>
