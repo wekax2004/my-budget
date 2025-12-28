@@ -1047,6 +1047,12 @@
                 savings = s.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderSavings();
             });
+
+            // Sync Gift Cards
+            onSnapshot(query(collection(db, "giftcards"), where("owner", "==", user.email)), s => {
+                cards = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderGiftCards();
+            });
         }
 
         function render() {
