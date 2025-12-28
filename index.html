@@ -74,7 +74,9 @@
         h3 {
             margin: 0;
             font-weight: 700;
-            color: #111827;
+            margin: 0;
+            font-weight: 700;
+            color: var(--text-main);
         }
 
         h2 {
@@ -97,7 +99,7 @@
         }
 
         .auth-card {
-            background: white;
+            background: var(--card-bg);
             padding: 40px;
             border-radius: 24px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
@@ -232,7 +234,7 @@
         }
 
         .cat-item {
-            background: white;
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 20px;
             border: 1px solid #E5E7EB;
@@ -265,6 +267,10 @@
         .cat-stats {
             font-size: 14px;
             color: var(--text-sub);
+        }
+
+        .cat-stats b {
+            color: var(--text-main) !important;
         }
 
         .progress-bg {
@@ -422,7 +428,7 @@
         }
 
         .modal-content {
-            background: white;
+            background: var(--card-bg);
             padding: 30px;
             border-radius: 24px 24px 0 0;
             width: 100%;
@@ -467,7 +473,7 @@
         }
 
         .sum-chip {
-            background: white;
+            background: var(--card-bg);
             padding: 15px;
             border-radius: 16px;
             flex: 1;
@@ -783,8 +789,8 @@
                             ${c.name}
                         </div>
                         <div class="cat-stats">
-                            <b style="color:#111827">₪${Math.round(catSpent).toLocaleString()}</b>
-                            <span style="color:#9CA3AF"> / ₪${c.budget.toLocaleString()}</span>
+                            <b style="color:var(--text-main)">₪${Math.round(catSpent).toLocaleString()}</b>
+                            <span style="color:var(--text-sub)"> / ₪${c.budget.toLocaleString()}</span>
                         </div>
                     </div>
                     
