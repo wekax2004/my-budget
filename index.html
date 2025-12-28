@@ -1325,7 +1325,13 @@
                 document.getElementById('catModal').style.display = 'none';
             } catch (e) {
                 console.error(e);
-                alert("שגיאה בשמירה");
+                document.getElementById('catModal').style.display = 'none'; // Close modal even on error
+
+                if (e.code === 'resource-exhausted') {
+                    alert('⚠️ הגעת למכסת Firebase היומית.\n\nנסה שוב מחר או שדרג את התוכנית.');
+                } else {
+                    alert('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'));
+                }
             }
         };
 
@@ -1386,7 +1392,16 @@
                 closeModal();
             } catch (e) {
                 console.error(e);
-                alert("שגיאה בשמירה");
+                closeModal(); // Close modal even on error
+
+                // User-friendly error messages
+                if (e.code === 'resource-exhausted') {
+                    alert('⚠️ הגעת למכסת Firebase היומית.\n\nנסה שוב מחר או שדרג את התוכנית בקונסול Firebase.');
+                } else if (e.code === 'permission-denied') {
+                    alert('⚠️ אין לך הרשאה לבצע פעולה זו.');
+                } else {
+                    alert('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'));
+                }
             }
         };
 
