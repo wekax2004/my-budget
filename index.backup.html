@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BudgetMaster Pro - Multi-Currency & Full Edit</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #6366f1; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
+        .app-container { max-width: 1100px; margin: 0 auto; }
+        #authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .auth-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
+        #mainApp { display: none; }
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 15px; }
+        .cat-item { background: white; border-radius: 18px; padding: 18px; margin-bottom: 12px; border: 1px solid #f1f5f9; }
+        .progress-bar { background: #f1f5f9; height: 10px; border-radius: 10px; overflow: hidden; margin-top: 12px; }
+        .progress-fill { height: 100%; transition: 0.5s ease; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
+        @media (min-width: 1024px) { .modal { align-items: center; } }
+        .modal-content { background: white; padding: 25px; border-radius: 24px 24px 0 0; width: 100%; max-width: 450px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        .btn-main { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .action-btn { background: #f1f5f9; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 5px; }
+        .del-btn { color: var(--danger); }
+        .orig-amt { font-size: 11px; color: gray; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2>BudgetMaster 💎</h2>
+            <input type="email" id="email" placeholder="אימייל">
+            <input type="password" id="password" placeholder="סיסמה">
+            <button class="btn-main" id="loginBtn">התחברות</button>
+            <button class="btn-main" style="background: #94a3b8;" id="signupBtn">הרשמה</button>
+        </div>
+    </div>
+
+    <div id="mainApp">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 id="userGreeting">שלום!</h3>
+            <button id="logoutBtn" style="border:none; background:none; color:var(--danger); cursor:pointer; font-weight:bold;">התנתק 🚪</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3>📂 קטגוריות</h3>
+                    <button id="addCatBtn" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer;">+ קטגוריה</button>
+                </div>
+                <div id="catList"></div>
+            </div>
+            
+            <div class="card">
+                <h3>📊 פילוח (ב-₪)</h3>
+                <div style="height:200px;"><canvas id="mainChart"></canvas></div>
+            </div>
+
+            <div class="card">
+                <h3>📜 היסטוריה</h3>
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="expModal" class="modal"><div class="modal-content">
+    <h3 id="expTitle">פרטי הוצאה</h3>
+    <div style="display: flex; gap: 10px;">
+        <input type="number" id="fAmt" placeholder="סכום" style="flex: 2;">
+        <select id="fCurr" style="flex: 1;">
+            <option value="ILS">₪</option>
+            <option value="USD">$</option>
+            <option value="EUR">€</option>
+        </select>
+    </div>
+    <input type="text" id="expNote" placeholder="תיאור">
+    <select id="pMethod">
+        <option value="💳 אשראי">💳 אשראי</option>
+        <option value="💵 מזומן">💵 מזומן</option>
+        <option value="📱 ביט">📱 ביט</option>
+    </select>
+    <button class="btn-main" id="saveTxBtn">שמור ועדכן שקלים</button>
+    <button onclick="document.getElementById('expModal').style.display='none'" style="width:100%; border:none; background:none; margin-top:10px; color:gray;">ביטול</button>
+</div></div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let user = null, cats = [], txs = [], chart = null;
+    let editMode = { active: false, id: null };
+    const rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // שערי המרה קבועים
+
+    onAuthStateChanged(auth, u => {
+        if(u) { user = u; document.getElementById('authScreen').style.display='none'; document.getElementById('mainApp').style.display='block'; startSync(); }
+        else { document.getElementById('authScreen').style.display='flex'; document.getElementById('mainApp').style.display='none'; }
+    });
+
+    function startSync() {
+        onSnapshot(query(collection(db,"categories"), where("allowedUsers","array-contains",user.email)), s => {
+            cats = s.docs.map(d => ({id:d.id, ...d.data()}));
+            render();
+        });
+        onSnapshot(query(collection(db,"transactions"), where("allowedUsers","array-contains",user.email), orderBy("date", "desc")), s => {
+            txs = s.docs.map(d => ({id:d.id, ...d.data()}));
+            render();
+        });
+    }
+
+    function render() {
+        // רשימת קטגוריות
+        document.getElementById('catList').innerHTML = cats.map(c => {
+            const spent = txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0);
+            const perc = Math.min((spent / c.budget) * 100, 100);
+            return `
+                <div class="cat-item">
+                    <div onclick="openAddTx('${c.id}', '${c.name}')" style="cursor:pointer">
+                        <b>📂 ${c.name}</b>
+                        <div style="float:left">₪${Math.round(spent).toLocaleString()} / ₪${c.budget.toLocaleString()}</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:${perc}%; background:${perc >= 100 ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                    </div>
+                    <div style="margin-top:10px; display:flex; gap:5px;">
+                        <button class="action-btn" onclick="shareCat('${c.id}')">👥 שיתוף</button>
+                        <button class="action-btn" onclick="editCatFull('${c.id}', '${c.name}', ${c.budget})">⚙️ ערוך קטגוריה</button>
+                    </div>
+                </div>`;
+        }).join('');
+
+        // רשימת היסטוריה
+        document.getElementById('historyList').innerHTML = txs.map(t => {
+            const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+            const subText = t.currency !== 'ILS' ? `<span class="orig-amt">מקור: ${sym}${t.originalAmount}</span>` : '';
+            return `
+                <div class="history-item">
+                    <div>
+                        <strong>${t.note}</strong> <small>(${t.method})</small>
+                        ${subText}
+                    </div>
+                    <div style="text-align: left;">
+                        <b style="color:var(--danger); margin-left:10px;">₪${Math.round(t.amount).toLocaleString()}</b>
+                        <button class="action-btn" onclick="openEditTx('${t.id}')">✏️</button>
+                        <button class="action-btn del-btn" onclick="deleteTx('${t.id}')">🗑️</button>
+                    </div>
+                </div>`;
+        }).join('');
+        updateChart();
+    }
+
+    // עריכת קטגוריה מלאה (שם ותקציב)
+    window.editCatFull = async (id, oldName, oldBudget) => {
+        const newName = prompt("שנה את שם הקטגוריה:", oldName);
+        const newBudget = prompt("שנה את התקציב (בשקלים):", oldBudget);
+        if (newName && newBudget) {
+            await updateDoc(doc(db, "categories", id), { name: newName, budget: parseFloat(newBudget) });
+        }
+    };
+
+    // פתיחת עריכת הוצאה
+    window.openEditTx = (id) => {
+        const tx = txs.find(t => t.id === id);
+        editMode = { active: true, id: id };
+        window.currentCatId = tx.catId;
+        document.getElementById('expTitle').innerText = "עריכת הוצאה";
+        document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
+        document.getElementById('fCurr').value = tx.currency || "ILS";
+        document.getElementById('expNote').value = tx.note;
+        document.getElementById('pMethod').value = tx.method;
+        document.getElementById('expModal').style.display = 'flex';
+    };
+
+    // פתיחת הוספת הוצאה חדשה
+    window.openAddTx = (id, name) => {
+        editMode = { active: false, id: null };
+        window.currentCatId = id;
+        document.getElementById('expTitle').innerText = "הוצאה ל-" + name;
+        document.getElementById('fAmt').value = "";
+        document.getElementById('fCurr').value = "ILS";
+        document.getElementById('expNote').value = "";
+        document.getElementById('expModal').style.display = 'flex';
+    };
+
+    // שמירה (כולל המרה לשקלים)
+    document.getElementById('saveTxBtn').onclick = async () => {
+        const rawAmt = parseFloat(document.getElementById('fAmt').value);
+        const curr = document.getElementById('fCurr').value;
+        if(!rawAmt) return;
+        
+        const converted = rawAmt * rates[curr]; // המרה אוטומטית לפי השער
+        
+        const data = {
+            amount: converted,
+            originalAmount: rawAmt,
+            currency: curr,
+            note: document.getElementById('expNote').value || "הוצאה",
+            method: document.getElementById('pMethod').value,
+            catId: window.currentCatId,
+            allowedUsers: [user.email],
+            date: Timestamp.now()
+        };
+
+        if(editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
+        else await addDoc(collection(db, "transactions"), data);
+        
+        document.getElementById('expModal').style.display = 'none';
+    };
+
+    window.deleteTx = async (id) => { if(confirm("למחוק הוצאה זו?")) await deleteDoc(doc(db, "transactions", id)); };
+    
+    window.shareCat = async (id) => { 
+        const email = prompt("הכנס אימייל של משתמש לשיתוף:"); 
+        if(email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) }); 
+    };
+
+    function updateChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const data = cats.map(c => txs.filter(t => t.catId === c.id).reduce((s,t) => s + t.amount, 0));
+        if(chart) chart.destroy();
+        chart = new Chart(ctx, { type: 'doughnut', data: { labels: cats.map(c => c.name), datasets: [{ data, backgroundColor: ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6'] }] }, options: { maintainAspectRatio: false } });
+    }
+
+    document.getElementById('addCatBtn').onclick = async () => {
+        const n = prompt("שם קטגוריה:");
+        const b = prompt("תקציב בשקלים:");
+        if(n && b) await addDoc(collection(db, "categories"), { name: n, budget: parseFloat(b), owner: user.email, allowedUsers: [user.email] });
+    };
+
+    document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
+    document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+</script>
+</body>
+</html>

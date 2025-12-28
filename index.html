@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetMaster Pro</title>
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366F1">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered!', reg))
+                    .catch(err => console.log('SW Failed:', err));
+            });
+        }
+    </script>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338ca;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        /* Auth Screen */
+        #authScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #4F46E5, #818CF8);
+        }
+
+        .auth-card {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .auth-card h2 {
+            color: var(--primary);
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        /* Main App Structure */
+        #mainApp {
+            display: none;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #E0E7FF;
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* Controls */
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            align-items: center;
+        }
+
+        .date-picker {
+            padding: 10px 16px;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            font-family: 'Rubik';
+            background: white;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        .add-cat-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .add-cat-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #F3F4F6;
+        }
+
+        /* Category List */
+        .cat-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .cat-item {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #E5E7EB;
+            transition: 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cat-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .cat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .cat-name {
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cat-stats {
+            font-size: 14px;
+            color: var(--text-sub);
+        }
+
+        .progress-bg {
+            background: #F3F4F6;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cat-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 12px;
+        }
+
+        .action-chip {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: #F9FAFB;
+            border-radius: 20px;
+            color: var(--text-sub);
+            cursor: pointer;
+            border: 1px solid #E5E7EB;
+            transition: 0.2s;
+        }
+
+        .action-chip:hover {
+            background: #EEF2FF;
+            color: var(--primary);
+            border-color: #C7D2FE;
+        }
+
+        /* History List */
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .tx-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tx-note {
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .tx-meta {
+            font-size: 12px;
+            color: var(--text-sub);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .tx-amount {
+            font-weight: 600;
+            color: var(--danger);
+            font-size: 16px;
+        }
+
+        .tx-actions button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: 0.2s;
+            padding: 4px;
+        }
+
+        .tx-actions button:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* Forms */
+        input,
+        select {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Rubik';
+            transition: 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--primary);
+            outline: none;
+            ring: 2px solid #E0E7FF;
+        }
+
+        .btn-main {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            margin-top: 15px;
+            transition: 0.2s;
+            font-family: 'Rubik';
+        }
+
+        .btn-main:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        @media (min-width: 600px) {
+            .modal {
+                align-items: center;
+            }
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 500px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @media (min-width: 600px) {
+            .modal-content {
+                border-radius: 24px;
+                animation: fadeIn 0.3s ease;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Summary Chips */
+        .summary-chips {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .sum-chip {
+            background: white;
+            padding: 15px;
+            border-radius: 16px;
+            flex: 1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .sum-val {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .sum-lbl {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Login Screen -->
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2>BudgetMaster Pro</h2>
+            <p style="color:var(--text-sub); margin-bottom: 20px;">ניהול תקציב חכם ופשוט</p>
+            <input type="email" id="email" placeholder="כתובת אימייל">
+            <input type="password" id="password" placeholder="סיסמה">
+            <button class="btn-main" id="loginBtn">התחברות</button>
+            <button class="btn-main" style="background: #F3F4F6; color: var(--text-main); margin-top: 10px;"
+                id="signupBtn">הרשמה לחדשים</button>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="mainApp">
+        <div class="app-container">
+
+            <div class="header">
+                <div class="user-info">
+                    <div class="avatar" id="avatarLetter">?</div>
+                    <div>
+                        <div style="font-size:12px; color:var(--text-sub);">שלום לשובך,</div>
+                        <div style="font-weight:700;" id="userEmailDisplay">משתמש</div>
+                    </div>
+                </div>
+                <button onclick="logout()"
+                    style="border:none; background:#FEE2E2; color:var(--danger); padding: 8px 16px; border-radius:10px; cursor:pointer; font-weight:600; font-family:'Rubik';">יציאה</button>
+            </div>
+
+            <div class="controls-bar">
+                <input type="month" id="monthPicker" class="date-picker">
+                <button onclick="openAddCat()" class="add-cat-btn">
+                    <span>+</span> קטגוריה חדשה
+                </button>
+            </div>
+
+            <div class="summary-chips">
+                <div class="sum-chip">
+                    <span class="sum-val" id="totalBudgetDisplay">₪0</span>
+                    <span class="sum-lbl">תקציב כולל</span>
+                </div>
+                <div class="sum-chip">
+                    <span class="sum-val" id="totalSpentDisplay" style="color:var(--danger)">₪0</span>
+                    <span class="sum-lbl">הוצאות</span>
+                </div>
+                <div class="sum-chip">
+                    <span class="sum-val" id="balanceDisplay" style="color:var(--success)">₪0</span>
+                    <span class="sum-lbl">יתרה</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Center Column -->
+                <div>
+                    <h3 style="margin-bottom:15px; color:var(--text-sub);">הוצאות לפי קטגוריות</h3>
+                    <div id="catList" class="cat-list"></div>
+                </div>
+
+                <!-- Side Column -->
+                <div style="display:flex; flex-direction:column; gap:25px;">
+                    <div class="card">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h3>🎯 יעדי חיסכון</h3>
+                            <button onclick="addSavingsGoal()"
+                                style="background:var(--success); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
+                        </div>
+                        <div id="savingsList" style="display:flex; flex-direction:column; gap:15px;"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>פילוח חודשי</h3>
+                        <div style="height:250px; position:relative;">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h3>🎁 הארנק שלי (Gift Cards)</h3>
+                            <button onclick="addGiftCard()"
+                                style="background:var(--primary); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
+                        </div>
+                        <div id="giftCardsList" style="display:flex; flex-direction:column; gap:10px;"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>פעולות אחרונות</h3>
+                        <div id="historyList" class="history-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div id="expModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 id="expTitle">הוספת הוצאה</h3>
+                <button onclick="closeModal()"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 2;">
+                    <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">סכום</label>
+                    <input type="number" id="fAmt" placeholder="0.00" style="font-weight:700; font-size:18px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">מטבע</label>
+                    <select id="fCurr" style="font-weight:600;">
+                        <option value="ILS">₪</option>
+                        <option value="USD">$</option>
+                        <option value="EUR">€</option>
+                    </select>
+                </div>
+            </div>
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תיאור</label>
+            <input type="text" id="expNote" placeholder="על מה יצא הכסף?">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
+                תשלום</label>
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
+                תשלום</label>
+            <select id="pMethod" onchange="toggleGiftCardSelect()">
+                <option value="💳 אשראי">💳 אשראי</option>
+                <option value="💵 מזומן">💵 מזומן</option>
+                <option value="📱 ביט/פייבוקס">📱 ביט/פייבוקס</option>
+                <option value="🏦 העברה">🏦 העברה בנקאית</option>
+                <option value="🎁 גיפט קארד">🎁 גיפט קארד</option>
+            </select>
+
+            <div id="giftCardSelectDiv" style="display:none; margin-top:10px;">
+                <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">בחר כרטיס
+                    לחיוב</label>
+                <select id="pGiftCardId"></select>
+            </div>
+
+            <div
+                style="font-size:12px; color:var(--text-sub); margin-top:10px; background:#F3F4F6; padding:10px; border-radius:8px;">
+                ℹ️ הסכום יומר אוטומטית לשקלים לפי שער קבוע במידה ונבחר מט"ח.
+            </div>
+
+            <button class="btn-main" id="saveTxBtn">שמירה וסיום</button>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="catModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 id="catTitle">קטגוריה חדשה</h3>
+                <button onclick="document.getElementById('catModal').style.display='none'"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+
+            <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">שם הקטגוריה</label>
+            <input type="text" id="catName" placeholder="למשל: סופר, דלק, בילויים">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תקציב
+                חודשי (₪)</label>
+            <input type="number" id="catBudget" placeholder="0">
+
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-main" id="saveCatBtn" onclick="saveCategory()" style="margin-top:0;">שמירה</button>
+                <button id="delCatBtn" onclick="deleteCategory()"
+                    style="background:none; border:none; color:var(--danger); font-weight:600; cursor:pointer; display:none;">מחיקה</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
+        let editMode = { active: false, id: null };
+        let catEditMode = { active: false, id: null };
+        const rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // Fixed Rates for simplicity
+
+        // --- NEW: Current Filter State ---
+        let currentYearMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+        // Set initial value for month picker
+        document.getElementById('monthPicker').value = currentYearMonth;
+        document.getElementById('monthPicker').addEventListener('change', (e) => {
+            currentYearMonth = e.target.value;
+            render(); // Re-render with new filter
+        });
+
+        onAuthStateChanged(auth, u => {
+            if (u) {
+                user = u;
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.getElementById('userEmailDisplay').innerText = user.email.split('@')[0];
+                document.getElementById('avatarLetter').innerText = user.email[0].toUpperCase();
+                startSync();
+            } else {
+                document.getElementById('authScreen').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+            }
+        });
+
+        function startSync() {
+            // Sync Categories
+            onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
+                cats = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                render();
+            });
+
+            // Sync Transactions (Fetch ALL, filter locally for simplicity in this version)
+            // Ideally we would query by date range, but that requires composite index setup which we can't do from here.
+            onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc")), s => {
+                txs = s.docs.map(d => {
+                    const data = d.data();
+                    // Convert Timestamp to js Date for easier filtering
+                    return { id: d.id, ...data, jsDate: data.date.toDate() };
+                });
+                render();
+            });
+
+            // Sync Savings
+            onSnapshot(query(collection(db, "savings"), where("owner", "==", user.email)), s => {
+                savings = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderSavings();
+            });
+        }
+
+        function render() {
+            // 1. Filter Transactions by Selected Month
+            const filteredTxs = txs.filter(t => {
+                const tDate = t.jsDate.toISOString().slice(0, 7); // "YYYY-MM"
+                return tDate === currentYearMonth;
+            });
+
+            // 2. Calculate Totals
+            let totalBudget = 0;
+            let totalSpent = 0;
+
+            // Render Categories
+            document.getElementById('catList').innerHTML = cats.map(c => {
+                const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
+                totalBudget += c.budget;
+                totalSpent += catSpent;
+
+                const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
+                const color = perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)');
+
+                return `
+                <div class="cat-item">
+                    <div class="cat-header" onclick="openAddTx('${c.id}', '${c.name}')">
+                        <div class="cat-name">
+                            <span style="background:#EEF2FF; padding:8px; border-radius:8px; color:var(--primary)">📂</span>
+                            ${c.name}
+                        </div>
+                        <div class="cat-stats">
+                            <b style="color:#111827">₪${Math.round(catSpent).toLocaleString()}</b>
+                            <span style="color:#9CA3AF"> / ₪${c.budget.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-bg">
+                        <div class="progress-fill" style="width:${perc}%; background:${color}"></div>
+                    </div>
+
+                    <div class="cat-actions">
+                        <div class="action-chip" onclick="openAddTx('${c.id}', '${c.name}')">➕ הוספה</div>
+                        <div class="action-chip" onclick="shareCat('${c.id}')">👥 שיתוף</div>
+                        <div class="action-chip" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget})">⚙️ הגדרות</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Update Summary Chips
+            document.getElementById('totalBudgetDisplay').innerText = '₪' + totalBudget.toLocaleString();
+            document.getElementById('totalSpentDisplay').innerText = '₪' + Math.round(totalSpent).toLocaleString();
+            document.getElementById('balanceDisplay').innerText = '₪' + Math.round(totalBudget - totalSpent).toLocaleString();
+
+            // Render History (Filtered)
+            document.getElementById('historyList').innerHTML = filteredTxs.length ? filteredTxs.map(t => {
+                const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+                const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
+                return `
+                <div class="history-item">
+                    <div class="tx-info">
+                        <div class="tx-note">${t.note} ${subText}</div>
+                        <div class="tx-meta">
+                            <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
+                            <span>•</span>
+                            <span>${t.method}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
+                        <div class="tx-actions">
+                            <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
+                            <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') : '<div style="text-align:center; padding:20px; color:var(--text-sub);">אין נתונים לחודש זה</div>';
+
+            updateChart(filteredTxs);
+        }
+
+        // Chart Logic
+        function updateChart(dataTxs) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
+
+            if (chart) chart.destroy();
+
+            const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: cats.map(c => c.name),
+                    datasets: [{
+                        data,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Rubik' }, boxWidth: 10 } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // --- Actions ---
+        window.openAddCat = () => {
+            catEditMode = { active: false, id: null };
+            document.getElementById('catTitle').innerText = "קטגוריה חדשה";
+            document.getElementById('catName').value = "";
+            document.getElementById('catBudget').value = "";
+            document.getElementById('delCatBtn').style.display = 'none'; // Hide delete btn
+            document.getElementById('catModal').style.display = 'flex';
+            document.getElementById('catName').focus();
+        };
+
+        window.openEditCat = (id, name, budget) => {
+            catEditMode = { active: true, id: id };
+            document.getElementById('catTitle').innerText = "עריכת קטגוריה";
+            document.getElementById('catName').value = name;
+            document.getElementById('catBudget').value = budget;
+            document.getElementById('delCatBtn').style.display = 'block'; // Show delete btn
+            document.getElementById('catModal').style.display = 'flex';
+        };
+
+        window.saveCategory = async () => {
+            const name = document.getElementById('catName').value;
+            const budget = parseFloat(document.getElementById('catBudget').value);
+
+            if (!name || !budget) return alert("נא למלא שם ותקציב");
+
+            const data = { name: name, budget: budget };
+
+            try {
+                if (catEditMode.active) {
+                    await updateDoc(doc(db, "categories", catEditMode.id), data);
+                } else {
+                    await addDoc(collection(db, "categories"), { ...data, owner: user.email, allowedUsers: [user.email] });
+                }
+                document.getElementById('catModal').style.display = 'none';
+            } catch (e) {
+                console.error(e);
+                alert("שגיאה בשמירה");
+            }
+        };
+
+        window.deleteCategory = async () => {
+            if (confirm("למחוק את הקטגוריה הזו? (ההוצאות שלה יישארו אך ללא שיוך)")) {
+                await deleteDoc(doc(db, "categories", catEditMode.id));
+                document.getElementById('catModal').style.display = 'none';
+            }
+        };
+
+        window.openEditTx = (id) => {
+            const tx = txs.find(t => t.id === id);
+            editMode = { active: true, id: id };
+            window.currentCatId = tx.catId;
+            document.getElementById('expTitle').innerText = "עריכת הוצאה";
+            document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
+            document.getElementById('fCurr').value = tx.currency || "ILS";
+            document.getElementById('expNote').value = tx.note;
+            document.getElementById('pMethod').value = tx.method;
+            document.getElementById('expModal').style.display = 'flex';
+        };
+
+        window.openAddTx = (id, name) => {
+            editMode = { active: false, id: null };
+            window.currentCatId = id;
+            document.getElementById('expTitle').innerText = "הוצאה ב: " + name;
+            document.getElementById('fAmt').value = "";
+            document.getElementById('fCurr').value = "ILS";
+            document.getElementById('expNote').value = "";
+            document.getElementById('expModal').style.display = 'flex';
+            document.getElementById('fAmt').focus();
+        };
+
+        window.closeModal = () => document.getElementById('expModal').style.display = 'none';
+
+        document.getElementById('saveTxBtn').onclick = async () => {
+            const rawAmt = parseFloat(document.getElementById('fAmt').value);
+            const curr = document.getElementById('fCurr').value;
+            if (!rawAmt) return alert("נא להזין סכום");
+
+            const converted = rawAmt * rates[curr];
+
+            const data = {
+                amount: converted,
+                originalAmount: rawAmt,
+                currency: curr,
+                note: document.getElementById('expNote').value || "הוצאה כללית",
+                method: document.getElementById('pMethod').value,
+                catId: window.currentCatId,
+                allowedUsers: [user.email],
+                // Use existing date if editing, or new date if new
+                date: editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now()
+            };
+
+            try {
+                if (editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
+                else await addDoc(collection(db, "transactions"), data);
+                closeModal();
+            } catch (e) {
+                console.error(e);
+                alert("שגיאה בשמירה");
+            }
+        };
+
+        window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)); };
+
+        function renderSavings() {
+            document.getElementById('savingsList').innerHTML = savings.length ? savings.map(s => {
+                const perc = Math.min((s.current / s.target) * 100, 100);
+                return `
+                    <div style="padding:10px; background:#F9FAFB; border-radius:12px; border:1px solid #E5E7EB;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <span style="font-weight:600;">${s.name}</span>
+                            <div style="font-size:12px;">₪${s.current.toLocaleString()} / ₪${s.target.toLocaleString()}</div>
+                        </div>
+                        <div style="height:6px; background:#E5E7EB; border-radius:3px; overflow:hidden; margin-bottom:8px;">
+                            <div style="height:100%; background:var(--success); width:${perc}%;"></div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:5px;">
+                            <button onclick="depositSavings('${s.id}', ${s.current})" style="font-size:11px; padding:4px 8px; background:white; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer;">💰 הפקדה</button>
+                            <button onclick="deleteSavings('${s.id}')" style="font-size:11px; padding:4px 8px; background:white; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer; color:var(--danger)">🗑️</button>
+                        </div>
+                    </div>`;
+            }).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין יעדים עדיין</div>';
+        }
+
+        function renderGiftCards() {
+            const list = document.getElementById('giftCardsList');
+            const select = document.getElementById('pGiftCardId');
+
+            // UI List
+            list.innerHTML = cards.length ? cards.map(c => `
+                <div style="display:flex; justify-content:space-between; align-items:center; adding:10px; background:#F0FDFA; border:1px solid #CCFBF1; border-radius:10px; padding:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:20px;">🎁</span>
+                        <div>
+                            <div style="font-weight:600; font-size:14px;">${c.name}</div>
+                            <div style="font-size:12px; color:#0D9488;">₪${c.current.toLocaleString()} נותר</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteGiftCard('${c.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">&times;</button>
+                </div>
+            `).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין כרטיסים</div>';
+
+            // Select Options
+            select.innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (₪${c.current})</option>`).join('');
+        }
+
+        window.toggleGiftCardSelect = () => {
+            const val = document.getElementById('pMethod').value;
+            document.getElementById('giftCardSelectDiv').style.display = val === '🎁 גיפט קארד' ? 'block' : 'none';
+        };
+
+        window.addGiftCard = async () => {
+            const n = prompt("שם הכרטיס (למשל: BuyMe):");
+            if (!n) return;
+            const b = prompt("סכום התחלתי:");
+            if (n && b) await addDoc(collection(db, "giftcards"), { name: n, initial: parseFloat(b), current: parseFloat(b), owner: user.email });
+        };
+
+        window.deleteGiftCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "giftcards", id)); };
+
+        window.addSavingsGoal = async () => {
+            const n = prompt("שם היעד (למשל: חופשה ביוון):");
+            if (!n) return;
+            const t = prompt("סכום היעד:");
+            if (n && t) await addDoc(collection(db, "savings"), { name: n, target: parseFloat(t), current: 0, owner: user.email });
+        };
+
+        window.depositSavings = async (id, current) => {
+            const amount = prompt("כמה להפקיד ליעד זה?");
+            if (amount) await updateDoc(doc(db, "savings", id), { current: current + parseFloat(amount) });
+        };
+
+        window.deleteSavings = async (id) => { if (confirm("למחוק את היעד הזה?")) await deleteDoc(doc(db, "savings", id)); };
+
+        window.shareCat = async (id) => {
+            const email = prompt("הכנס את האימייל של המשתמש איתו תרצה לשתף את הקטגוריה:");
+            if (email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) });
+        };
+
+
+
+        document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("שגיאה בהתחברות: " + e.message));
+        document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("שגיאה בהרשמה: " + e.message));
+        window.logout = () => signOut(auth);
+    </script>
+</body>
+
+</html>
