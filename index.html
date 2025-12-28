@@ -495,6 +495,51 @@
             font-size: 12px;
             color: var(--text-sub);
         }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--input-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            z-index: 900;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: var(--text-sub);
+            border: none;
+            background: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .nav-item span {
+            font-size: 20px;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
     </style>
 </head>
 
@@ -547,30 +592,76 @@
                 </button>
             </div>
 
-            <div class="summary-chips">
-                <div class="sum-chip">
-                    <span class="sum-val" id="totalBudgetDisplay">₪0</span>
-                    <span class="sum-lbl">תקציב כולל</span>
+            <!-- TAB 1: HOME -->
+            <div id="view-home" class="view-section active">
+                <div class="summary-chips">
+                    <div class="sum-chip">
+                        <span class="sum-val" id="totalBudgetDisplay">₪0</span>
+                        <span class="sum-lbl">תקציב כולל</span>
+                    </div>
+                    <div class="sum-chip">
+                        <span class="sum-val" id="totalSpentDisplay" style="color:var(--danger)">₪0</span>
+                        <span class="sum-lbl">הוצאות</span>
+                    </div>
+                    <div class="sum-chip">
+                        <span class="sum-val" id="balanceDisplay" style="color:var(--success)">₪0</span>
+                        <span class="sum-lbl">יתרה</span>
+                    </div>
                 </div>
-                <div class="sum-chip">
-                    <span class="sum-val" id="totalSpentDisplay" style="color:var(--danger)">₪0</span>
-                    <span class="sum-lbl">הוצאות</span>
+
+                <h3 style="margin-bottom:15px; color:var(--text-sub);">הוצאות לפי קטגוריות</h3>
+                <div id="catList" class="cat-list"></div>
+            </div>
+
+            <!-- TAB 2: ACTIVITY (History + Search) -->
+            <div id="view-activity" class="view-section">
+                <!-- Search Bar -->
+                <div style="margin-bottom:15px;">
+                    <input type="text" id="searchInput" placeholder="🔎 חיפוש הוצאה..." onkeyup="render()">
                 </div>
-                <div class="sum-chip">
-                    <span class="sum-val" id="balanceDisplay" style="color:var(--success)">₪0</span>
-                    <span class="sum-lbl">יתרה</span>
+                <div class="card">
+                    <h3>פעולות אחרונות</h3>
+                    <div id="historyList" class="history-list"></div>
                 </div>
             </div>
 
-            <div class="dashboard-grid">
-                <!-- Center Column -->
-                <div>
-                    <h3 style="margin-bottom:15px; color:var(--text-sub);">הוצאות לפי קטגוריות</h3>
-                    <div id="catList" class="cat-list"></div>
+            <!-- TAB 3: INSIGHTS (Charts + Income) -->
+            <div id="view-insights" class="view-section">
+                <!-- Income Section -->
+                <div class="card" style="margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>💰 הכנסות</h3>
+                        <div style="text-align:left;">
+                            <span style="font-size:12px; color:var(--text-sub);">סה"כ הכנסות</span>
+                            <div style="font-weight:700; color:var(--success); font-size:18px;" id="totalIncomeDisplay">
+                                ₪0</div>
+                        </div>
+                    </div>
+                    <button class="btn-main" onclick="openAddIncome()"
+                        style="margin-top:0; background:#ECFDF5; color:var(--success); border:1px solid #10B981;">+
+                        הוספת הכנסה</button>
+                    <div id="incomeList" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
 
-                <!-- Side Column -->
-                <div style="display:flex; flex-direction:column; gap:25px;">
+                <!-- Analytics Section -->
+                <div class="card">
+                    <h3>📊 הכנסות מול הוצאות</h3>
+                    <div style="height:250px; position:relative;">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:20px;">
+                    <h3>🍰 התפלגות הוצאות</h3>
+                    <div style="height:250px; position:relative;">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: ASSETS (Savings + Gifts) -->
+            <div id="view-assets" class="view-section">
+                <div class="dashboard-grid">
                     <div class="card">
                         <div
                             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -582,13 +673,6 @@
                     </div>
 
                     <div class="card">
-                        <h3>פילוח חודשי</h3>
-                        <div style="height:250px; position:relative;">
-                            <canvas id="mainChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="card">
                         <div
                             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h3>🎁 הארנק שלי (Gift Cards)</h3>
@@ -597,14 +681,30 @@
                         </div>
                         <div id="giftCardsList" style="display:flex; flex-direction:column; gap:10px;"></div>
                     </div>
-
-                    <div class="card">
-                        <h3>פעולות אחרונות</h3>
-                        <div id="historyList" class="history-list"></div>
-                    </div>
                 </div>
             </div>
-        </div>
+
+        </div> <!-- End App Container -->
+
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="switchView('home', this)">
+                <span>🏠</span>
+                בית
+            </button>
+            <button class="nav-item" onclick="switchView('activity', this)">
+                <span>📄</span>
+                פעילות
+            </button>
+            <button class="nav-item" onclick="switchView('insights', this)">
+                <span>📊</span>
+                תובנות
+            </button>
+            <button class="nav-item" onclick="switchView('assets', this)">
+                <span>🧧</span>
+                נכסים
+            </button>
+        </nav>
     </div>
 
     <!-- Transaction Modal -->
@@ -719,6 +819,28 @@
         </div>
     </div>
 
+    <div id="incomeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>הוספת הכנסה 💰</h3>
+                <span class="close-btn" onclick="closeModal('incomeModal')">&times;</span>
+            </div>
+            <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">סכום</label>
+            <input type="number" id="incAmount" placeholder="0.00">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">מקור
+                הכנסה</label>
+            <input type="text" id="incSource" placeholder="למשל: משכורת, בונוס">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תאריך</label>
+            <input type="date" id="incDate">
+
+            <button class="btn-main" onclick="saveIncome()">שמירה</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -730,6 +852,7 @@
         const db = getFirestore(app);
 
         let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
+        let income = [], barChart = null;
         let recurring = [];
         let editMode = { active: false, id: null };
         let catEditMode = { active: false, id: null };
@@ -811,6 +934,21 @@
             }
         };
 
+        // --- Navigation ---
+        window.switchView = (viewName, btn) => {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            // Show selected
+            document.getElementById(`view-${viewName}`).classList.add('active');
+
+            // Update Nav
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            // If switching to Charts, we might need to resize/update
+            if (viewName === 'insights') render();
+        };
+
         function renderRecurring() {
             const el = document.getElementById('recurringList');
             el.innerHTML = recurring.map(r => {
@@ -887,6 +1025,12 @@
                 checkRecurring();
             });
 
+            // Sync Income
+            onSnapshot(query(collection(db, "income"), where("uid", "==", user.uid), orderBy("date", "desc")), s => {
+                income = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderIncome();
+            });
+
             // Sync Transactions (Fetch ALL, filter locally for simplicity in this version)
             // Ideally we would query by date range, but that requires composite index setup which we can't do from here.
             onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc")), s => {
@@ -906,17 +1050,31 @@
         }
 
         function render() {
-            // 1. Filter Transactions by Selected Month
+            // 1. Filter Transactions by Selected Month (For Budget/Stats)
             const filteredTxs = txs.filter(t => {
                 const tDate = t.jsDate.toISOString().slice(0, 7); // "YYYY-MM"
                 return tDate === currentYearMonth;
             });
 
-            // 2. Calculate Totals
+            // 2. Handle Search Logic (For History List)
+            const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            let displayTxs = filteredTxs; // Default to month view
+
+            if (searchQuery) {
+                // If searching, search EVERYTHING (ignore date filter)
+                displayTxs = txs.filter(t => {
+                    const catName = cats.find(c => c.id === t.catId)?.name.toLowerCase() || '';
+                    return t.note.toLowerCase().includes(searchQuery) ||
+                        catName.includes(searchQuery) ||
+                        t.amount.toString().includes(searchQuery);
+                });
+            }
+
+            // 3. Calculate Totals (Always based on Month)
             let totalBudget = 0;
             let totalSpent = 0;
 
-            // Render Categories
+            // Render Categories (Always based on Month)
             document.getElementById('catList').innerHTML = cats.map(c => {
                 const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
                 totalBudget += c.budget;
@@ -951,12 +1109,33 @@
             }).join('');
 
             // Update Summary Chips
-            document.getElementById('totalBudgetDisplay').innerText = '₪' + totalBudget.toLocaleString();
-            document.getElementById('totalSpentDisplay').innerText = '₪' + Math.round(totalSpent).toLocaleString();
-            document.getElementById('balanceDisplay').innerText = '₪' + Math.round(totalBudget - totalSpent).toLocaleString();
+            // Calculate Total Income for BALANCE
+            // Note: Income is global list, need filtering by month? 
+            // Let's filter income by same month for accurate "Monthly Balance"
+            const monthlyIncome = income.filter(i => i.date.slice(0, 7) === currentYearMonth)
+                .reduce((sum, i) => sum + i.amount, 0);
 
-            // Render History (Filtered)
-            document.getElementById('historyList').innerHTML = filteredTxs.length ? filteredTxs.map(t => {
+            // REAL Balance = (Monthly Income) - (Total Spent)
+            // If no income logged, maybe fallback to (Budget - Spent)? 
+            // User requested "Actual Income Tracking", so let's show Real Balance.
+            // If monthlyIncome is 0, we can show (Budget - Spent) or just negative spent.
+            // Let's settle on: Balance = Income - Spent.
+
+            // Wait, "Budget" is "Planned". "Income" is "Actual".
+            // Let's update chips:
+            // Chip 1: Income (Actual)
+            // Chip 2: Expenses
+            // Chip 3: Balance (Income - Expenses)
+
+            document.getElementById('totalBudgetDisplay').innerText = '₪' + monthlyIncome.toLocaleString();
+            document.getElementById('totalBudgetDisplay').previousElementSibling.innerText = "הכנסות"; // Rename Label
+
+            document.getElementById('totalSpentDisplay').innerText = '₪' + Math.round(totalSpent).toLocaleString();
+            document.getElementById('balanceDisplay').innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
+
+            // Render History (Based on separate displayTxs)
+            const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
+            document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
                 const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
                 const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
                 return `
@@ -977,18 +1156,109 @@
                         </div>
                     </div>
                 </div>`;
-            }).join('') : '<div style="text-align:center; padding:20px; color:var(--text-sub);">אין נתונים לחודש זה</div>';
+            }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
 
-            updateChart(filteredTxs);
+            updateChart(filteredTxs); // Donut (Expenses) - wait, we removed it from HTML?
+            // Re-adding Donut to Main Home View if needed? 
+            // Actually, Plan said "Income vs Expenses" on Insights. 
+            // Home view has "Expenses by Category" list which has progress bars.
+            // Let's keep updateChart for the Insights Bar Chart.
+            updateBarChart(monthlyIncome, totalSpent);
+            updatePieChart(filteredTxs);
         }
 
-        // Chart Logic
-        function updateChart(dataTxs) {
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
+        // --- Income Logic ---
+        window.openAddIncome = () => {
+            document.getElementById('incDate').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('incomeModal').style.display = 'flex';
+        };
 
+        window.saveIncome = async () => {
+            const amount = parseFloat(document.getElementById('incAmount').value);
+            const source = document.getElementById('incSource').value;
+            const date = document.getElementById('incDate').value;
+
+            if (!amount || !source || !date) return alert("חסרים נתונים");
+
+            await addDoc(collection(db, "income"), {
+                uid: user.uid,
+                amount,
+                source,
+                date,
+                timestamp: new Date()
+            });
+            document.getElementById('incomeModal').style.display = 'none';
+            document.getElementById('incAmount').value = '';
+            document.getElementById('incSource').value = '';
+        }
+
+        window.deleteIncome = async (id) => {
+            if (confirm('למחוק הכנסה זו?')) await deleteDoc(doc(db, "income", id));
+        }
+
+        function renderIncome() {
+            // Filter by month
+            const filtered = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
+            const total = filtered.reduce((s, i) => s + i.amount, 0);
+            document.getElementById('totalIncomeDisplay').innerText = '₪' + total.toLocaleString();
+
+            document.getElementById('incomeList').innerHTML = filtered.map(i => `
+                <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
+                    <div>
+                        <div style="font-weight:bold;">${i.source}</div>
+                        <div style="font-size:12px; color:var(--text-sub);">${i.date}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="color:var(--success); font-weight:bold;">+₪${i.amount.toLocaleString()}</span>
+                        <button onclick="deleteIncome('${i.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
+                    </div>
+                </div>
+             `).join('');
+
+            // Trigger render to update chips/charts if this changes
+            render();
+        }
+
+        // Chart Logic (Bar Chart: Income vs Expense)
+        function updateBarChart(incomeVal, expenseVal) {
+            const ctx = document.getElementById('barChart')?.getContext('2d');
+            if (!ctx) return;
+
+            if (barChart) barChart.destroy();
+
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['הכנסות', 'הוצאות'],
+                    datasets: [{
+                        label: 'סכום',
+                        data: [incomeVal, expenseVal],
+                        backgroundColor: ['#10B981', '#EF4444'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Chart Logic (Pie Chart: Expenses by Category)
+        function updatePieChart(dataTxs) {
+            const ctx = document.getElementById('pieChart')?.getContext('2d');
+            if (!ctx) return;
+
+            // Reuse chart instance if exists? Need global variable
             if (chart) chart.destroy();
 
+            const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
             const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
             chart = new Chart(ctx, {
