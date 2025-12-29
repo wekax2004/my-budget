@@ -1116,11 +1116,6 @@
                 setTimeout(() => toast.remove(), 500);
             }, 3000);
         };
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const newTheme = isDark ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        };
 
         // --- NEW: Current Filter State ---
         let currentYearMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
