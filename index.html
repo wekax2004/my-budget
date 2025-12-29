@@ -441,6 +441,68 @@
                 border-radius: 24px;
                 animation: fadeIn 0.3s ease;
             }
+
+            .modal-content {
+                border-radius: 24px;
+                animation: fadeIn 0.3s ease;
+            }
+        }
+
+        /* Toaster */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .toast {
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.3s ease;
+            pointer-events: auto;
+            direction: rtl;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOutToast {
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
         }
 
         @keyframes slideUp {
@@ -544,6 +606,8 @@
 </head>
 
 <body>
+
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- Login Screen -->
     <div id="authScreen">
