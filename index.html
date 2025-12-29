@@ -1578,6 +1578,31 @@
                 if (editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
                 else await addDoc(collection(db, "transactions"), data);
                 showToast('הוצאה נשמרה בהצלחה', 'success');
+
+                // --- Real-Time Budget Alert ---
+                const cat = cats.find(c => c.id === window.currentCatId);
+                if (cat && cat.budget > 0) {
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+                    // Calc existing spent
+                    const existingSpent = txs
+                        .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                        .reduce((s, t) => s + t.amount, 0);
+
+                    // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
+                    // Actually, 'txs' array updates via onSnapshot, which is async. 
+                    // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
+                    // We should add 'converted' manually for the check.
+
+                    const newTotal = existingSpent + converted;
+                    const percent = (newTotal / cat.budget) * 100;
+
+                    if (percent > 100) {
+                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
+                    } else if (percent > 90) {
+                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
+                    }
+                }
+                // ------------------------------
             } catch (e) {
                 console.error(e);
                 closeModal(); // Close modal immediately before showing error
