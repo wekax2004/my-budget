@@ -1289,22 +1289,26 @@
             // render();
         }
 
-        // Chart Logic (Bar Chart: Income vs Expense)
-        function updateBarChart(incomeVal, expenseVal) {
-            const ctx = document.getElementById('barChart')?.getContext('2d');
+        // Chart instances
+        let barChartInstance = null;
+        let pieChartInstance = null;
+        let lineChartInstance = null;
+
+        function updateBarChart(inc, exp) {
+            const ctx = document.getElementById('barChartRef') || document.getElementById('barChart');
             if (!ctx) return;
 
-            if (barChart) barChart.destroy();
+            if (barChartInstance) barChartInstance.destroy();
 
-            barChart = new Chart(ctx, {
+            barChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ['הכנסות', 'הוצאות'],
                     datasets: [{
-                        label: 'סכום',
-                        data: [incomeVal, expenseVal],
+                        label: 'סיכום חודשי',
+                        data: [inc, exp],
                         backgroundColor: ['#10B981', '#EF4444'],
-                        borderRadius: 8
+                        borderRadius: 10
                     }]
                 },
                 options: {
@@ -1320,18 +1324,64 @@
             });
         }
 
-        // Chart Logic (Pie Chart: Expenses by Category)
-        function updatePieChart(dataTxs) {
-            const ctx = document.getElementById('pieChart')?.getContext('2d');
+        function updateLineChart(transactions) {
+            const ctx = document.getElementById('lineChartRef');
             if (!ctx) return;
 
-            // Reuse chart instance if exists? Need global variable
-            if (chart) chart.destroy();
+            if (lineChartInstance) lineChartInstance.destroy();
+
+            // 1. Group by day
+            const dayMap = {};
+            const daysInMonth = new Date(parseInt(currentYearMonth.slice(0, 4)), parseInt(currentYearMonth.slice(5, 7)), 0).getDate();
+
+            // Init zeros
+            for (let i = 1; i <= daysInMonth; i++) dayMap[i] = 0;
+
+            transactions.forEach(t => {
+                const d = t.jsDate.getDate();
+                dayMap[d] += t.amount;
+            });
+
+            // 2. Calculate Cumulative
+            const labels = [];
+            const data = [];
+            let sum = 0;
+            for (let i = 1; i <= daysInMonth; i++) {
+                // Only plot up to today if current month, otherwise full month
+                // For simplicity, plot all days
+                labels.push(i);
+                sum += dayMap[i];
+                data.push(sum);
+            }
+
+            lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'הוצאה מצטברת',
+                        data: data,
+                        borderColor: '#6366F1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // Chart Logic (Pie Chart: Expenses by Category)
+        function updatePieChart(dataTxs) {
+            const ctx = document.getElementById('pieChartRef') || document.getElementById('pieChart');
+            if (!ctx) return;
+
+            if (pieChartInstance) pieChartInstance.destroy();
 
             const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
             const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
-            chart = new Chart(ctx, {
+            pieChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: cats.map(c => c.name),
@@ -1782,22 +1832,30 @@
                     <div id="incomeListRef" style="margin-top:10px;"></div>
                 </div>
                 <div class="card" style="height:250px; margin-bottom:20px;">
-                    <canvas id="barChart"></canvas>
+                    <canvas id="barChartRef"></canvas>
                 </div>
+                <!-- Trends Chart (New) -->
+                <div class="card" style="height:250px; margin-bottom:20px;">
+                    <h3>📈 מגמת הוצאות (מצטבר)</h3>
+                    <canvas id="lineChartRef"></canvas>
+                </div>
+
                 <div class="card" style="height:250px;">
-                    <canvas id="pieChart"></canvas>
+                    <canvas id="pieChartRef"></canvas>
                 </div>
             `;
 
             // Re-render charts
+            const currentMonthTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
             const incomeTotal = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
-            const expenseTotal = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth).reduce((s, t) => s + t.amount, 0);
+            const expenseTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
 
             document.getElementById('totalIncomeDisplay2').innerText = '₪' + incomeTotal.toLocaleString();
 
             // Reuse existing render functions if possible, or call chart updates directly
             updateBarChart(incomeTotal, expenseTotal);
-            updatePieChart(txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth));
+            updatePieChart(currentMonthTxs);
+            updateLineChart(currentMonthTxs); // New Function
 
             // Render Income List here too
             const incList = document.getElementById('incomeListRef');
@@ -1805,7 +1863,6 @@
             incList.innerHTML = filteredInc.map(i => `
                 <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
                     <span>${i.source}</span>
-                    <span style="color:var(--success);">+${i.amount}</span>
                     <button onclick="deleteIncome('${i.id}')">🗑️</button>
                 </div>
              `).join('');
