@@ -1159,6 +1159,8 @@
 
                 // Personalization Logic
                 const icon = c.icon || '📂';
+                // Calculate percentage FIRST
+                const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
                 // If user has a custom color, use it. Otherwise use the calculated status color.
                 const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
 
