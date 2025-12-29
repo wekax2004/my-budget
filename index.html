@@ -892,7 +892,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
         const app = initializeApp(firebaseConfig);
@@ -1230,6 +1230,10 @@
             // Let's keep updateChart for the Insights Bar Chart.
             updateBarChart(monthlyIncome, totalSpent);
             updatePieChart(filteredTxs);
+
+            // Critical Fix: Trigger sub-renders for other tabs
+            renderActivity();
+            renderInsights();
         }
 
         // --- Income Logic ---
