@@ -980,21 +980,26 @@
             const catId = document.getElementById('recCat').value;
             const nextDate = document.getElementById('recNextDate').value;
 
-            if (!name || isNaN(amount) || !nextDate) return alert("חסרים נתונים");
+            if (!name || isNaN(amount) || !nextDate) return showToast("חסרים נתונים", 'error');
 
-            await addDoc(collection(db, "recurring"), {
-                uid: user.uid,
-                name, amount, catId, nextDate, frequency: 'monthly'
-            });
-
-            // Clear inputs
-            document.getElementById('recName').value = '';
-            document.getElementById('recAmount').value = '';
+            try {
+                await addDoc(collection(db, "recurring"), {
+                    uid: user.uid,
+                    name, amount, catId, nextDate, frequency: 'monthly'
+                });
+                showToast('הוראת קבע נוספה בהצלחה', 'success');
+                // Clear inputs
+                document.getElementById('recName').value = '';
+                document.getElementById('recAmount').value = '';
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בהוספה: ' + e.message, 'error');
+            }
         };
 
         window.deleteRecurring = async (id) => {
             if (confirm('למחוק הוראת קבע זו?')) {
-                await deleteDoc(doc(db, "recurring", id));
+                await deleteDoc(doc(db, "recurring", id)).catch(e => showToast("שגיאה במחיקה", 'error'));
             }
         };
 
@@ -1495,7 +1500,7 @@
             }
         };
 
-        window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)); };
+        window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
 
         function renderSavings() {
             document.getElementById('savingsList').innerHTML = savings.length ? savings.map(s => {
