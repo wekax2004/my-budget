@@ -1202,33 +1202,121 @@
             }).join('');
         }
 
-        async function checkRecurring() {
-            const today = new Date().toISOString().slice(0, 10);
+        // Flag to prevent infinite loop in recurring check
+        let lastRecurringCheck = 0;
 
+        async function checkRecurring() {
+            const now = Date.now();
+            if (now - lastRecurringCheck < 10000) return; // Debounce 10s
+            lastRecurringCheck = now;
+
+            const today = new Date().toISOString().slice(0, 10);
+            // ... existing logic ...
             for (const r of recurring) {
                 if (r.nextDate <= today) {
-                    // 1. Create Transaction
                     await addDoc(collection(db, "transactions"), {
-                        allowedUsers: [user.email], // Use allowedUsers for transactions
+                        allowedUsers: [user.email],
                         amount: r.amount,
                         catId: r.catId,
                         note: `הוראת קבע: ${r.name}`,
-                        date: Timestamp.fromDate(new Date(r.nextDate)), // Convert to Firebase Timestamp
-                        method: 'אשראי', // Default to credit
+                        date: Timestamp.fromDate(new Date(r.nextDate)),
+                        method: 'אשראי',
                         currency: 'ILS'
                     });
 
-                    // 2. Update Next Date (Add 1 Month)
                     const next = new Date(r.nextDate);
                     next.setMonth(next.getMonth() + 1);
                     await updateDoc(doc(db, "recurring", r.id), {
                         nextDate: next.toISOString().slice(0, 10)
                     });
-
                     console.log(`הוראת קבע בוצעה: ${r.name}`);
                 }
             }
         }
+
+        // ... OCR Logic ...
+        window.handleScan = async (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById('scanStatus');
+            statusEl.style.display = 'flex';
+
+            try {
+                // Pre-process Image via Canvas
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                await new Promise(r => img.onload = r);
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                // Filters: Grayscale + Contrast
+                const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < d.data.length; i += 4) {
+                    const avg = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 3;
+                    const c = avg > 128 ? 255 : 0; // High contrast threshold
+                    d.data[i] = d.data[i + 1] = d.data[i + 2] = c;
+                }
+                ctx.putImageData(d, 0, 0);
+                const processedBlob = await new Promise(r => canvas.toBlob(r));
+
+                const worker = await Tesseract.createWorker('heb');
+                const ret = await worker.recognize(processedBlob);
+                await worker.terminate();
+
+                const text = ret.data.text;
+                console.log("OCR Result:", text);
+
+                // ... Regex Logic (Same as before) ...
+                const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+                if (dateMatch) {
+                    let [_, d, m, y] = dateMatch;
+                    if (y.length === 2) y = "20" + y;
+                    window.scannedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                    showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
+                }
+
+                let amount = 0;
+                const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
+                const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
+                let match;
+                while ((match = totalRegex.exec(text)) !== null) {
+                    const val = parseNum(match[1]);
+                    if (val > 0) amount = val;
+                }
+                if (amount === 0) {
+                    const numbers = text.match(/\d+\.\d{2}/g);
+                    if (numbers) {
+                        const max = Math.max(...numbers.map(n => parseFloat(n)));
+                        if (max > 0) amount = max;
+                    }
+                }
+
+                if (amount > 0) {
+                    document.getElementById('fAmt').value = amount;
+                    document.getElementById('fAmt').classList.add('flash-input');
+                    showToast(`סכום זוהה: ₪${amount}`, 'success');
+                } else {
+                    showToast('לא זוהה סכום סופי, נסה תמונה ברורה יותר', 'warning');
+                }
+
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                if (lines.length > 0) {
+                    document.getElementById('expNote').value = lines[0].substring(0, 20);
+                }
+
+            } catch (err) {
+                console.error(err);
+                showToast('שגיאה: ' + err.message, 'error');
+            } finally {
+                statusEl.style.display = 'none';
+                input.value = '';
+            }
+        };
 
         onAuthStateChanged(auth, u => {
             if (u) {
