@@ -1458,7 +1458,7 @@
         document.getElementById('saveTxBtn').onclick = async () => {
             const rawAmt = parseFloat(document.getElementById('fAmt').value);
             const curr = document.getElementById('fCurr').value;
-            if (!rawAmt) return alert("נא להזין סכום");
+            if (!rawAmt) return showToast("נא להזין סכום", 'error');
 
             const converted = rawAmt * rates[curr];
 
@@ -1477,17 +1477,18 @@
             try {
                 if (editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
                 else await addDoc(collection(db, "transactions"), data);
+                showToast('הוצאה נשמרה בהצלחה', 'success');
             } catch (e) {
                 console.error(e);
-                closeModal(); // Close modal immediately before alert
+                closeModal(); // Close modal immediately before showing error
 
                 // User-friendly error messages
                 if (e.code === 'resource-exhausted') {
-                    alert('⚠️ הגעת למכסת Firebase היומית.\n\nנסה שוב מחר או שדרג את התוכנית בקונסול Firebase.');
+                    showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
                 } else if (e.code === 'permission-denied') {
-                    alert('⚠️ אין לך הרשאה לבצע פעולה זו.');
+                    showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
                 } else {
-                    alert('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'));
+                    showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
                 }
             } finally {
                 closeModal(); // ALWAYS close modal (double check)
@@ -1547,28 +1548,44 @@
             const n = prompt("שם הכרטיס (למשל: BuyMe):");
             if (!n) return;
             const b = prompt("סכום התחלתי:");
-            if (n && b) await addDoc(collection(db, "giftcards"), { name: n, initial: parseFloat(b), current: parseFloat(b), owner: user.email });
+            if (n && b) {
+                addDoc(collection(db, "giftcards"), { name: n, initial: parseFloat(b), current: parseFloat(b), owner: user.email })
+                    .then(() => showToast('כרטיס מתנה נוסף', 'success'))
+                    .catch(e => showToast("שגיאה: " + e.message, 'error'));
+            }
         };
 
-        window.deleteGiftCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "giftcards", id)); };
+        window.deleteGiftCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "giftcards", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
 
         window.addSavingsGoal = async () => {
             const n = prompt("שם היעד (למשל: חופשה ביוון):");
             if (!n) return;
             const t = prompt("סכום היעד:");
-            if (n && t) await addDoc(collection(db, "savings"), { name: n, target: parseFloat(t), current: 0, owner: user.email });
+            if (n && t) {
+                addDoc(collection(db, "savings"), { name: n, target: parseFloat(t), current: 0, owner: user.email })
+                    .then(() => showToast('יעד חיסכון נוסף', 'success'))
+                    .catch(e => showToast("שגיאה: " + e.message, 'error'));
+            }
         };
 
         window.depositSavings = async (id, current) => {
             const amount = prompt("כמה להפקיד ליעד זה?");
-            if (amount) await updateDoc(doc(db, "savings", id), { current: current + parseFloat(amount) });
+            if (amount) {
+                updateDoc(doc(db, "savings", id), { current: current + parseFloat(amount) })
+                    .then(() => showToast('הפקדה בוצעה!', 'success'))
+                    .catch(e => showToast("שגיאה בהפקדה", 'error'));
+            }
         };
 
-        window.deleteSavings = async (id) => { if (confirm("למחוק את היעד הזה?")) await deleteDoc(doc(db, "savings", id)); };
+        window.deleteSavings = async (id) => { if (confirm("למחוק את היעד הזה?")) await deleteDoc(doc(db, "savings", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
 
         window.shareCat = async (id) => {
             const email = prompt("הכנס את האימייל של המשתמש איתו תרצה לשתף את הקטגוריה:");
-            if (email) await updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) });
+            if (email) {
+                updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) })
+                    .then(() => showToast(`שותף בהצלחה עם ${email}`, 'success'))
+                    .catch(e => showToast("שגיאה בשיתוף " + e.message, 'error'));
+            }
         };
 
         window.exportToCSV = () => {
