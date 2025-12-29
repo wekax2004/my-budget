@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-master-v16';
+const CACHE_NAME = 'budget-master-v17';
 const ASSETS = [
     "./",
     "./index.html",
