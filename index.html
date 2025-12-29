@@ -1494,20 +1494,16 @@
             try {
                 if (catEditMode.active) {
                     await updateDoc(doc(db, "categories", catEditMode.id), data);
+                    showToast('קטגוריה עודכנה', 'success');
                 } else {
-                    await addDoc(collection(db, "categories"), { ...data, owner: user.email, allowedUsers: [user.email] });
+                    await addDoc(collection(db, "categories"), data);
+                    showToast('קטגוריה נוצרה', 'success');
                 }
                 document.getElementById('catModal').style.display = 'none';
-                showToast('קטגוריה נשמרה בהצלחה', 'success');
             } catch (e) {
                 console.error(e);
-                document.getElementById('catModal').style.display = 'none'; // Close modal even on error
-
-                if (e.code === 'resource-exhausted') {
-                    showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
-                } else {
-                    showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
-                }
+                document.getElementById('catModal').style.display = 'none'; // Close modal on error to prevent stuck state
+                showToast("שגיאה בשמירה: " + e.message, 'error');
             }
         };
 
