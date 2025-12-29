@@ -1407,6 +1407,7 @@
                 else await addDoc(collection(db, "transactions"), data);
             } catch (e) {
                 console.error(e);
+                closeModal(); // Close modal immediately before alert
 
                 // User-friendly error messages
                 if (e.code === 'resource-exhausted') {
@@ -1417,7 +1418,7 @@
                     alert('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'));
                 }
             } finally {
-                closeModal(); // ALWAYS close modal
+                closeModal(); // ALWAYS close modal (double check)
             }
         };
 
