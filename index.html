@@ -584,10 +584,14 @@
             background: none;
             cursor: pointer;
             width: 100%;
+            min-width: 60px;
+            /* Prevent squashing */
         }
 
         .nav-item span {
-            font-size: 20px;
+            font-size: 18px;
+            /* Slightly smaller icon to give text space */
+            margin-bottom: 2px;
         }
 
         .nav-item.active {
@@ -684,7 +688,8 @@
             <div id="view-activity" class="view-section">
                 <div class="header">
                     <h3>היסטוריה 📄</h3>
-                    <button onclick="triggerImport()" class="icon-btn" title="ייבוא מ-CSV">📂 ייבוא</button>
+                    <button onclick="triggerImport()" class="icon-btn" title="ייבוא מ-CSV"
+                        style="width:auto; padding:0 12px; font-size:14px; gap:6px;">📂 ייבוא</button>
                     <input type="file" id="csvInput" style="display:none" accept=".csv"
                         onchange="handleCSVUpload(this)">
                 </div>
