@@ -1851,6 +1851,60 @@
             if (viewId === 'view-assets') renderAssets();
         };
 
+        // --- PHASE 9: AI Financial Advisor (Smart Logic) ---
+        function generateInsights(currentTxs, currentIncome, totalBudget) {
+            const insights = [];
+            const spent = currentTxs.reduce((s, t) => s + t.amount, 0);
+
+            // 1. Budget Health Check
+            if (totalBudget > 0) {
+                const health = (spent / totalBudget) * 100;
+                if (health > 90) {
+                    insights.push({ icon: '🚨', text: `שים לב: ניצלת **${Math.round(health)}%** מהתקציב החודשי שלך!`, type: 'danger' });
+                } else if (health > 75) {
+                    insights.push({ icon: '⚠️', text: `התראת תקציב: הגעת ל-**${Math.round(health)}%** מהמסגרת. מומלץ להאט את הקצב.`, type: 'warning' });
+                } else if (health < 40 && new Date().getDate() > 20) {
+                    insights.push({ icon: '🏆', text: `כל הכבוד! אנחנו בסוף החודש וניצלת רק **${Math.round(health)}%** מהתקציב.`, type: 'success' });
+                }
+            }
+
+            // 2. Savings Opportunity
+            if (currentIncome > spent * 1.2) {
+                const potential = currentIncome - spent;
+                insights.push({ icon: '💰', text: `יש לך פוטנציאל חיסכון החודש! נותרו לך **₪${potential.toLocaleString()}**. שווה להעביר לחיסכון?`, type: 'success' });
+            }
+
+            // 3. Recurring Detector (Simple Heuristic: duplicate amounts > 1 time)
+            const map = {};
+            currentTxs.forEach(t => {
+                const key = t.amount + '-' + t.note;
+                map[key] = (map[key] || 0) + 1;
+            });
+            Object.keys(map).forEach(k => {
+                if (map[k] >= 2) { // Found duplicate
+                    const [amt, note] = k.split('-');
+                    insights.push({ icon: '🔄', text: `שמנו לב ששילמת **₪${parseFloat(amt)}** על "${note}" מספר פעמים. האם זה מנוי קבוע?`, type: 'info' });
+                }
+            });
+
+            // 4. Weekend Spender
+            const weekendSpend = currentTxs.filter(t => {
+                const day = t.jsDate.getDay();
+                return day === 5 || day === 6; // Fri/Sat in JS (0=Sun) - Adjust for IL? 
+                // IL Weekend: Friday (5) and Saturday (6). Sunday (0) is work day.
+            }).reduce((s, t) => s + t.amount, 0);
+
+            if (weekendSpend > spent * 0.4 && spent > 0) {
+                insights.push({ icon: '🎉', text: `ראינו ש-**${Math.round((weekendSpend / spent) * 100)}%** מההוצאות שלך קורות בסופ"ש.`, type: 'info' });
+            }
+
+            if (insights.length === 0) {
+                insights.push({ icon: '✅', text: 'המצב הפיננסי שלך נראה יציב כרגע. המשך כך!', type: 'success' });
+            }
+
+            return insights;
+        }
+
         // Render Functions for specific tabs
         function renderActivity() {
             const container = document.getElementById('activity-content');
