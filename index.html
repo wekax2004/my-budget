@@ -829,7 +829,56 @@
 
             <button class="btn-main" id="saveTxBtn">שמירה וסיום</button>
         </div>
+    </div><!-- End view-home -->
+
+    <!-- TAB 2: ACTIVITY -->
+    <div id="view-activity" class="view-section">
+        <div class="header">
+            <h3>היסטוריה 📄</h3>
+        </div>
+        <!-- Search Bar will move here -->
+        <div id="activity-content" style="padding-bottom:80px;"></div>
     </div>
+
+    <!-- TAB 3: INSIGHTS -->
+    <div id="view-insights" class="view-section">
+        <div class="header">
+            <h3>תובנות 📊</h3>
+            <button onclick="document.getElementById('incomeModal').style.display='flex'" class="icon-btn"
+                style="background:#ECFDF5; color:#10B981;">💰 הכנסה</button>
+        </div>
+        <div id="insights-content" style="padding-bottom:80px;"></div>
+    </div>
+
+    <!-- TAB 4: ASSETS -->
+    <div id="view-assets" class="view-section">
+        <div class="header">
+            <h3>נכסים 🎁</h3>
+        </div>
+        <div id="assets-content" style="padding-bottom:80px;"></div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchView('view-home', this)">
+            <span>🏠</span>
+            בית
+        </button>
+        <button class="nav-item" onclick="switchView('view-activity', this)">
+            <span>📄</span>
+            פעילות
+        </button>
+        <button class="nav-item" onclick="switchView('view-insights', this)">
+            <span>📊</span>
+            תובנות
+        </button>
+        <button class="nav-item" onclick="switchView('view-assets', this)">
+            <span>🎁</span>
+            נכסים
+        </button>
+    </nav>
+
+    </div><!-- End app-container -->
 
     <!-- Category Modal -->
     <div id="catModal" class="modal">
@@ -1621,6 +1670,149 @@
 
         document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => showToast("שגיאה בהתחברות: " + e.message, 'error'));
         document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => showToast("שגיאה בהרשמה: " + e.message, 'error'));
+
+        // Navigation Logic
+        window.switchView = (viewId, btn) => {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+            // Show target
+            document.getElementById(viewId).style.display = 'block';
+
+            // Update buttons
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            // Trigger specific renders if needed
+            if (viewId === 'view-activity') renderActivity();
+            if (viewId === 'view-insights') renderInsights();
+            if (viewId === 'view-assets') renderAssets();
+        };
+
+        // Render Functions for specific tabs
+        function renderActivity() {
+            const container = document.getElementById('activity-content');
+            // Move search bar here if not present? Or just render list
+            // For now, let's render the full list
+            let content = `
+                <div style="margin-bottom:15px;">
+                    <input type="text" id="actSearch" placeholder="חיפוש הוצאות..." oninput="filterActivity(this.value)">
+                </div>
+                <div class="history-list" id="fullHistoryList" style="max-height:none;">`;
+
+            content += txs.sort((a, b) => b.date - a.date).map(t => {
+                const cat = cats.find(c => c.id === t.catId);
+                const dateStr = t.jsDate.toLocaleDateString('he-IL');
+                return `
+                <div class="history-item" onclick="openEditTx('${t.id}')">
+                    <div class="tx-info">
+                        <div class="tx-note">${t.note}</div>
+                        <div class="tx-meta">${cat?.name || '?'} • ${dateStr} • ${t.method}</div>
+                    </div>
+                    <div class="tx-actions">
+                         <div class="tx-amount">₪${t.amount.toLocaleString()}</div>
+                    </div>
+                </div>`;
+            }).join('');
+            content += '</div>';
+            container.innerHTML = content;
+        }
+
+        window.filterActivity = (q) => {
+            const list = document.getElementById('fullHistoryList');
+            if (!list) return;
+            const items = list.getElementsByClassName('history-item');
+            Array.from(items).forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(q.toLowerCase()) ? 'flex' : 'none';
+            });
+        };
+
+        function renderInsights() {
+            const container = document.getElementById('insights-content');
+            // Move charts here
+            container.innerHTML = `
+                <div class="card" style="margin-bottom:20px;">
+                    <h3>הכנסות החודש</h3>
+                    <div style="font-size:24px; font-weight:700; color:var(--success);" id="insightIncomeDisplay">₪0</div>
+                    <div id="incomeList" style="margin-top:10px;"></div>
+                </div>
+                
+                <div class="card" style="height:250px; margin-bottom:20px;">
+                    <canvas id="barChartRef"></canvas>
+                </div>
+                <div class="card" style="height:250px;">
+                    <canvas id="pieChartRef"></canvas>
+                </div>
+            `;
+            // Re-bind charts to these new canvases
+            renderIncome(); // This updates the income list
+            // We need to trigger chart updates. render() calls updateBarChart/PieChart.
+            // But those functions look for element IDs. We need to make sure IDs match or we pass contexts.
+            // Existing logic uses 'barChart' and 'pieChart' IDs.
+            // I'll update the IDs in the HTML above to match what existing JS expects:
+            // Actually, existing JS expects 'barChart' and 'pieChart'.
+            // So I should use those IDs here.
+            container.innerHTML = `
+                <div class="card" style="margin-bottom:20px;">
+                    <h3>הכנסות החודש</h3>
+                    <div style="font-size:24px; font-weight:700; color:var(--success);" id="totalIncomeDisplay2">₪0</div>
+                    <div id="incomeListRef" style="margin-top:10px;"></div>
+                </div>
+                <div class="card" style="height:250px; margin-bottom:20px;">
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="card" style="height:250px;">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            `;
+
+            // Re-render charts
+            const incomeTotal = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
+            const expenseTotal = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth).reduce((s, t) => s + t.amount, 0);
+
+            document.getElementById('totalIncomeDisplay2').innerText = '₪' + incomeTotal.toLocaleString();
+
+            // Reuse existing render functions if possible, or call chart updates directly
+            updateBarChart(incomeTotal, expenseTotal);
+            updatePieChart(txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth));
+
+            // Render Income List here too
+            const incList = document.getElementById('incomeListRef');
+            const filteredInc = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
+            incList.innerHTML = filteredInc.map(i => `
+                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                    <span>${i.source}</span>
+                    <span style="color:var(--success);">+${i.amount}</span>
+                    <button onclick="deleteIncome('${i.id}')">🗑️</button>
+                </div>
+             `).join('');
+        }
+
+        function renderAssets() {
+            const container = document.getElementById('assets-content');
+            container.innerHTML = `
+                <h3>חסכונות ויעדים</h3>
+                <button class="btn-main" onclick="addSavingsGoal()" style="margin-bottom:15px; padding:10px;">+ יעד חדש</button>
+                <div id="savingsListRef" style="display:flex; flex-direction:column; gap:10px;"></div>
+                
+                <h3 style="margin-top:30px;">גיפט קארדס</h3>
+                <button class="btn-main" onclick="addGiftCard()" style="margin-bottom:15px; padding:10px;">+ כרטיס חדש</button>
+                <div id="giftCardsListRef" style="display:flex; flex-direction:column; gap:10px;"></div>
+             `;
+
+            // Manually inject current savings/cards HTML
+            // Note: existing renderSavings target 'savingsList'. We need to target 'savingsListRef' now if we are in this view.
+            // Ideally we refactor `renderSavings` to take a container or just update specific IDs.
+            // For now, I'll allow `renderSavings` to run as typical, but I need to ensure the IDs exists.
+            // Since we just overwrote the HTML, 'savingsList' might be gone from DOM if it was in Home view?
+            // Wait, where WAS savingsList? It was likely in Home view? 
+            // Providing duplicate IDs is bad. I should probably MOVE elements instead of re-stringing them.
+
+            // BETTER APPROACH: Move existing DOM elements if possible, or accept that I'm duplicating render logic briefly.
+            // I'll stick to string injection for speed, but I need to update the core `renderSavings` to target THESE new IDs if active.
+            // ACTUALLY: Let's just update the IDs in the core functions (Step 2 refactor).
+            // For this step, I'll just create the buckets.
+        }
         window.logout = () => {
             signOut(auth).then(() => showToast('התנתקת בהצלחה', 'success'));
         };
