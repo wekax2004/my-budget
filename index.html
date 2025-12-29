@@ -680,73 +680,28 @@
 
             <!-- TAB 2: ACTIVITY (History + Search) -->
             <div id="view-activity" class="view-section">
-                <!-- Search Bar -->
-                <div style="margin-bottom:15px;">
-                    <input type="text" id="searchInput" placeholder="🔎 חיפוש הוצאה..." onkeyup="render()">
+                <div class="header">
+                    <h3>היסטוריה 📄</h3>
                 </div>
-                <div class="card">
-                    <h3>פעולות אחרונות</h3>
-                    <div id="historyList" class="history-list"></div>
-                </div>
+                <div id="activity-content" style="padding-bottom:80px;"></div>
             </div>
 
             <!-- TAB 3: INSIGHTS (Charts + Income) -->
             <div id="view-insights" class="view-section">
-                <!-- Income Section -->
-                <div class="card" style="margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3>💰 הכנסות</h3>
-                        <div style="text-align:left;">
-                            <span style="font-size:12px; color:var(--text-sub);">סה"כ הכנסות</span>
-                            <div style="font-weight:700; color:var(--success); font-size:18px;" id="totalIncomeDisplay">
-                                ₪0</div>
-                        </div>
-                    </div>
-                    <button class="btn-main" onclick="openAddIncome()"
-                        style="margin-top:0; background:#ECFDF5; color:var(--success); border:1px solid #10B981;">+
-                        הוספת הכנסה</button>
-                    <div id="incomeList" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
+                <div class="header">
+                    <h3>תובנות 📊</h3>
+                    <button onclick="document.getElementById('incomeModal').style.display='flex'" class="icon-btn"
+                        style="background:#ECFDF5; color:#10B981;">💰 הכנסה</button>
                 </div>
-
-                <!-- Analytics Section -->
-                <div class="card">
-                    <h3>📊 הכנסות מול הוצאות</h3>
-                    <div style="height:250px; position:relative;">
-                        <canvas id="barChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="card" style="margin-top:20px;">
-                    <h3>🍰 התפלגות הוצאות</h3>
-                    <div style="height:250px; position:relative;">
-                        <canvas id="pieChart"></canvas>
-                    </div>
-                </div>
+                <div id="insights-content" style="padding-bottom:80px;"></div>
             </div>
 
             <!-- TAB 4: ASSETS (Savings + Gifts) -->
             <div id="view-assets" class="view-section">
-                <div class="dashboard-grid">
-                    <div class="card">
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <h3>🎯 יעדי חיסכון</h3>
-                            <button onclick="addSavingsGoal()"
-                                style="background:var(--success); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
-                        </div>
-                        <div id="savingsList" style="display:flex; flex-direction:column; gap:15px;"></div>
-                    </div>
-
-                    <div class="card">
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <h3>🎁 הארנק שלי (Gift Cards)</h3>
-                            <button onclick="addGiftCard()"
-                                style="background:var(--primary); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
-                        </div>
-                        <div id="giftCardsList" style="display:flex; flex-direction:column; gap:10px;"></div>
-                    </div>
+                <div class="header">
+                    <h3>נכסים 🎁</h3>
                 </div>
+                <div id="assets-content" style="padding-bottom:80px;"></div>
             </div>
 
         </div> <!-- End App Container -->
@@ -829,54 +784,7 @@
 
             <button class="btn-main" id="saveTxBtn">שמירה וסיום</button>
         </div>
-    </div><!-- End view-home -->
-
-    <!-- TAB 2: ACTIVITY -->
-    <div id="view-activity" class="view-section">
-        <div class="header">
-            <h3>היסטוריה 📄</h3>
-        </div>
-        <!-- Search Bar will move here -->
-        <div id="activity-content" style="padding-bottom:80px;"></div>
     </div>
-
-    <!-- TAB 3: INSIGHTS -->
-    <div id="view-insights" class="view-section">
-        <div class="header">
-            <h3>תובנות 📊</h3>
-            <button onclick="document.getElementById('incomeModal').style.display='flex'" class="icon-btn"
-                style="background:#ECFDF5; color:#10B981;">💰 הכנסה</button>
-        </div>
-        <div id="insights-content" style="padding-bottom:80px;"></div>
-    </div>
-
-    <!-- TAB 4: ASSETS -->
-    <div id="view-assets" class="view-section">
-        <div class="header">
-            <h3>נכסים 🎁</h3>
-        </div>
-        <div id="assets-content" style="padding-bottom:80px;"></div>
-    </div>
-
-    <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="switchView('view-home', this)">
-            <span>🏠</span>
-            בית
-        </button>
-        <button class="nav-item" onclick="switchView('view-activity', this)">
-            <span>📄</span>
-            פעילות
-        </button>
-        <button class="nav-item" onclick="switchView('view-insights', this)">
-            <span>📊</span>
-            תובנות
-        </button>
-        <button class="nav-item" onclick="switchView('view-assets', this)">
-            <span>🎁</span>
-            נכסים
-        </button>
-    </nav>
 
     </div><!-- End app-container -->
 
@@ -1266,28 +1174,29 @@
 
             // Render History (Based on separate displayTxs)
             const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
-            document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
-                const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
-                const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
-                return `
-                <div class="history-item">
-                    <div class="tx-info">
-                        <div class="tx-note">${t.note} ${subText}</div>
-                        <div class="tx-meta">
-                            <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
-                            <span>•</span>
-                            <span>${t.method}</span>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
-                        <div class="tx-actions">
-                            <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
-                            <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
+            // The historyList is now rendered by renderActivity, so this part is removed from the main render()
+            // document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
+            //     const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+            //     const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
+            //     return `
+            //     <div class="history-item">
+            //         <div class="tx-info">
+            //             <div class="tx-note">${t.note} ${subText}</div>
+            //             <div class="tx-meta">
+            //                 <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
+            //                 <span>•</span>
+            //                 <span>${t.method}</span>
+            //             </div>
+            //         </div>
+            //         <div style="display:flex; align-items:center; gap:10px;">
+            //             <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
+            //             <div class="tx-actions">
+            //                 <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
+            //                 <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
+            //             </div>
+            //         </div>
+            //     </div>`;
+            // }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
 
 
             // Re-adding Donut to Main Home View if needed? 
@@ -1338,20 +1247,22 @@
             // Filter by month
             const filtered = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
             const total = filtered.reduce((s, i) => s + i.amount, 0);
-            document.getElementById('totalIncomeDisplay').innerText = '₪' + total.toLocaleString();
+            // This is for the Home view summary chip, which is now updated by render()
+            // document.getElementById('totalIncomeDisplay').innerText = '₪' + total.toLocaleString();
 
-            document.getElementById('incomeList').innerHTML = filtered.map(i => `
-                <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
-                    <div>
-                        <div style="font-weight:bold;">${i.source}</div>
-                        <div style="font-size:12px; color:var(--text-sub);">${i.date}</div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="color:var(--success); font-weight:bold;">+₪${i.amount.toLocaleString()}</span>
-                        <button onclick="deleteIncome('${i.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
-                    </div>
-                </div>
-             `).join('');
+            // This is for the Income List in the Insights tab, which is now handled by renderInsights()
+            // document.getElementById('incomeList').innerHTML = filtered.map(i => `
+            //     <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
+            //         <div>
+            //             <div style="font-weight:bold;">${i.source}</div>
+            //             <div style="font-size:12px; color:var(--text-sub);">${i.date}</div>
+            //         </div>
+            //         <div style="display:flex; align-items:center; gap:10px;">
+            //             <span style="color:var(--success); font-weight:bold;">+₪${i.amount.toLocaleString()}</span>
+            //             <button onclick="deleteIncome('${i.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
+            //         </div>
+            //     </div>
+            //  `).join('');
 
             // Trigger render to update chips/charts if this changes
             // render();
@@ -1553,7 +1464,11 @@
         window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
 
         function renderSavings() {
-            document.getElementById('savingsList').innerHTML = savings.length ? savings.map(s => {
+            // This function now targets 'savingsListRef' if it exists, otherwise 'savingsList'
+            const el = document.getElementById('savingsListRef') || document.getElementById('savingsList');
+            if (!el) return;
+
+            el.innerHTML = savings.length ? savings.map(s => {
                 const perc = Math.min((s.current / s.target) * 100, 100);
                 return `
                     <div style="padding:10px; background:#F9FAFB; border-radius:12px; border:1px solid #E5E7EB;">
@@ -1573,7 +1488,10 @@
         }
 
         function renderGiftCards() {
-            const list = document.getElementById('giftCardsList');
+            // This function now targets 'giftCardsListRef' if it exists, otherwise 'giftCardsList'
+            const list = document.getElementById('giftCardsListRef') || document.getElementById('giftCardsList');
+            if (!list) return;
+
             const select = document.getElementById('pGiftCardId');
 
             // UI List
@@ -1730,28 +1648,6 @@
         function renderInsights() {
             const container = document.getElementById('insights-content');
             // Move charts here
-            container.innerHTML = `
-                <div class="card" style="margin-bottom:20px;">
-                    <h3>הכנסות החודש</h3>
-                    <div style="font-size:24px; font-weight:700; color:var(--success);" id="insightIncomeDisplay">₪0</div>
-                    <div id="incomeList" style="margin-top:10px;"></div>
-                </div>
-                
-                <div class="card" style="height:250px; margin-bottom:20px;">
-                    <canvas id="barChartRef"></canvas>
-                </div>
-                <div class="card" style="height:250px;">
-                    <canvas id="pieChartRef"></canvas>
-                </div>
-            `;
-            // Re-bind charts to these new canvases
-            renderIncome(); // This updates the income list
-            // We need to trigger chart updates. render() calls updateBarChart/PieChart.
-            // But those functions look for element IDs. We need to make sure IDs match or we pass contexts.
-            // Existing logic uses 'barChart' and 'pieChart' IDs.
-            // I'll update the IDs in the HTML above to match what existing JS expects:
-            // Actually, existing JS expects 'barChart' and 'pieChart'.
-            // So I should use those IDs here.
             container.innerHTML = `
                 <div class="card" style="margin-bottom:20px;">
                     <h3>הכנסות החודש</h3>
