@@ -1172,7 +1172,9 @@
                             ${c.name}
                         </div>
                         <div class="cat-stats">
-                            <b style="color:var(--text-main)">₪${Math.round(catSpent).toLocaleString()}</b>
+                            <b style="color:${(catSpent > c.budget && c.budget > 0) ? 'var(--danger)' : 'var(--text-main)'}">
+                                ${(catSpent > c.budget && c.budget > 0) ? '⚠️' : ''} ₪${Math.round(catSpent).toLocaleString()}
+                            </b>
                             <span style="color:var(--text-sub)"> / ₪${c.budget.toLocaleString()}</span>
                         </div>
                     </div>
