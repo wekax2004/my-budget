@@ -1133,11 +1133,17 @@
             // Chip 2: Expenses
             // Chip 3: Balance (Income - Expenses)
 
-            document.getElementById('totalBudgetDisplay').innerText = '₪' + monthlyIncome.toLocaleString();
-            document.getElementById('totalBudgetDisplay').previousElementSibling.innerText = "הכנסות"; // Rename Label
+            const elBudget = document.getElementById('totalBudgetDisplay');
+            if (elBudget) {
+                elBudget.innerText = '₪' + monthlyIncome.toLocaleString();
+                if (elBudget.previousElementSibling) elBudget.previousElementSibling.innerText = "הכנסות";
+            }
 
-            document.getElementById('totalSpentDisplay').innerText = '₪' + Math.round(totalSpent).toLocaleString();
-            document.getElementById('balanceDisplay').innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
+            const elSpent = document.getElementById('totalSpentDisplay');
+            if (elSpent) elSpent.innerText = '₪' + Math.round(totalSpent).toLocaleString();
+
+            const elBal = document.getElementById('balanceDisplay');
+            if (elBal) elBal.innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
 
             // Render History (Based on separate displayTxs)
             const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
@@ -1399,10 +1405,8 @@
             try {
                 if (editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
                 else await addDoc(collection(db, "transactions"), data);
-                closeModal();
             } catch (e) {
                 console.error(e);
-                closeModal(); // Close modal even on error
 
                 // User-friendly error messages
                 if (e.code === 'resource-exhausted') {
@@ -1412,6 +1416,8 @@
                 } else {
                     alert('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'));
                 }
+            } finally {
+                closeModal(); // ALWAYS close modal
             }
         };
 
