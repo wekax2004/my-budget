@@ -2002,9 +2002,7 @@
                 </div>
             `;
 
-            // Re-render charts
-            const currentMonthTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
-            const incomeTotal = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
+            // Re-render charts (reuse existing variables)
             const expenseTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
 
             document.getElementById('totalIncomeDisplay2').innerText = '₪' + incomeTotal.toLocaleString();
