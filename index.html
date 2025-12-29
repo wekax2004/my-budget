@@ -1254,18 +1254,25 @@
             const source = document.getElementById('incSource').value;
             const date = document.getElementById('incDate').value;
 
-            if (!amount || !source || !date) return alert("חסרים נתונים");
+            if (!amount || !source || !date) return showToast("חסרים נתונים", 'error');
 
-            await addDoc(collection(db, "income"), {
-                uid: user.uid,
-                amount,
-                source,
-                date,
-                timestamp: new Date()
-            });
-            document.getElementById('incomeModal').style.display = 'none';
-            document.getElementById('incAmount').value = '';
-            document.getElementById('incSource').value = '';
+            try {
+                await addDoc(collection(db, "income"), {
+                    uid: user.uid,
+                    amount,
+                    source,
+                    date,
+                    timestamp: new Date()
+                });
+                document.getElementById('incomeModal').style.display = 'none';
+                document.getElementById('incAmount').value = '';
+                document.getElementById('incSource').value = '';
+                showToast('הכנסה נוספה בהצלחה', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בשמירה: ' + e.message, 'error');
+                document.getElementById('incomeModal').style.display = 'none';
+            }
         }
 
         window.deleteIncome = async (id) => {
@@ -1382,7 +1389,7 @@
             const name = document.getElementById('catName').value;
             const budget = parseFloat(document.getElementById('catBudget').value);
 
-            if (!name || !budget) return alert("נא למלא שם ותקציב");
+            if (!name || !budget) return showToast("נא למלא שם ותקציב", 'error');
 
             const data = { name: name, budget: budget };
 
@@ -1393,14 +1400,15 @@
                     await addDoc(collection(db, "categories"), { ...data, owner: user.email, allowedUsers: [user.email] });
                 }
                 document.getElementById('catModal').style.display = 'none';
+                showToast('קטגוריה נשמרה בהצלחה', 'success');
             } catch (e) {
                 console.error(e);
                 document.getElementById('catModal').style.display = 'none'; // Close modal even on error
 
                 if (e.code === 'resource-exhausted') {
-                    alert('⚠️ הגעת למכסת Firebase היומית.\n\nנסה שוב מחר או שדרג את התוכנית.');
+                    showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
                 } else {
-                    alert('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'));
+                    showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
                 }
             }
         };
@@ -1588,9 +1596,11 @@
             link.click();
         };
 
-        document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("שגיאה בהתחברות: " + e.message));
-        document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("שגיאה בהרשמה: " + e.message));
-        window.logout = () => signOut(auth);
+        document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => showToast("שגיאה בהתחברות: " + e.message, 'error'));
+        document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => showToast("שגיאה בהרשמה: " + e.message, 'error'));
+        window.logout = () => {
+            signOut(auth).then(() => showToast('התנתקת בהצלחה', 'success'));
+        };
 
         // NUCLEAR OPTION: Force close backup
         // This runs independently of the main logic to guarantee closure
