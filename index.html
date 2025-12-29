@@ -713,19 +713,19 @@
 
         <!-- Bottom Nav -->
         <nav class="bottom-nav">
-            <button class="nav-item active" onclick="switchView('home', this)">
+            <button class="nav-item active" onclick="switchView('view-home', this)">
                 <span>🏠</span>
                 בית
             </button>
-            <button class="nav-item" onclick="switchView('activity', this)">
+            <button class="nav-item" onclick="switchView('view-activity', this)">
                 <span>📄</span>
                 פעילות
             </button>
-            <button class="nav-item" onclick="switchView('insights', this)">
+            <button class="nav-item" onclick="switchView('view-insights', this)">
                 <span>📊</span>
                 תובנות
             </button>
-            <button class="nav-item" onclick="switchView('assets', this)">
+            <button class="nav-item" onclick="switchView('view-assets', this)">
                 <span>🧧</span>
                 נכסים
             </button>
@@ -1079,9 +1079,8 @@
                 renderIncome();
             });
 
-            // Sync Transactions (Fetch ALL, filter locally for simplicity in this version)
-            // Ideally we would query by date range, but that requires composite index setup which we can't do from here.
-            onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc")), s => {
+            // Sync Transactions (Limit to last 150 to save quota)
+            onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc"), limit(150)), s => {
                 txs = s.docs.map(d => {
                     const data = d.data();
                     // Convert Timestamp to js Date for easier filtering
@@ -1768,10 +1767,19 @@
 
         // Navigation Logic
         window.switchView = (viewId, btn) => {
+            if (!viewId) return;
             // Hide all views
-            document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.view-section').forEach(el => {
+                if (el) el.style.display = 'none';
+            });
             // Show target
-            document.getElementById(viewId).style.display = 'block';
+            const target = document.getElementById(viewId);
+            if (target) {
+                target.style.display = 'block';
+            } else {
+                console.warn(`View ID '${viewId}' not found!`);
+                return;
+            }
 
             // Update buttons
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
