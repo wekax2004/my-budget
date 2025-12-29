@@ -1501,11 +1501,11 @@
                     await addDoc(collection(db, "categories"), data);
                     showToast('קטגוריה נוצרה', 'success');
                 }
-                document.getElementById('catModal').style.display = 'none';
             } catch (e) {
                 console.error(e);
-                document.getElementById('catModal').style.display = 'none'; // Close modal on error to prevent stuck state
                 showToast("שגיאה בשמירה: " + e.message, 'error');
+            } finally {
+                closeModal('catModal'); // Ensures verification of closure
             }
         };
 
@@ -1971,6 +1971,15 @@
                 setTimeout(() => {
                     closeModal();
                 }, 500);
+            });
+        }
+
+        const safeSaveCatBtn = document.getElementById('saveCatBtn');
+        if (safeSaveCatBtn) {
+            safeSaveCatBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    closeModal('catModal');
+                }, 1000);
             });
         }
     </script>
