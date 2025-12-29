@@ -635,7 +635,9 @@
                     </div>
                 </div>
                 <div style="display:flex; gap:10px; align-items: center;">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v22</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v23</span>
+                    <button onclick="document.getElementById('partnerModal').style.display='flex'" class="icon-btn"
+                        title="הזמן שותף">🤝</button>
                     <button onclick="toggleTheme()" class="icon-btn" title="מצב לילה/יום">🌓</button>
                     <button onclick="logout()"
                         style="border:none; background:#FEE2E2; color:var(--danger); padding: 8px 16px; border-radius:10px; cursor:pointer; font-weight:600; font-family:'Rubik';">יציאה</button>
@@ -787,6 +789,22 @@
     </div>
 
     </div><!-- End app-container -->
+
+    <!-- Partner Modal -->
+    <div id="partnerModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3>הזמנת שותף 🤝</h3>
+                <button onclick="document.getElementById('partnerModal').style.display='none'"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+            <p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">
+                הכנס את כתובת האימייל של השותף שלך. אנו נשתף אוטומטית את כל הקטגוריות שלך איתו.
+            </p>
+            <input type="email" id="partnerEmailInput" placeholder="email@example.com">
+            <button class="btn-main" onclick="invitePartner()">שליחת הזמנה</button>
+        </div>
+    </div>
 
     <!-- Category Modal -->
     <div id="catModal" class="modal">
@@ -1428,6 +1446,10 @@
 
             const converted = rawAmt * rates[curr];
 
+            const allowed = [user.email];
+            const partner = localStorage.getItem('partnerEmail');
+            if (partner) allowed.push(partner);
+
             const data = {
                 amount: converted,
                 originalAmount: rawAmt,
@@ -1435,7 +1457,7 @@
                 note: document.getElementById('expNote').value || "הוצאה כללית",
                 method: document.getElementById('pMethod').value,
                 catId: window.currentCatId,
-                allowedUsers: [user.email],
+                allowedUsers: allowed,
                 // Use existing date if editing, or new date if new
                 date: editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now()
             };
@@ -1558,6 +1580,34 @@
                 updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) })
                     .then(() => showToast(`שותף בהצלחה עם ${email}`, 'success'))
                     .catch(e => showToast("שגיאה בשיתוף " + e.message, 'error'));
+            }
+        };
+
+        window.invitePartner = async () => {
+            const email = document.getElementById('partnerEmailInput').value;
+            if (!email || !email.includes('@')) return showToast('נא להזין אימייל תקין', 'error');
+
+            try {
+                // 1. Save preference
+                localStorage.setItem('partnerEmail', email);
+
+                // 2. Find all MY categories
+                const myCats = cats.filter(c => c.uid === user.uid);
+
+                // 3. Batch update
+                const batch = writeBatch(db);
+                myCats.forEach(c => {
+                    const ref = doc(db, "categories", c.id);
+                    batch.update(ref, { allowedUsers: arrayUnion(email) });
+                });
+
+                await batch.commit();
+
+                document.getElementById('partnerModal').style.display = 'none';
+                showToast(`הזמנה נשלחה! כל הקטגוריות שותפו עם ${email}`, 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בשיתוף: ' + e.message, 'error');
             }
         };
 
