@@ -548,7 +548,7 @@
     <!-- Login Screen -->
     <div id="authScreen">
         <div class="auth-card">
-            <h2>BudgetMaster Pro</h2>
+            <h2>BudgetMaster Pro <span style="font-size:12px; opacity:0.5;">v20</span></h2>
             <p style="color:var(--text-sub); margin-bottom: 20px;">ניהול תקציב חכם ופשוט</p>
             <input type="email" id="email" placeholder="כתובת אימייל">
             <input type="password" id="password" placeholder="סיסמה">
@@ -1527,6 +1527,17 @@
         document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("שגיאה בהתחברות: " + e.message));
         document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("שגיאה בהרשמה: " + e.message));
         window.logout = () => signOut(auth);
+
+        // NUCLEAR OPTION: Force close backup
+        // This runs independently of the main logic to guarantee closure
+        const safeSaveBtn = document.getElementById('saveTxBtn');
+        if (safeSaveBtn) {
+            safeSaveBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    closeModal();
+                }, 500);
+            });
+        }
     </script>
 </body>
 
