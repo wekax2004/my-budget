@@ -606,6 +606,77 @@
         .view-section.active {
             display: block;
         }
+
+        /* Calendar Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .calendar-day {
+            background: var(--card-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            min-height: 60px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            border-color: var(--primary);
+        }
+
+        .calendar-day.empty {
+            background: none;
+            border: none;
+            cursor: default;
+        }
+
+        .calendar-date {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .calendar-dots {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .dot.expense {
+            background-color: var(--danger);
+            opacity: 0.7;
+        }
+
+        .dot.recurring {
+            background-color: var(--primary);
+        }
+
+        .dot.income {
+            background-color: var(--success);
+        }
     </style>
 </head>
 
@@ -714,6 +785,39 @@
                 <div id="assets-content" style="padding-bottom:80px;"></div>
             </div>
 
+            <!-- TAB 5: CALENDAR (New) -->
+            <div id="view-calendar" class="view-section">
+                <div class="header">
+                    <h3>לוח שנה 📅</h3>
+                </div>
+                <div class="card" style="padding:15px;">
+                    <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:10px;">
+                        <div class="calendar-day-header">א'</div>
+                        <div class="calendar-day-header">ב'</div>
+                        <div class="calendar-day-header">ג'</div>
+                        <div class="calendar-day-header">ד'</div>
+                        <div class="calendar-day-header">ה'</div>
+                        <div class="calendar-day-header">ו'</div>
+                        <div class="calendar-day-header">ש'</div>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                <div
+                    style="margin-top:20px; font-size:12px; color:var(--text-sub); display:flex; gap:15px; justify-content:center;">
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot expense"></div> הוצאה
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot recurring"></div> הוראת קבע
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot income"></div> הכנסה
+                    </span>
+                </div>
+            </div>
+
         </div> <!-- End App Container -->
 
         <!-- Bottom Nav -->
@@ -734,7 +838,25 @@
                 <span>🧧</span>
                 נכסים
             </button>
+            <button class="nav-item" onclick="switchView('view-calendar', this)">
+                <span>📅</span>
+                יומן
+            </button>
         </nav>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div id="dayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="dayTitle">פרטי יום</h3>
+                <span class="close-btn" onclick="closeModal('dayModal')">&times;</span>
+            </div>
+            <div id="dayDetailsContent"
+                style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;">
+                <!-- Filled by JS -->
+            </div>
+        </div>
     </div>
 
     <!-- Transaction Modal -->
@@ -1874,6 +1996,7 @@
             if (viewId === 'view-activity') renderActivity();
             if (viewId === 'view-insights') renderInsights();
             if (viewId === 'view-assets') renderAssets();
+            if (viewId === 'view-calendar') renderCalendar();
         };
 
         // --- PHASE 9: AI Financial Advisor (Smart Logic) ---
@@ -2075,6 +2198,118 @@
             renderSavings();
             renderGiftCards();
         }
+
+        // --- CALENDAR LOGIC ---
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            if (!grid) return;
+
+            grid.innerHTML = '';
+
+            const year = parseInt(currentYearMonth.split('-')[0]);
+            const month = parseInt(currentYearMonth.split('-')[1]) - 1; // JS months 0-11
+
+            // 1. Get Days in Month
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+
+            // 2. Padding for empty days
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="calendar-day empty"></div>`;
+            }
+
+            // 3. Render Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                // Find Events
+                const dayTxs = txs.filter(t => t.jsDate.getDate() === d && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
+                const dayInc = income.filter(i => {
+                    const iDate = new Date(i.date);
+                    return iDate.getDate() === d && iDate.getMonth() === month && iDate.getFullYear() === year;
+                });
+
+                // Find Recurring (Only if 'nextDate' matches current month OR if day matches frequency logic - simplified to nextDate match for now)
+                const dayRec = recurring.filter(r => {
+                    const [rY, rM, rD] = r.nextDate.split('-');
+                    return parseInt(rD) === d && parseInt(rM) === (month + 1) && parseInt(rY) === year;
+                });
+
+                // Create Dots HTML
+                let dotsHtml = '';
+                dayTxs.forEach(() => dotsHtml += `<div class="dot expense"></div>`);
+                dayInc.forEach(() => dotsHtml += `<div class="dot income"></div>`);
+                dayRec.forEach(() => dotsHtml += `<div class="dot recurring"></div>`);
+
+                // Limit dots to prevent overflow (e.g. max 6)
+                // if (dayTxs.length + dayInc.length + dayRec.length > 5) ...
+
+                grid.innerHTML += `
+                    <div class="calendar-day" onclick="openDayDetails(${d})">
+                        <div class="calendar-date">${d}</div>
+                        <div class="calendar-dots">${dotsHtml}</div>
+                    </div>
+                `;
+            }
+        }
+
+        window.openDayDetails = (day) => {
+            const year = parseInt(currentYearMonth.split('-')[0]);
+            const month = parseInt(currentYearMonth.split('-')[1]) - 1;
+
+            const dayTxs = txs.filter(t => t.jsDate.getDate() === day && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
+            const dayInc = income.filter(i => {
+                const iDate = new Date(i.date);
+                return iDate.getDate() === day && iDate.getMonth() === month && iDate.getFullYear() === year;
+            });
+            const dayRec = recurring.filter(r => {
+                const [rY, rM, rD] = r.nextDate.split('-');
+                return parseInt(rD) === day && parseInt(rM) === (month + 1) && parseInt(rY) === year;
+            });
+
+            const content = document.getElementById('dayDetailsContent');
+            content.innerHTML = '';
+
+            document.getElementById('dayTitle').innerText = `פעילות ליום ${day}/${month + 1}`;
+
+            if (dayTxs.length === 0 && dayInc.length === 0 && dayRec.length === 0) {
+                content.innerHTML = '<div style="text-align:center; color:var(--text-sub);">אין פעילות ביום זה</div>';
+            } else {
+                // Render Income
+                dayInc.forEach(i => {
+                    content.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:#ECFDF5; border-radius:8px; align-items:center;">
+                            <b>💰 ${i.source}</b>
+                            <span style="color:var(--success);">+₪${i.amount.toLocaleString()}</span>
+                        </div>`;
+                });
+
+                // Render Recurring
+                dayRec.forEach(r => {
+                    content.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:#EFF6FF; border-radius:8px; align-items:center;">
+                            <b>🔄 ${r.name} (צפוי)</b>
+                            <span style="color:var(--primary);">-₪${r.amount.toLocaleString()}</span>
+                        </div>`;
+                });
+
+                // Render Expenses
+                dayTxs.forEach(t => {
+                    const cat = cats.find(c => c.id === t.catId);
+                    content.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
+                            <div>
+                                <b>${t.note}</b>
+                                <div style="font-size:10px; color:var(--text-sub);">${cat?.name || 'G'}</div>
+                            </div>
+                            <span style="color:var(--danger);">-₪${t.amount.toLocaleString()}</span>
+                        </div>`;
+                });
+            }
+
+            document.getElementById('dayModal').style.display = 'flex';
+        };
+
         window.logout = () => {
             signOut(auth).then(() => showToast('התנתקת בהצלחה', 'success'));
         };
