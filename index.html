@@ -1365,7 +1365,17 @@
             document.getElementById('fAmt').focus();
         };
 
-        window.closeModal = () => document.getElementById('expModal').style.display = 'none';
+        window.closeModal = (id) => {
+            if (id) {
+                document.getElementById(id).style.display = 'none';
+            } else {
+                // Close all known modals if no specific ID provided
+                ['expModal', 'catModal', 'recurringModal', 'incomeModal'].forEach(mid => {
+                    const el = document.getElementById(mid);
+                    if (el) el.style.display = 'none';
+                });
+            }
+        };
 
         document.getElementById('saveTxBtn').onclick = async () => {
             const rawAmt = parseFloat(document.getElementById('fAmt').value);
