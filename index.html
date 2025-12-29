@@ -1157,14 +1157,16 @@
                 totalBudget += c.budget;
                 totalSpent += catSpent;
 
-                const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
-                const color = perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)');
+                // Personalization Logic
+                const icon = c.icon || '📂';
+                // If user has a custom color, use it. Otherwise use the calculated status color.
+                const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
 
                 return `
                 <div class="cat-item">
                     <div class="cat-header" onclick="openAddTx('${c.id}', '${c.name}')">
                         <div class="cat-name">
-                            <span style="background:#EEF2FF; padding:8px; border-radius:8px; color:var(--primary)">📂</span>
+                            <span style="background:${c.color ? c.color + '20' : '#EEF2FF'}; padding:8px; border-radius:8px; color:${c.color || 'var(--primary)'}; font-size:18px; display:flex; align-items:center; justify-content:center; width:36px; height:36px;">${icon}</span>
                             ${c.name}
                         </div>
                         <div class="cat-stats">
@@ -1180,7 +1182,7 @@
                     <div class="cat-actions">
                         <div class="action-chip" onclick="openAddTx('${c.id}', '${c.name}')">➕ הוספה</div>
                         <div class="action-chip" onclick="shareCat('${c.id}')">👥 שיתוף</div>
-                        <div class="action-chip" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget})">⚙️ הגדרות</div>
+                        <div class="action-chip" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')">⚙️ הגדרות</div>
                     </div>
                 </div>`;
             }).join('');
