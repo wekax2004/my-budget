@@ -612,8 +612,8 @@
     <!-- Login Screen -->
     <div id="authScreen">
         <div class="auth-card">
-            <h2>BudgetMaster Pro <span style="font-size:12px; opacity:0.5;">v20</span></h2>
-            <p style="color:var(--text-sub); margin-bottom: 20px;">ניהול תקציב חכם ופשוט</p>
+            <h2>BudgetMaster Pro <span style="font-size:12px; opacity:0.5; color:var(--text-sub);">v24</span></h2>
+            <p style="color:var(--text-sub);">השתלט על הכסף שלך</p>
             <input type="email" id="email" placeholder="כתובת אימייל">
             <input type="password" id="password" placeholder="סיסמה">
             <button class="btn-main" id="loginBtn">התחברות</button>
@@ -635,7 +635,7 @@
                     </div>
                 </div>
                 <div style="display:flex; gap:10px; align-items: center;">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v23</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v24</span>
                     <button onclick="document.getElementById('partnerModal').style.display='flex'" class="icon-btn"
                         title="הזמן שותף">🤝</button>
                     <button onclick="toggleTheme()" class="icon-btn" title="מצב לילה/יום">🌓</button>
@@ -684,6 +684,9 @@
             <div id="view-activity" class="view-section">
                 <div class="header">
                     <h3>היסטוריה 📄</h3>
+                    <button onclick="triggerImport()" class="icon-btn" title="ייבוא מ-CSV">📂 ייבוא</button>
+                    <input type="file" id="csvInput" style="display:none" accept=".csv"
+                        onchange="handleCSVUpload(this)">
                 </div>
                 <div id="activity-content" style="padding-bottom:80px;"></div>
             </div>
@@ -1609,6 +1612,80 @@
                 console.error(e);
                 showToast('שגיאה בשיתוף: ' + e.message, 'error');
             }
+        };
+
+        window.csvInput = document.getElementById('csvInput');
+        window.triggerImport = () => window.csvInput.click();
+
+        window.handleCSVUpload = async (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n');
+
+                // Find column indices
+                const header = rows[0].toLowerCase().split(',');
+                const dateIdx = header.findIndex(h => h.includes('date') || h.includes('תאריך'));
+                const amountIdx = header.findIndex(h => h.includes('amount') || h.includes('סכום'));
+                const noteIdx = header.findIndex(h => h.includes('note') || h.includes('desc') || h.includes('תיאור') || h.includes('פרטים'));
+
+                if (dateIdx === -1 || amountIdx === -1) {
+                    showToast('לא זוהו עמודות חובה (Date, Amount)', 'error');
+                    return;
+                }
+
+                try {
+                    const batch = writeBatch(db);
+                    let count = 0;
+
+                    // Get General Category ID or first available
+                    const defaultCatId = cats[0]?.id;
+
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i].split(',');
+                        if (cols.length < 2) continue;
+
+                        const dateStr = cols[dateIdx]?.trim();
+                        const amountStr = cols[amountIdx]?.trim();
+                        const note = cols[noteIdx]?.trim() || "ייבוא בנק";
+
+                        if (!dateStr || !amountStr) continue;
+
+                        const date = new Date(dateStr);
+                        if (isNaN(date.getTime())) continue; // Skip invalid dates
+
+                        const amount = parseFloat(amountStr.replace(/[^\d.-]/g, '')); // Clean currency symbols
+
+                        const allowed = [user.email];
+                        const partner = localStorage.getItem('partnerEmail');
+                        if (partner) allowed.push(partner);
+
+                        const docRef = doc(collection(db, "transactions"));
+                        batch.set(docRef, {
+                            date: Timestamp.fromDate(date),
+                            amount: Math.abs(amount), // Assume expense
+                            originalAmount: Math.abs(amount),
+                            currency: 'ILS', // Default
+                            catId: defaultCatId,
+                            note: note,
+                            method: '💳 אשראי',
+                            allowedUsers: allowed
+                        });
+                        count++;
+                    }
+
+                    await batch.commit();
+                    showToast(`נשמרו ${count} הוצאות בהצלחה!`, 'success');
+                    input.value = ''; // Reset
+                } catch (err) {
+                    console.error(err);
+                    showToast('שגיאה בייבוא: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
         };
 
         window.exportToCSV = () => {
