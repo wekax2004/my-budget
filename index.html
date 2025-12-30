@@ -1097,12 +1097,19 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch, getDocs, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        enableIndexedDbPersistence(db).catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.log('Multiple tabs open, persistence can only be enabled in one.');
+            } else if (err.code == 'unimplemented') {
+                console.log('Browser does not support persistence');
+            }
+        });
 
         let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
         let income = [], barChart = null;
@@ -1129,6 +1136,10 @@
 
         // Init
         fetchRates();
+
+        // Offline Status Listener
+        window.addEventListener('offline', () => showToast('🔌 אין חיבור אינטרנט. עובד במצב אופליין.', 'warning'));
+        window.addEventListener('online', () => showToast('🌐 החיבור חזר!', 'success'));
 
         // Theme Init
         if (localStorage.getItem('theme') === 'dark') {
