@@ -732,7 +732,7 @@
                     </div>
                 </div>
                 <div style="display:flex; gap:10px; align-items: center;">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v26.2</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v26.3</span>
                     <button onclick="hardResetApp()" class="reset-btn" title="ניקוי מטמון ורענון">🔄</button>
                     <button onclick="document.getElementById('partnerModal').style.display='flex'" class="icon-btn"
                         title="הזמן שותף">🤝</button>
@@ -1930,58 +1930,64 @@
                 currency: curr,
                 note: document.getElementById('expNote').value || "הוצאה כללית",
                 method: document.getElementById('pMethod').value,
-                // Reset scanned date
-                window.scannedDate = null;
+                catId: window.currentCatId,
+                allowedUsers: allowed,
+                // Use scanned date, or existing date if editing, or now
+                date: window.scannedDate ? Timestamp.fromDate(new Date(window.scannedDate)) : (editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now())
+            };
 
-                try {
-                    if(editMode.active) {
-                        await updateDoc(doc(db, "transactions", editMode.id), data);
-            logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
-        } else {
-            await addDoc(collection(db, "transactions"), data);
-            logEvent("TX_ADD", { amt: data.amount, cat: window.currentCatId });
-        }
-        showToast('הוצאה נשמרה בהצלחה', 'success');
+            // Reset scanned date
+            window.scannedDate = null;
 
-        // --- Real-Time Budget Alert ---
-        const cat = cats.find(c => c.id === window.currentCatId);
-        if (cat && cat.budget > 0) {
-            const currentMonth = new Date().toISOString().slice(0, 7);
-            // Calc existing spent
-            const existingSpent = txs
-                .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
-                .reduce((s, t) => s + t.amount, 0);
+            try {
+                if (editMode.active) {
+                    await updateDoc(doc(db, "transactions", editMode.id), data);
+                    logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
+                } else {
+                    await addDoc(collection(db, "transactions"), data);
+                    logEvent("TX_ADD", { amt: data.amount, cat: window.currentCatId });
+                }
+                showToast('הוצאה נשמרה בהצלחה', 'success');
 
-            // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
-            // Actually, 'txs' array updates via onSnapshot, which is async. 
-            // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
-            // We should add 'converted' manually for the check.
+                // --- Real-Time Budget Alert ---
+                const cat = cats.find(c => c.id === window.currentCatId);
+                if (cat && cat.budget > 0) {
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+                    // Calc existing spent
+                    const existingSpent = txs
+                        .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                        .reduce((s, t) => s + t.amount, 0);
 
-            const newTotal = existingSpent + converted;
-            const percent = (newTotal / cat.budget) * 100;
+                    // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
+                    // Actually, 'txs' array updates via onSnapshot, which is async. 
+                    // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
+                    // We should add 'converted' manually for the check.
 
-            if (percent > 100) {
-                setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
-            } else if (percent > 90) {
-                setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
-            }
-        }
+                    const newTotal = existingSpent + converted;
+                    const percent = (newTotal / cat.budget) * 100;
+
+                    if (percent > 100) {
+                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
+                    } else if (percent > 90) {
+                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
+                    }
+                }
                 // ------------------------------
             } catch (e) {
-            console.error(e);
-            closeModal(); // Close modal immediately before showing error
+                console.error(e);
+                closeModal(); // Close modal immediately before showing error
 
-            // User-friendly error messages
-            if (e.code === 'resource-exhausted') {
-                showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
-            } else if (e.code === 'permission-denied') {
-                showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
-            } else {
-                showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
+                // User-friendly error messages
+                if (e.code === 'resource-exhausted') {
+                    showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
+                } else if (e.code === 'permission-denied') {
+                    showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
+                } else {
+                    showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
+                }
+            } finally {
+                closeModal(); // ALWAYS close modal (double check)
             }
-        } finally {
-            closeModal(); // ALWAYS close modal (double check)
-        }
         };
 
         window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
