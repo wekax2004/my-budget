@@ -1250,22 +1250,30 @@
             // ... existing logic ...
             for (const r of recurring) {
                 if (r.nextDate <= today) {
-                    await addDoc(collection(db, "transactions"), {
-                        allowedUsers: [user.email],
-                        amount: r.amount,
-                        catId: r.catId,
-                        note: `הוראת קבע: ${r.name}`,
-                        date: Timestamp.fromDate(new Date(r.nextDate)),
-                        method: 'אשראי',
-                        currency: 'ILS'
-                    });
+                    try {
+                        await addDoc(collection(db, "transactions"), {
+                            allowedUsers: [user.email],
+                            amount: r.amount,
+                            catId: r.catId,
+                            note: `הוראת קבע: ${r.name}`,
+                            date: Timestamp.fromDate(new Date(r.nextDate)),
+                            method: 'אשראי',
+                            currency: 'ILS'
+                        });
 
-                    const next = new Date(r.nextDate);
-                    next.setMonth(next.getMonth() + 1);
-                    await updateDoc(doc(db, "recurring", r.id), {
-                        nextDate: next.toISOString().slice(0, 10)
-                    });
-                    console.log(`הוראת קבע בוצעה: ${r.name}`);
+                        const next = new Date(r.nextDate);
+                        next.setMonth(next.getMonth() + 1);
+                        await updateDoc(doc(db, "recurring", r.id), {
+                            nextDate: next.toISOString().slice(0, 10)
+                        });
+                        console.log(`הוראת קבע בוצעה: ${r.name}`);
+                    } catch (e) {
+                        if (e.code === 'resource-exhausted') {
+                            showToast('מכסת כתיבה יומית נוצלה. המערכת תחזור לפעול מחר.', 'error');
+                            return; // Stop trying
+                        }
+                        console.error("Recurring Failed", e);
+                    }
                 }
             }
         }
