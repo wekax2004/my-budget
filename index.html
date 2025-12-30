@@ -1223,6 +1223,70 @@
             }
         };
 
+        // --- Filter System ---
+        let filterState = {
+            active: false,
+            start: '',
+            end: '',
+            min: '',
+            max: '',
+            cats: []
+        };
+
+        window.openFilterModal = () => {
+            const el = document.getElementById('filterCatChips');
+            el.innerHTML = cats.map(c => `
+                <div class="filter-chip ${filterState.cats.includes(c.id) ? 'selected' : ''}" 
+                     onclick="toggleFilterCat(this, '${c.id}')">
+                    ${c.icon || '🏷️'} ${c.name}
+                </div>
+            `).join('');
+
+            // Fill inputs
+            document.getElementById('filterStart').value = filterState.start;
+            document.getElementById('filterEnd').value = filterState.end;
+            document.getElementById('filterMin').value = filterState.min;
+            document.getElementById('filterMax').value = filterState.max;
+
+            document.getElementById('filterModal').style.display = 'flex';
+        };
+
+        window.toggleFilterCat = (el, id) => {
+            el.classList.toggle('selected');
+            if (el.classList.contains('selected')) {
+                filterState.cats.push(id);
+            } else {
+                filterState.cats = filterState.cats.filter(cid => cid !== id);
+            }
+        };
+
+        window.applyFilters = () => {
+            filterState.start = document.getElementById('filterStart').value;
+            filterState.end = document.getElementById('filterEnd').value;
+            filterState.min = document.getElementById('filterMin').value;
+            filterState.max = document.getElementById('filterMax').value;
+
+            // Check if any filter is active
+            filterState.active = !!(filterState.start || filterState.end || filterState.min || filterState.max || filterState.cats.length > 0);
+
+            closeModal('filterModal');
+            renderActivity(); // Re-render list
+
+            if (filterState.active) {
+                showToast('הסינון הופעל', 'success');
+                document.querySelector('.icon-btn[onclick="openFilterModal()"]').style.borderColor = 'var(--primary)';
+            } else {
+                document.querySelector('.icon-btn[onclick="openFilterModal()"]').style.borderColor = 'var(--input-border)';
+            }
+        };
+
+        window.clearFilters = () => {
+            filterState = { active: false, start: '', end: '', min: '', max: '', cats: [] };
+            document.querySelector('.icon-btn[onclick="openFilterModal()"]').style.borderColor = 'var(--input-border)';
+            closeModal('filterModal');
+            renderActivity();
+        };
+
         window.deleteRecurring = async (id) => {
             if (confirm('למחוק הוראת קבע זו?')) {
                 await deleteDoc(doc(db, "recurring", id)).catch(e => showToast("שגיאה במחיקה", 'error'));
@@ -1511,18 +1575,36 @@
 
             // 2. Handle Search Logic (For History List)
             const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
-            let displayTxs = filteredTxs; // Default to month view
+            // 1. Filter by Search
+            let displayTxs = txs.filter(t =>
+                t.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                t.amount.toString().includes(searchQuery)
+            );
 
-            if (searchQuery) {
-                // If searching, search EVERYTHING (ignore date filter)
-                displayTxs = txs.filter(t => {
-                    const catName = cats.find(c => c.id === t.catId)?.name.toLowerCase() || '';
-                    return t.note.toLowerCase().includes(searchQuery) ||
-                        catName.includes(searchQuery) ||
-                        t.amount.toString().includes(searchQuery);
+            // 2. Filter by Advanced Filters (If active)
+            if (filterState.active) {
+                displayTxs = displayTxs.filter(t => {
+                    const date = t.jsDate.toISOString().slice(0, 10);
+                    // Date Range
+                    if (filterState.start && date < filterState.start) return false;
+                    if (filterState.end && date > filterState.end) return false;
+                    // Amount Range
+                    if (filterState.min && t.amount < parseFloat(filterState.min)) return false;
+                    if (filterState.max && t.amount > parseFloat(filterState.max)) return false;
+                    // Categories
+                    if (filterState.cats.length > 0 && !filterState.cats.includes(t.catId)) return false;
+
+                    return true;
                 });
+            } else {
+                // Default: Filter by Current Month if NO search and NO advanced filter
+                if (!searchQuery) {
+                    displayTxs = displayTxs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+                }
             }
 
+            // Sort by Date Descending
+            displayTxs.sort((a, b) => b.jsDate - a.jsDate);
             // 3. Calculate Totals (Always based on Month)
             let totalBudget = 0;
             let totalSpent = 0;
@@ -2474,6 +2556,15 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h3 style="color:#4F46E5; display:flex; align-items:center; gap:8px;">🧠 Smart Advisor <span style="font-size:10px; background:#4F46E5; color:white; padding:2px 6px; border-radius:10px;">BETA</span></h3>
                     </div>
+                    <!-- Search Bar -->
+            <div style="padding:0 20px; margin-bottom:10px; display:flex; gap:10px;">
+                <div style="flex:1; position:relative;">
+                    <input type="text" id="searchInput" placeholder="חיפוש הוצאות..." 
+                        style="width:100%; padding:12px 15px; padding-left:40px; border-radius:12px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--text-main);">
+                    <span style="position:absolute; left:15px; top:50%; transform:translateY(-50%); opacity:0.5;">🔍</span>
+                </div>
+                <button onclick="openFilterModal()" class="icon-btn" style="background:var(--card-bg); width:46px; border:1px solid var(--input-border);">🌪️</button>
+            </div>
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         ${smartTips.map(tip => `
                             <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:white; border-radius:8px; border-right:4px solid var(--${tip.type}); box-shadow:0 2px 4px rgba(0,0,0,0.05);">
