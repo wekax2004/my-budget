@@ -146,6 +146,17 @@
             font-size: 18px;
         }
 
+        .reset-btn {
+            font-size: 10px;
+            background: #FEE2E2;
+            color: #EF4444;
+            border: 1px solid #FECACA;
+            border-radius: 6px;
+            padding: 4px 8px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
         /* Controls */
         .controls-bar {
             display: flex;
@@ -1115,6 +1126,30 @@
                 toast.style.animation = 'fadeOutToast 0.5s ease forwards';
                 setTimeout(() => toast.remove(), 500);
             }, 3000);
+        };
+
+        window.hardResetApp = async () => {
+            if (!confirm("פעולה זו תרענן את האפליקציה ותנקה זיכרון מטמון. האם להמשיך?")) return;
+
+            // 1. Unregister Service Workers
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) await reg.unregister();
+            }
+
+            // 2. Clear Local Storage (Except Theme)
+            const theme = localStorage.getItem('theme');
+            localStorage.clear();
+            if (theme) localStorage.setItem('theme', theme);
+
+            // 3. Clear IndexedDB (Firebase Persistence)
+            try {
+                const dbs = await window.indexedDB.databases();
+                dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
+            } catch (e) { console.log("Could not clear IndexedDB", e); }
+
+            // 4. Reload
+            window.location.reload(true);
         };
 
         // --- NEW: Current Filter State ---
