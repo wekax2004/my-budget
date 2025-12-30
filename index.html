@@ -2789,6 +2789,51 @@
                 }, 1000);
             });
         }
+        // --- Default Categories Logic ---
+        async function checkAndCreateDefaults(u) {
+            const q = query(collection(db, "categories"), where("allowedUsers", "array-contains", u.email));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+                const defaults = [
+                    { name: 'אוכל וסופר', icon: '🍔', color: '#EF4444', budget: 2000 },
+                    { name: 'הכנסה', icon: '💰', color: '#10B981', budget: 0 },
+                    { name: 'בית', icon: '🏠', color: '#3B82F6', budget: 4000 },
+                    { name: 'רכב', icon: '🚗', color: '#F59E0B', budget: 1000 },
+                    { name: 'קניות', icon: '🛍️', color: '#8B5CF6', budget: 500 },
+                    { name: 'אחר', icon: '❓', color: '#6B7280', budget: 200 }
+                ];
+
+                showToast('יוצר קטגוריות ברירת מחדל...', 'info');
+                const batch = writeBatch(db);
+                defaults.forEach(d => {
+                    const ref = doc(collection(db, "categories"));
+                    batch.set(ref, { ...d, uid: u.uid, allowedUsers: [u.email] });
+                });
+                await batch.commit();
+                showToast('קטגוריות נוצרו בהצלחה!', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        }
+
+        onAuthStateChanged(auth, (u) => {
+            if (u) {
+                user = u;
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.getElementById('userEmailDisplay').innerText = u.email;
+                document.getElementById('avatarLetter').innerText = u.email[0].toUpperCase();
+
+                // Initialize Data Listeners (If not already running - simple check)
+                if (cats.length === 0) {
+                    // We can't easily check if listeners are on, but we can check defaults once
+                    checkAndCreateDefaults(u);
+                }
+            } else {
+                document.getElementById('authScreen').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+            }
+        });
+
     </script>
 </body>
 
