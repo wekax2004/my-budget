@@ -736,6 +736,8 @@
                     <button onclick="hardResetApp()" class="reset-btn" title="ניקוי מטמון ורענון">🔄</button>
                     <button onclick="document.getElementById('partnerModal').style.display='flex'" class="icon-btn"
                         title="הזמן שותף">🤝</button>
+                    <button onclick="openLogs()" class="icon-btn" title="יומן מערכת"
+                        style="background:#F3F4F6;">📜</button>
                     <button onclick="toggleTheme()" class="icon-btn" title="מצב לילה/יום">🌓</button>
                     <button onclick="logout()"
                         style="border:none; background:#FEE2E2; color:var(--danger); padding: 8px 16px; border-radius:10px; cursor:pointer; font-weight:600; font-family:'Rubik';">יציאה</button>
@@ -1068,10 +1070,20 @@
         </div>
     </div>
 
+    <div id="logsModal" class="modal">
+        <div class="modal-content" style="max-height:80vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h3>יומן מערכת 📜</h3>
+                <span class="close-btn" onclick="closeModal('logsModal')">&times;</span>
+            </div>
+            <div id="logsList" style="flex:1; overflow-y:auto; padding:5px;"></div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
         const app = initializeApp(firebaseConfig);
@@ -1247,7 +1259,62 @@
             lastRecurringCheck = now;
 
             const today = new Date().toISOString().slice(0, 10);
-            // ... existing logic ...
+            // --- LOGGING SYSTEM ---
+            window.logEvent = async (action, details = {}) => {
+                if (!user) return;
+                try {
+                    // Don't await this (fire and forget) to keep UI fast
+                    addDoc(collection(db, "logs"), {
+                        uid: user.uid,
+                        email: user.email,
+                        action: action,
+                        details: JSON.stringify(details),
+                        timestamp: Timestamp.now()
+                    }).catch(e => console.warn("Log failed", e));
+                } catch (e) { console.warn("Log setup failed", e); }
+            };
+
+            window.openLogs = async () => {
+                const el = document.getElementById('logsList');
+                el.innerHTML = '<div style="text-align:center;">טוען נתונים...</div>';
+                document.getElementById('logsModal').style.display = 'flex';
+
+                try {
+                    const q = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50));
+                    const snap = await getDocs(q); // Use getDocs for one-time fetch
+
+                    if (snap.empty) {
+                        el.innerHTML = '<div style="text-align:center; padding:20px;">אין רשומות</div>';
+                        return;
+                    }
+
+                    el.innerHTML = snap.docs.map(d => {
+                        const data = d.data();
+                        const date = data.timestamp ? new Date(data.timestamp.seconds * 1000) : new Date();
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const dateStr = date.toLocaleDateString();
+
+                        let color = '#6B7280';
+                        if (data.action.includes('ERROR')) color = '#EF4444';
+                        if (data.action.includes('ADD')) color = '#10B981';
+
+                        return `
+                    <div style="border-bottom:1px solid #eee; padding:8px 0; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                            <span style="font-weight:bold; color:${color}">${data.action}</span>
+                            <span style="color:#999; font-size:10px;">${dateStr} ${timeStr}</span>
+                        </div>
+                        <div style="color:#444;">${data.email}</div>
+                        <div style="color:#777; font-size:10px; font-family:monospace; margin-top:2px;">${data.details.substring(0, 100)}</div>
+                    </div>`;
+                    }).join('');
+
+                } catch (e) {
+                    el.innerHTML = `<div style="color:red; text-align:center;">שגיאה בטעינת לוגים: ${e.message}</div>`;
+                }
+            };
+
+            // ... existing functions ...
             for (const r of recurring) {
                 if (r.nextDate <= today) {
                     try {
@@ -1267,7 +1334,9 @@
                             nextDate: next.toISOString().slice(0, 10)
                         });
                         console.log(`הוראת קבע בוצעה: ${r.name}`);
+                        logEvent("REC_RUN", { name: r.name, amt: r.amount });
                     } catch (e) {
+                        logEvent("REC_ERROR", { msg: e.code || e.message });
                         if (e.code === 'resource-exhausted') {
                             showToast('מכסת כתיבה יומית נוצלה. המערכת תחזור לפעול מחר.', 'error');
                             return; // Stop trying
@@ -1861,59 +1930,58 @@
                 currency: curr,
                 note: document.getElementById('expNote').value || "הוצאה כללית",
                 method: document.getElementById('pMethod').value,
-                catId: window.currentCatId,
-                allowedUsers: allowed,
-                // Use scanned date, or existing date if editing, or now
-                date: window.scannedDate ? Timestamp.fromDate(new Date(window.scannedDate)) : (editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now())
-            };
+                // Reset scanned date
+                window.scannedDate = null;
 
-            // Reset scanned date
-            window.scannedDate = null;
+                try {
+                    if(editMode.active) {
+                        await updateDoc(doc(db, "transactions", editMode.id), data);
+            logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
+        } else {
+            await addDoc(collection(db, "transactions"), data);
+            logEvent("TX_ADD", { amt: data.amount, cat: window.currentCatId });
+        }
+        showToast('הוצאה נשמרה בהצלחה', 'success');
 
-            try {
-                if (editMode.active) await updateDoc(doc(db, "transactions", editMode.id), data);
-                else await addDoc(collection(db, "transactions"), data);
-                showToast('הוצאה נשמרה בהצלחה', 'success');
+        // --- Real-Time Budget Alert ---
+        const cat = cats.find(c => c.id === window.currentCatId);
+        if (cat && cat.budget > 0) {
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            // Calc existing spent
+            const existingSpent = txs
+                .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                .reduce((s, t) => s + t.amount, 0);
 
-                // --- Real-Time Budget Alert ---
-                const cat = cats.find(c => c.id === window.currentCatId);
-                if (cat && cat.budget > 0) {
-                    const currentMonth = new Date().toISOString().slice(0, 7);
-                    // Calc existing spent
-                    const existingSpent = txs
-                        .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
-                        .reduce((s, t) => s + t.amount, 0);
+            // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
+            // Actually, 'txs' array updates via onSnapshot, which is async. 
+            // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
+            // We should add 'converted' manually for the check.
 
-                    // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
-                    // Actually, 'txs' array updates via onSnapshot, which is async. 
-                    // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
-                    // We should add 'converted' manually for the check.
+            const newTotal = existingSpent + converted;
+            const percent = (newTotal / cat.budget) * 100;
 
-                    const newTotal = existingSpent + converted;
-                    const percent = (newTotal / cat.budget) * 100;
-
-                    if (percent > 100) {
-                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
-                    } else if (percent > 90) {
-                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
-                    }
-                }
+            if (percent > 100) {
+                setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
+            } else if (percent > 90) {
+                setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
+            }
+        }
                 // ------------------------------
             } catch (e) {
-                console.error(e);
-                closeModal(); // Close modal immediately before showing error
+            console.error(e);
+            closeModal(); // Close modal immediately before showing error
 
-                // User-friendly error messages
-                if (e.code === 'resource-exhausted') {
-                    showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
-                } else if (e.code === 'permission-denied') {
-                    showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
-                } else {
-                    showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
-                }
-            } finally {
-                closeModal(); // ALWAYS close modal (double check)
+            // User-friendly error messages
+            if (e.code === 'resource-exhausted') {
+                showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
+            } else if (e.code === 'permission-denied') {
+                showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
+            } else {
+                showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
             }
+        } finally {
+            closeModal(); // ALWAYS close modal (double check)
+        }
         };
 
         window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
