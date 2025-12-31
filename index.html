@@ -24,6 +24,42 @@
                     .catch(err => console.log('SW Failed:', err));
             });
         }
+
+        // --- App Lock Logic ---
+        const APP_PIN = "1234"; // Hardcoded for V1 simplicity
+
+        window.addEventListener('load', () => {
+            const isLocked = localStorage.getItem('appLocked') === 'true';
+            if (isLocked) {
+                document.getElementById('lockScreen').style.display = 'flex';
+            }
+            // Init Toggle State
+            const toggle = document.getElementById('appLockToggle');
+            if (toggle) toggle.checked = isLocked;
+        });
+
+        window.checkPin = () => {
+            const input = document.getElementById('pinInput').value;
+            if (input === APP_PIN) {
+                document.getElementById('lockScreen').style.display = 'none';
+                document.getElementById('pinInput').value = '';
+                document.getElementById('pinError').style.display = 'none';
+            } else {
+                document.getElementById('pinError').style.display = 'block';
+                // Shake animation?
+            }
+        };
+
+        window.toggleAppLock = (isChecked) => {
+            localStorage.setItem('appLocked', isChecked);
+            if (isChecked) {
+                showToast("נעילה הופעלה (קוד: 1234)", 'success');
+            } else {
+                showToast("נעילה בוטלה", 'info');
+            }
+        };
+
+        // --- AUTH STATE & LOGIC ---
     </script>
     <style>
         :root {
@@ -705,6 +741,20 @@
 </head>
 
 <body>
+    <!-- App Lock Overlay -->
+    <div id="lockScreen"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:99999; background:#4F46E5; align-items:center; justify-content:center; flex-direction:column; color:white;">
+        <div style="font-size:50px; margin-bottom:20px;">🔒</div>
+        <h2>האפליקציה נעולה</h2>
+        <p style="opacity:0.8; margin-bottom:30px;">הכנס קוד גישה 🔐</p>
+        <div style="display:flex; gap:10px;">
+            <input type="password" id="pinInput" placeholder="****" maxlength="4"
+                style="text-align:center; font-size:24px; padding:10px; border-radius:10px; border:none; width:120px; height:50px;">
+            <button onclick="checkPin()"
+                style="background:white; color:#4F46E5; border:none; border-radius:10px; padding:0 20px; font-weight:bold;">></button>
+        </div>
+        <p id="pinError" style="color:#FCA5A5; margin-top:10px; display:none;">קוד שגוי</p>
+    </div>
 
     <div class="toast-container" id="toastContainer"></div>
 
@@ -734,7 +784,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.7 (Super)</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.9 (GodMode)</span>
 
                     <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
 
@@ -776,6 +826,10 @@
                 <button onclick="generatePDF()" class="icon-btn" title="דוח חודשי"
                     style="width:auto; padding:0 15px; font-size:14px; gap:8px; background:#FDF2F8; color:#DB2777;">
                     📄 דוח PDF
+                </button>
+                <button onclick="openShoppingList()" class="icon-btn" title="רשימת קניות"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px; background:#FFF7ED; color:#EA580C;">
+                    🛒 קניות
                 </button>
             </div>
 
@@ -1017,6 +1071,37 @@
     </div>
 
     </div><!-- End app-container -->
+
+    <!-- Shopping List Modal -->
+    <div id="shoppingModal" class="modal-overlay">
+        <div class="modal-card" style="height:80vh; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3>🛒 רשימת קניות</h3>
+                <div id="cartTotal" style="font-size:18px; font-weight:bold; color:var(--primary);">₪0</div>
+            </div>
+
+            <!-- Input Area -->
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="text" id="shopItem" placeholder="מוצר (למשל: חלב)" class="input-field"
+                    style="margin:0; flex:2;">
+                <input type="number" id="shopPrice" placeholder="₪" class="input-field" style="margin:0; flex:1;">
+                <button onclick="addShopItem()" class="btn-main" style="width:auto; padding:0 15px;">+</button>
+            </div>
+
+            <!-- List -->
+            <div id="shoppingListRef" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                <!-- Items here -->
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-actions" style="margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
+                <button onclick="document.getElementById('shoppingModal').style.display='none'"
+                    class="btn-cancel">סגור</button>
+                <button onclick="checkoutShoppingList()" class="btn-main" style="background:var(--success);">💳 צ'ק אאוט
+                    (הוסף להוצאות)</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Forecast Modal -->
     <div id="forecastModal" class="modal-overlay">
@@ -1720,6 +1805,12 @@
                 cards = s.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderGiftCards();
             });
+
+            // Sync Shopping List
+            onSnapshot(query(collection(db, "shopping_list"), where("uid", "==", user.uid), orderBy("timestamp", "desc")), s => {
+                shoppingList = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderShoppingList();
+            });
         }
 
         function render() {
@@ -1936,6 +2027,96 @@
             // Critical Fix: Trigger sub-renders for other tabs
             // renderActivity(); // Removed as it was undefined and logic is now inline
             renderInsights();
+        }
+
+        // --- Shopping List Logic ---
+        let shoppingList = [];
+
+        window.openShoppingList = () => {
+            document.getElementById('shoppingModal').style.display = 'flex';
+            // Listener is already active from renderShoppingList if we add it to startSync
+            // But let's add a specific listener for this collection if not global
+            // For simplicity in V1, let's load it once or add to global sync?
+            // Let's add to global sync for real-time.
+            // For now, render what we have (empty) and the sync will fill it.
+        };
+
+        window.addShopItem = async () => {
+            const name = document.getElementById('shopItem').value;
+            const price = parseFloat(document.getElementById('shopPrice').value) || 0;
+            if (!name) return showToast("חסר שם מוצר", 'error');
+
+            await addDoc(collection(db, "shopping_list"), {
+                uid: user.uid,
+                name,
+                price,
+                checked: false,
+                timestamp: new Date()
+            });
+            document.getElementById('shopItem').value = '';
+            document.getElementById('shopPrice').value = '';
+        };
+
+        window.toggleShopItem = async (id, currentStatus) => {
+            await updateDoc(doc(db, "shopping_list", id), { checked: !currentStatus });
+        };
+
+        window.deleteShopItem = async (id) => {
+            await deleteDoc(doc(db, "shopping_list", id));
+        };
+
+        window.checkoutShoppingList = () => {
+            const checkedItems = shoppingList.filter(i => i.checked);
+            if (checkedItems.length === 0) return showToast("סמן מוצרים כדי לבצע צ'ק אאוט", 'warning');
+
+            const total = checkedItems.reduce((sum, i) => sum + i.price, 0);
+            const notes = "קניות: " + checkedItems.map(i => i.name).join(', ');
+
+            // Close Shopping, Open Transaction
+            document.getElementById('shoppingModal').style.display = 'none';
+            openAddTx(); // Open generic add modal
+
+            // Pre-fill
+            setTimeout(() => {
+                document.getElementById('amount').value = total;
+                document.getElementById('note').value = notes;
+                // Optional: Try to find a "Food" category?
+                const foodCat = cats.find(c => c.name.includes('מזון') || c.name.includes('סופר') || c.name.includes('אוכל'));
+                if (foodCat) {
+                    window.selectedCatId = foodCat.id;
+                    document.getElementById('catNameDisplay').innerText = foodCat.name;
+                    document.getElementById('catNameDisplay').style.color = foodCat.color;
+                }
+            }, 200);
+
+            // Optional: Ask to delete checked items?
+            if (confirm("האם לנקות את המוצרים שסומנו מהרשימה?")) {
+                checkedItems.forEach(i => deleteShopItem(i.id));
+            }
+        };
+
+        function renderShoppingList() {
+            const container = document.getElementById('shoppingListRef');
+            if (!container) return; // Modal might not be open
+
+            const total = shoppingList.filter(i => i.checked).reduce((sum, i) => sum + i.price, 0);
+            const totalRef = document.getElementById('cartTotal');
+            if (totalRef) totalRef.innerText = `₪${total}`;
+
+            container.innerHTML = shoppingList.map(i => `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; background:${i.checked ? '#ECFDF5' : '#f9fafb'}; border-radius:8px; border:1px solid ${i.checked ? '#10B981' : '#eee'};">
+                    <div style="display:flex; align-items:center; gap:10px; flex:1;" onclick="toggleShopItem('${i.id}', ${i.checked})">
+                        <div style="width:20px; height:20px; border-radius:4px; border:2px solid #ccc; background:${i.checked ? '#10B981' : 'white'}; display:flex; align-items:center; justify-content:center;">
+                            ${i.checked ? '<span style="color:white; font-size:12px;">✓</span>' : ''}
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-weight:500; text-decoration:${i.checked ? 'line-through' : 'none'}; color:${i.checked ? '#aaa' : '#333'};">${i.name}</div>
+                            <div style="font-size:12px; color:#666;">₪${i.price}</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteShopItem('${i.id}')" style="background:none; border:none; opacity:0.5;">🗑️</button>
+                </div>
+            `).join('');
         }
 
         // --- Forecast Logic (Time Travel) ---
@@ -2503,11 +2684,26 @@
             // This function now targets 'giftCardsListRef' if it exists, otherwise 'giftCardsList'
             const list = document.getElementById('giftCardsListRef') || document.getElementById('giftCardsList');
             if (!list) return;
-
             const select = document.getElementById('pGiftCardId');
 
             // UI List
-            list.innerHTML = cards.length ? cards.map(c => `
+            list.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                    <span>מצב חסכון בסוללה (ללא אנימציות)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="lowPowerMode" onchange="toggleLowPower(this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                    <span>🔐 נעילת אפליקציה (קוד 1234)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="appLockToggle" onchange="toggleAppLock(this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            ` + (cards.length ? cards.map(c => `
                 <div style="display:flex; justify-content:space-between; align-items:center; adding:10px; background:#F0FDFA; border:1px solid #CCFBF1; border-radius:10px; padding:10px;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:20px;">🎁</span>
