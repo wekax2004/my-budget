@@ -2023,6 +2023,70 @@
             });
         };
 
+        // --- PDF Generation Logic ---
+        window.generatePDF = async () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // 1. Header
+            doc.setFontSize(22);
+            doc.text("Monthly Budget Report", 105, 20, { align: 'center' });
+
+            doc.setFontSize(14);
+            doc.text(`Month: ${currentYearMonth}`, 105, 30, { align: 'center' });
+
+            // 2. Summary
+            let y = 50;
+            doc.setFontSize(12);
+            doc.text("Summary:", 14, y);
+            y += 10;
+
+            // Calculate stats again to be sure
+            const currentTotalBudget = cats.reduce((sum, c) => sum + (c.budget || 0), 0);
+            const currentSpent = txs.filter(t => t.date.toDate().toISOString().slice(0, 7) === currentYearMonth).reduce((acc, t) => acc + t.amount, 0);
+            const balance = currentTotalBudget - currentSpent;
+
+            const summaryData = [
+                ["Total Budget", `ILS ${currentTotalBudget.toLocaleString()}`],
+                ["Total Spent", `ILS ${Math.round(currentSpent).toLocaleString()}`],
+                ["Remaining", `ILS ${Math.round(balance).toLocaleString()}`]
+            ];
+
+            doc.autoTable({
+                startY: y,
+                head: [['Metric', 'Amount']],
+                body: summaryData,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+
+            y = doc.lastAutoTable.finalY + 20;
+
+            // 3. Transactions
+            doc.text("Top Expenses:", 14, y);
+            y += 10;
+
+            // Get current month txs
+            const monthTxs = txs.filter(t => t.date.toDate().toISOString().startsWith(currentYearMonth));
+            const rows = monthTxs.map(t => [
+                t.jsDate.toISOString().slice(0, 10),
+                t.note || 'Expense',
+                `ILS ${t.amount}`
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Date', 'Description', 'Amount']],
+                body: rows,
+                theme: 'striped',
+                headStyles: { fillColor: [239, 68, 68] }
+            });
+
+            // Save
+            doc.save(`Budget_Report_${currentYearMonth}.pdf`);
+            showToast('דוח PDF הורד בהצלחה!', 'success');
+        };
+
         // --- Export Logic ---
         // --- Income Logic ---
         window.openAddIncome = () => {
