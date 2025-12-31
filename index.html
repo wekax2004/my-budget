@@ -2714,7 +2714,7 @@
                     </div>
                     <button onclick="deleteGiftCard('${c.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">&times;</button>
                 </div>
-            `).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין כרטיסים</div>';
+            `).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין כרטיסים</div>');
 
             // Select Options
             select.innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (₪${c.current})</option>`).join('');
