@@ -711,7 +711,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.1 (Fix)</div>
+                v31.3 (Fix)</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -732,7 +732,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.2 (Fix)</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.3 (Fix)</span>
 
                     <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
 
@@ -775,18 +775,32 @@
 
             <!-- TAB 1: HOME -->
             <div id="view-home" class="view-section active">
-                <div class="summary-chips">
-                    <div class="sum-chip">
-                        <span class="sum-val" id="totalBudgetDisplay">₪0</span>
-                        <span class="sum-lbl">תקציב כולל</span>
+                <div class="summary-chips" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <!-- 1. Total Budget (Blue) -->
+                    <div class="sum-chip"
+                        style="background:#EFF6FF; border:1px solid #DBEAFE; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                        <span class="sum-lbl"
+                            style="font-size:11px; color:#3B82F6; font-weight:600; margin-bottom:2px;">תקציב כולל</span>
+                        <span class="sum-val" id="totalBudgetDisplay"
+                            style="color:#1E3A8A; font-size:16px; font-weight:700;">₪0</span>
                     </div>
-                    <div class="sum-chip">
-                        <span class="sum-val" id="totalSpentDisplay" style="color:var(--danger)">₪0</span>
-                        <span class="sum-lbl">הוצאות</span>
+
+                    <!-- 2. Spent (Red) -->
+                    <div class="sum-chip"
+                        style="background:#FEF2F2; border:1px solid #FEE2E2; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                        <span class="sum-lbl"
+                            style="font-size:11px; color:#EF4444; font-weight:600; margin-bottom:2px;">הוצאות</span>
+                        <span class="sum-val" id="totalSpentDisplay"
+                            style="color:#7F1D1D; font-size:16px; font-weight:700;">₪0</span>
                     </div>
-                    <div class="sum-chip">
-                        <span class="sum-val" id="balanceDisplay" style="color:var(--success)">₪0</span>
-                        <span class="sum-lbl">יתרה</span>
+
+                    <!-- 3. Left (Green/Red) -->
+                    <div class="sum-chip"
+                        style="background:#ECFDF5; border:1px solid #D1FAE5; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                        <span class="sum-lbl"
+                            style="font-size:11px; color:#10B981; font-weight:600; margin-bottom:2px;">נותר</span>
+                        <span class="sum-val" id="balanceDisplay"
+                            style="color:#064E3B; font-size:16px; font-weight:700;">₪0</span>
                     </div>
                 </div>
 
@@ -1765,17 +1779,40 @@
             // Chip 2: Expenses
             // Chip 3: Balance (Income - Expenses)
 
+            // Update Summary Chips (V2 Logic: Budget | Spent | Left)
+
+            // 1. Total Budget (Sum of all category budgets)
+            // Note: This matches V2 "Total Budget" logic
+            const currentTotalBudget = cats.reduce((sum, c) => sum + (c.budget || 0), 0);
+
+            // 2. Total Spent (Already calculated above as 'totalSpent')
+
+            // 3. Left (Budget - Spent)
+            const leftToSpend = currentTotalBudget - totalSpent;
+
+            // DOM Updates
             const elBudget = document.getElementById('totalBudgetDisplay');
             if (elBudget) {
-                elBudget.innerText = '₪' + monthlyIncome.toLocaleString();
-                if (elBudget.previousElementSibling) elBudget.previousElementSibling.innerText = "הכנסות";
+                elBudget.innerText = '₪' + currentTotalBudget.toLocaleString();
+                // Ensure label is correct (it might have been changed by previous logic)
+                if (elBudget.previousElementSibling) elBudget.previousElementSibling.innerText = "תקציב כולל";
             }
 
             const elSpent = document.getElementById('totalSpentDisplay');
-            if (elSpent) elSpent.innerText = '₪' + Math.round(totalSpent).toLocaleString();
+            if (elSpent) {
+                elSpent.innerText = '₪' + Math.round(totalSpent).toLocaleString();
+            }
 
             const elBal = document.getElementById('balanceDisplay');
-            if (elBal) elBal.innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
+            if (elBal) {
+                elBal.innerText = '₪' + Math.round(leftToSpend).toLocaleString();
+                // Dynamic Coloring for "Left"
+                if (leftToSpend < 0) {
+                    elBal.style.color = "#EF4444"; // Red
+                } else {
+                    elBal.style.color = "#10B981"; // Green (or #064E3B from HTML)
+                }
+            }
 
             // Render History (Based on separate displayTxs)
             const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
