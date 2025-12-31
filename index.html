@@ -1806,9 +1806,11 @@
                 renderGiftCards();
             });
 
-            // Sync Shopping List
-            onSnapshot(query(collection(db, "shopping_list"), where("uid", "==", user.uid), orderBy("timestamp", "desc")), s => {
+            // Sync Shopping List (Removed orderBy to avoid Index error)
+            onSnapshot(query(collection(db, "shopping_list"), where("uid", "==", user.uid)), s => {
                 shoppingList = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Client-side sort
+                shoppingList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
                 renderShoppingList();
             });
         }
