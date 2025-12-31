@@ -711,7 +711,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.3 (Fix)</div>
+                v31.4 (Fix)</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -732,7 +732,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.3 (Fix)</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.4 (Fix)</span>
 
                     <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
 
@@ -1828,30 +1828,32 @@
                 }
             };
 
-            // Date UtilstoryList is now rendered by renderActivity, so this part is removed from the main render()
-            // document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
-            //     const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
-            //     const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
-            //     return `
-            //     <div class="history-item">
-            //         <div class="tx-info">
-            //             <div class="tx-note">${t.note} ${subText}</div>
-            //             <div class="tx-meta">
-            //                 <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
-            //                 <span>•</span>
-            //                 <span>${t.method}</span>
-            //             </div>
-            //         </div>
-            //         <div style="display:flex; align-items:center; gap:10px;">
-            //             <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
-            //             <div class="tx-actions">
-            //                 <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
-            //                 <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
-            //             </div>
-            //         </div>
-            //     </div>`;
-            // }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
-
+            // Render History (Restored and updated to target 'activity-content')
+            const historyContainer = document.getElementById('activity-content');
+            if (historyContainer) {
+                historyContainer.innerHTML = displayTxs.length ? displayTxs.map(t => {
+                    const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+                    const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
+                    return `
+                    <div class="history-item">
+                        <div class="tx-info">
+                            <div class="tx-note">${t.note} ${subText}</div>
+                            <div class="tx-meta">
+                                <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
+                                <span>•</span>
+                                <span>${t.method}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
+                            <div class="tx-actions">
+                                <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
+                                <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
+            }
 
             // Re-adding Donut to Main Home View if needed? 
             // Actually, Plan said "Income vs Expenses" on Insights. 
@@ -1861,7 +1863,7 @@
             updatePieChart(filteredTxs);
 
             // Critical Fix: Trigger sub-renders for other tabs
-            renderActivity();
+            // renderActivity(); // Removed as it was undefined and logic is now inline
             renderInsights();
         }
 
