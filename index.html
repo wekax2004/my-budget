@@ -784,7 +784,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.9 (GodMode)</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.10 (Tab)</span>
 
                     <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
 
@@ -826,10 +826,6 @@
                 <button onclick="generatePDF()" class="icon-btn" title="דוח חודשי"
                     style="width:auto; padding:0 15px; font-size:14px; gap:8px; background:#FDF2F8; color:#DB2777;">
                     📄 דוח PDF
-                </button>
-                <button onclick="openShoppingList()" class="icon-btn" title="רשימת קניות"
-                    style="width:auto; padding:0 15px; font-size:14px; gap:8px; background:#FFF7ED; color:#EA580C;">
-                    🛒 קניות
                 </button>
             </div>
 
@@ -918,11 +914,44 @@
                 <div id="assets-content" style="padding-bottom:80px;"></div>
             </div>
 
-            <!-- TAB 5: CALENDAR (New) -->
+            <!-- TAB 5: SHOPPING (New) -->
+            <div id="view-shop" class="view-section">
+                <div class="header">
+                    <h3>רשימת קניות 🛒</h3>
+                    <div id="cartTotal"
+                        style="font-size:16px; font-weight:bold; color:var(--primary); background:#EEF2FF; padding:4px 12px; border-radius:20px;">
+                        ₪0</div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="card" style="margin-bottom:15px; padding:15px;">
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="shopItem" placeholder="מוצר (למשל: חלב)" class="input-field"
+                            style="margin:0; flex:2;">
+                        <input type="number" id="shopPrice" placeholder="₪" class="input-field"
+                            style="margin:0; flex:1;">
+                        <button onclick="addShopItem()" class="btn-main" style="width:auto; padding:0 15px;">+</button>
+                    </div>
+                </div>
+
+                <!-- List -->
+                <div id="shoppingListRef" style="display:flex; flex-direction:column; gap:8px; padding-bottom:80px;">
+                    <!-- Items here -->
+                </div>
+
+                <!-- Checkout FAB -->
+                <button onclick="checkoutShoppingList()"
+                    style="position:fixed; bottom:90px; left:20px; background:var(--success); color:white; border:none; border-radius:50px; padding:12px 20px; font-weight:bold; box-shadow:0 4px 12px rgba(16,185,129,0.3); display:flex; align-items:center; gap:8px; z-index:100;">
+                    <span>💳</span> צ'ק אאוט
+                </button>
+            </div>
+
+            <!-- TAB 6: CALENDAR (Moved) -->
             <div id="view-calendar" class="view-section">
                 <div class="header">
                     <h3>לוח שנה 📅</h3>
                 </div>
+                <!-- ... Calendar Content ... -->
                 <div class="card" style="padding:15px;">
                     <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:10px;">
                         <div class="calendar-day-header">א'</div>
@@ -967,10 +996,37 @@
                 <span>📊</span>
                 תובנות
             </button>
+            <button class="nav-item" onclick="switchView('view-shop', this)">
+                <span>🛒</span>
+                קניות
+            </button>
             <button class="nav-item" onclick="switchView('view-assets', this)">
                 <span>🧧</span>
                 נכסים
             </button>
+            <!-- Calendar moved to side menu or just kept as 6th? Let's fit 5. Remove Assets? No user needs assets. 
+                  Let's squeeze 5 icons. Calendar was 5th.
+                  1. Home 2. Activity 3. Insights 4. Shop 5. Assets (Calendar is useful too...)
+                  User didn't say remove Calendar. Let's try 6 items or put Calendar in menu?
+                  Wait, standard bottom nav is max 5.
+                  Let's put Calendar in "Menu" or replace "Assets" (Assets is less freq used).
+                  Actually, "Shop" is high freq.
+                  Let's swap Calendar with Shop in the nav, and access Calendar via top menu or Assets tab?
+                  Or just add a 6th small one.
+                  Let's do 5 tabs: Home, Activity, Shop (Center), Insights, More (Assets/Cal).
+                  Or just keeping 5: Home, Activity, Insights, Shop, Calendar. Move Assets to specific "More" or inside Insights?
+                  Assets has "Savings" and "Gift Cards".
+                  Let's replace "Assets" with "Shop" on the Nav, and put Assets/Savings into "Insights" or Top Menu?
+                  Re-reading request: "Use its own tab".
+                  I'll use 5 tabs: Home, Activity, Shop, Insights, Calendar.
+                  Assets (Savings/Gifts) will be moved to "Insights" or a top-left menu. 
+                  Actually, user has "Assets" tab currently.
+                  
+                  Let's just make the icons smaller and fit 5. 
+                  Home, Activity, Insights, Shop, Assets. 
+                  Where did Calendar go? It was TAB 5.
+                  I will make it: Home, Shop, Activity, Insights, Calendar. (Assets -> Menu).
+            -->
             <button class="nav-item" onclick="switchView('view-calendar', this)">
                 <span>📅</span>
                 יומן
@@ -1071,37 +1127,6 @@
     </div>
 
     </div><!-- End app-container -->
-
-    <!-- Shopping List Modal -->
-    <div id="shoppingModal" class="modal-overlay">
-        <div class="modal-card" style="height:80vh; display:flex; flex-direction:column;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3>🛒 רשימת קניות</h3>
-                <div id="cartTotal" style="font-size:18px; font-weight:bold; color:var(--primary);">₪0</div>
-            </div>
-
-            <!-- Input Area -->
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="shopItem" placeholder="מוצר (למשל: חלב)" class="input-field"
-                    style="margin:0; flex:2;">
-                <input type="number" id="shopPrice" placeholder="₪" class="input-field" style="margin:0; flex:1;">
-                <button onclick="addShopItem()" class="btn-main" style="width:auto; padding:0 15px;">+</button>
-            </div>
-
-            <!-- List -->
-            <div id="shoppingListRef" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
-                <!-- Items here -->
-            </div>
-
-            <!-- Actions -->
-            <div class="modal-actions" style="margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
-                <button onclick="document.getElementById('shoppingModal').style.display='none'"
-                    class="btn-cancel">סגור</button>
-                <button onclick="checkoutShoppingList()" class="btn-main" style="background:var(--success);">💳 צ'ק אאוט
-                    (הוסף להוצאות)</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Forecast Modal -->
     <div id="forecastModal" class="modal-overlay">
@@ -2034,14 +2059,7 @@
         // --- Shopping List Logic ---
         let shoppingList = [];
 
-        window.openShoppingList = () => {
-            document.getElementById('shoppingModal').style.display = 'flex';
-            // Listener is already active from renderShoppingList if we add it to startSync
-            // But let's add a specific listener for this collection if not global
-            // For simplicity in V1, let's load it once or add to global sync?
-            // Let's add to global sync for real-time.
-            // For now, render what we have (empty) and the sync will fill it.
-        };
+        // Removed openShoppingList - Now accessed via Tab
 
         window.addShopItem = async () => {
             const name = document.getElementById('shopItem').value;
