@@ -33,9 +33,11 @@
             if (isLocked) {
                 document.getElementById('lockScreen').style.display = 'flex';
             }
-            // Init Toggle State
+            // Init Toggle State (Settings + Menu)
             const toggle = document.getElementById('appLockToggle');
             if (toggle) toggle.checked = isLocked;
+            const menuToggle = document.getElementById('appLockMenuToggle');
+            if (menuToggle) menuToggle.checked = isLocked;
         });
 
         window.checkPin = () => {
@@ -802,6 +804,14 @@
                         <button onclick="toggleTheme()" class="dropdown-item">
                             <span>🌓</span> מצב לילה
                         </button>
+                        <div class="dropdown-item"
+                            style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="display:flex; gap:8px;">🔐 נעילה</span>
+                            <label class="switch" style="transform:scale(0.7); margin:0;">
+                                <input type="checkbox" id="appLockMenuToggle" onchange="toggleAppLock(this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                         <div class="dropdown-divider"></div>
                         <button onclick="logout()" class="dropdown-item" style="color:var(--danger)">
                             <span>👋</span> יציאה
