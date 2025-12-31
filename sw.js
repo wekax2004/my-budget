@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-master-v29.0';
+const CACHE_NAME = 'budget-master-v30.0';
 const STATIC_ASSETS = [
     "./",
     "./index.html",
@@ -44,15 +44,14 @@ self.addEventListener("fetch", (e) => {
         return;
     }
 
-    // 2. Default -> Stale While Revalidate (Good for index.html)
+    // 2. Default -> Network First (Safe for index.html updates)
     e.respondWith(
-        caches.match(e.request).then((cached) => {
-            const network = fetch(e.request).then((res) => {
-                const clone = res.clone();
-                caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
-                return res;
-            }).catch(() => cached); // Fallback to cache if offline
-            return cached || network;
+        fetch(e.request).then((res) => {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
+            return res;
+        }).catch(() => {
+            return caches.match(e.request);
         })
     );
 });
