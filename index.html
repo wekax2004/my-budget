@@ -1,0 +1,2967 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetMaster Pro</title>
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366F1">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered!', reg))
+                    .catch(err => console.log('SW Failed:', err));
+            });
+        }
+    </script>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338ca;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --input-bg: #FFFFFF;
+            --input-border: #E5E7EB;
+        }
+
+        [data-theme="dark"] {
+            --bg: #111827;
+            --card-bg: #1F2937;
+            --text-main: #F9FAFB;
+            --text-sub: #9CA3AF;
+            --input-bg: #374151;
+            --input-border: #4B5563;
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            font-weight: 700;
+            margin: 0;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        /* Auth Screen */
+        #authScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #4F46E5, #818CF8);
+        }
+
+        .auth-card {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .auth-card h2 {
+            color: var(--primary);
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        /* Main App Structure */
+        #mainApp {
+            display: none;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #E0E7FF;
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .reset-btn {
+            font-size: 10px;
+            background: #FEE2E2;
+            color: #EF4444;
+            border: 1px solid #FECACA;
+            border-radius: 6px;
+            padding: 4px 8px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        /* Controls */
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-main);
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: 0.2s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .date-picker {
+            padding: 10px 16px;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            font-family: 'Rubik';
+            background: var(--input-bg);
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        .add-cat-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .add-cat-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #F3F4F6;
+        }
+
+        /* Category List */
+        .cat-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .cat-item {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #E5E7EB;
+            transition: 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cat-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .cat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .cat-name {
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cat-stats {
+            font-size: 14px;
+            color: var(--text-sub);
+        }
+
+        .cat-stats b {
+            color: var(--text-main) !important;
+        }
+
+        .progress-bg {
+            background: #F3F4F6;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cat-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 12px;
+        }
+
+        .action-chip {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: #F9FAFB;
+            border-radius: 20px;
+            color: var(--text-sub);
+            cursor: pointer;
+            border: 1px solid #E5E7EB;
+            transition: 0.2s;
+        }
+
+        .action-chip:hover {
+            background: #EEF2FF;
+            color: var(--primary);
+            border-color: #C7D2FE;
+        }
+
+        /* History List */
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .tx-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tx-note {
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .tx-meta {
+            font-size: 12px;
+            color: var(--text-sub);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .tx-amount {
+            font-weight: 600;
+            color: var(--danger);
+            font-size: 16px;
+        }
+
+        .tx-actions button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: 0.2s;
+            padding: 4px;
+        }
+
+        .tx-actions button:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* Forms */
+        input,
+        select {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Rubik';
+            transition: 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--primary);
+            outline: none;
+            ring: 2px solid #E0E7FF;
+        }
+
+        .btn-main {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            margin-top: 15px;
+            transition: 0.2s;
+            font-family: 'Rubik';
+        }
+
+        .btn-main:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        @media (min-width: 600px) {
+            .modal {
+                align-items: center;
+            }
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 500px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @media (min-width: 600px) {
+            .modal-content {
+                border-radius: 24px;
+                animation: fadeIn 0.3s ease;
+            }
+
+            .modal-content {
+                border-radius: 24px;
+                animation: fadeIn 0.3s ease;
+            }
+        }
+
+        /* Toaster */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .toast {
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.3s ease;
+            pointer-events: auto;
+            direction: rtl;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOutToast {
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Summary Chips */
+        .summary-chips {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .sum-chip {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 16px;
+            flex: 1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .sum-val {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .sum-lbl {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--input-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            z-index: 900;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: var(--text-sub);
+            border: none;
+            background: none;
+            cursor: pointer;
+            width: 100%;
+            min-width: 60px;
+            /* Prevent squashing */
+        }
+
+        .nav-item span {
+            font-size: 18px;
+            /* Slightly smaller icon to give text space */
+            margin-bottom: 2px;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        /* Calendar Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        .calendar-day {
+            background: var(--card-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            min-height: 60px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            border-color: var(--primary);
+        }
+
+        .calendar-day.empty {
+            background: none;
+            border: none;
+            cursor: default;
+        }
+
+        .calendar-date {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .calendar-dots {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .dot.expense {
+            background-color: var(--danger);
+            opacity: 0.7;
+        }
+
+        .dot.recurring {
+            background-color: var(--primary);
+        }
+
+        .dot.income {
+            background-color: var(--success);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Login Screen -->
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2>BudgetMaster Pro</h2>
+            <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
+                v27.0</div>
+            <input type="email" id="email" placeholder="אימייל" class="input-field">
+            <input type="password" id="password" placeholder="סיסמה" class="input-field">
+            <button class="btn-main" id="loginBtn">כניסה</button>
+            <button class="btn-sec" id="signupBtn">הרשמה</button>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="mainApp">
+        <div class="app-container">
+
+            <div class="header">
+                <div class="user-info">
+                    <div class="avatar" id="avatarLetter">?</div>
+                    <div>
+                        <div style="font-size:12px; color:var(--text-sub);">שלום לשובך,</div>
+                        <div style="font-weight:700;" id="userEmailDisplay">משתמש</div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v27.0</span>
+
+                    <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
+
+                    <div id="headerDropdown" class="dropdown-menu">
+                        <button onclick="openLogs()" class="dropdown-item">
+                            <span>📜</span> יומן מערכת
+                        </button>
+                        <button onclick="document.getElementById('partnerModal').style.display='flex'"
+                            class="dropdown-item">
+                            <span>🤝</span> שותפים
+                        </button>
+                        <button onclick="hardResetApp()" class="dropdown-item">
+                            <span>🔄</span> רענון אפליקציה
+                        </button>
+                        <button onclick="toggleTheme()" class="dropdown-item">
+                            <span>🌓</span> מצב לילה
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="logout()" class="dropdown-item" style="color:var(--danger)">
+                            <span>👋</span> יציאה
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-bar">
+                <input type="month" id="monthPicker" class="date-picker">
+                <button onclick="openAddCat()" class="add-cat-btn">
+                    <span>+</span> קטגוריה חדשה
+                </button>
+                <button onclick="exportToCSV()" class="icon-btn" title="ייצוא לאקסל"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
+                    📥 ייצוא CSV
+                </button>
+                <button onclick="openRecurring()" class="icon-btn" title="הוצאות קבועות"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
+                    🔄 הוראות קבע
+                </button>
+            </div>
+
+            <!-- TAB 1: HOME -->
+            <div id="view-home" class="view-section active">
+                <div class="summary-chips">
+                    <div class="sum-chip">
+                        <span class="sum-val" id="totalBudgetDisplay">₪0</span>
+                        <span class="sum-lbl">תקציב כולל</span>
+                    </div>
+                    <div class="sum-chip">
+                        <span class="sum-val" id="totalSpentDisplay" style="color:var(--danger)">₪0</span>
+                        <span class="sum-lbl">הוצאות</span>
+                    </div>
+                    <div class="sum-chip">
+                        <span class="sum-val" id="balanceDisplay" style="color:var(--success)">₪0</span>
+                        <span class="sum-lbl">יתרה</span>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom:15px; color:var(--text-sub);">הוצאות לפי קטגוריות</h3>
+                <div id="catList" class="cat-list"></div>
+            </div>
+
+            <!-- TAB 2: ACTIVITY (History + Search) -->
+            <div id="view-activity" class="view-section">
+                <div class="header">
+                    <h3>היסטוריה 📄</h3>
+                    <button onclick="triggerImport()" class="icon-btn" title="ייבוא מ-CSV"
+                        style="width:auto; padding:0 12px; font-size:14px; gap:6px;">📂 ייבוא</button>
+                    <input type="file" id="csvInput" style="display:none" accept=".csv"
+                        onchange="handleCSVUpload(this)">
+                </div>
+                <div id="activity-content" style="padding-bottom:80px;"></div>
+            </div>
+
+            <!-- TAB 3: INSIGHTS (Charts + Income) -->
+            <div id="view-insights" class="view-section">
+                <div class="header">
+                    <h3>תובנות 📊</h3>
+                    <button onclick="document.getElementById('incomeModal').style.display='flex'" class="icon-btn"
+                        style="background:#ECFDF5; color:#10B981;">💰 הכנסה</button>
+                </div>
+                <div id="insights-content" style="padding-bottom:80px;"></div>
+            </div>
+
+            <!-- TAB 4: ASSETS (Savings + Gifts) -->
+            <div id="view-assets" class="view-section">
+                <div class="header">
+                    <h3>נכסים 🎁</h3>
+                </div>
+                <div id="assets-content" style="padding-bottom:80px;"></div>
+            </div>
+
+            <!-- TAB 5: CALENDAR (New) -->
+            <div id="view-calendar" class="view-section">
+                <div class="header">
+                    <h3>לוח שנה 📅</h3>
+                </div>
+                <div class="card" style="padding:15px;">
+                    <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:10px;">
+                        <div class="calendar-day-header">א'</div>
+                        <div class="calendar-day-header">ב'</div>
+                        <div class="calendar-day-header">ג'</div>
+                        <div class="calendar-day-header">ד'</div>
+                        <div class="calendar-day-header">ה'</div>
+                        <div class="calendar-day-header">ו'</div>
+                        <div class="calendar-day-header">ש'</div>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                <div
+                    style="margin-top:20px; font-size:12px; color:var(--text-sub); display:flex; gap:15px; justify-content:center;">
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot expense"></div> הוצאה
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot recurring"></div> הוראת קבע
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot income"></div> הכנסה
+                    </span>
+                </div>
+            </div>
+
+        </div> <!-- End App Container -->
+
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="switchView('view-home', this)">
+                <span>🏠</span>
+                בית
+            </button>
+            <button class="nav-item" onclick="switchView('view-activity', this)">
+                <span>📄</span>
+                פעילות
+            </button>
+            <button class="nav-item" onclick="switchView('view-insights', this)">
+                <span>📊</span>
+                תובנות
+            </button>
+            <button class="nav-item" onclick="switchView('view-assets', this)">
+                <span>🧧</span>
+                נכסים
+            </button>
+            <button class="nav-item" onclick="switchView('view-calendar', this)">
+                <span>📅</span>
+                יומן
+            </button>
+        </nav>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div id="dayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="dayTitle">פרטי יום</h3>
+                <span class="close-btn" onclick="closeModal('dayModal')">&times;</span>
+            </div>
+            <div id="dayDetailsContent"
+                style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div id="expModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <h3 id="expTitle" style="margin:0;">הוספת הוצאה</h3>
+                    <button onclick="triggerScan()"
+                        style="background:#EEF2FF; border:1px solid #C7D2FE; border-radius:8px; width:36px; height:36px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;"
+                        title="סרוק קבלה">📷</button>
+                    <input type="file" id="scanInput" accept="image/*" capture="environment" style="display:none"
+                        onchange="handleScan(this)">
+                </div>
+                <button onclick="closeModal()"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+
+            <div id="scanStatus"
+                style="display:none; padding:10px; background:#EFF6FF; border:1px solid #DBEAFE; border-radius:8px; margin-bottom:15px; color:var(--primary); font-size:13px; align-items:center; gap:8px;">
+                <div class="spinner"
+                    style="width:16px; height:16px; border:2px solid #BFDBFE; border-top:2px solid var(--primary); border-radius:50%; animation:spin 1s linear infinite;">
+                </div>
+                <span>מפענח קבלה... (פעם ראשונה עשויה לקחת זמן)</span>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 2;">
+                    <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">סכום</label>
+                    <input type="number" id="fAmt" placeholder="0.00" style="font-weight:700; font-size:18px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">מטבע</label>
+                    <select id="fCurr" style="font-weight:600;">
+                        <option value="ILS">₪</option>
+                        <option value="USD">$</option>
+                        <option value="EUR">€</option>
+                    </select>
+                </div>
+            </div>
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תיאור</label>
+            <input type="text" id="expNote" placeholder="על מה יצא הכסף?">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
+                תשלום</label>
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
+                תשלום</label>
+            <select id="pMethod" onchange="toggleGiftCardSelect()">
+                <option value="💳 אשראי">💳 אשראי</option>
+                <option value="💵 מזומן">💵 מזומן</option>
+                <option value="📱 ביט/פייבוקס">📱 ביט/פייבוקס</option>
+                <option value="🏦 העברה">🏦 העברה בנקאית</option>
+                <option value="🎁 גיפט קארד">🎁 גיפט קארד</option>
+            </select>
+
+            <div id="giftCardSelectDiv" style="display:none; margin-top:10px;">
+                <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">בחר כרטיס
+                    לחיוב</label>
+                <select id="pGiftCardId"></select>
+            </div>
+
+            <div
+                style="font-size:12px; color:var(--text-sub); margin-top:10px; background:var(--bg); padding:10px; border-radius:8px; border: 1px solid var(--input-border);">
+                ℹ️ הסכום יומר אוטומטית לשקלים.
+                <br>
+                <span id="rateInfo">מקור שערים: ברירת מחדל (קבוע)</span>
+            </div>
+
+            <button class="btn-main" id="saveTxBtn">שמירה וסיום</button>
+        </div>
+    </div>
+
+    </div><!-- End app-container -->
+
+    <!-- Partner Modal -->
+    <div id="partnerModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3>הזמנת שותף 🤝</h3>
+                <button onclick="document.getElementById('partnerModal').style.display='none'"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+            <p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">
+                הכנס את כתובת האימייל של השותף שלך. אנו נשתף אוטומטית את כל הקטגוריות שלך איתו.
+            </p>
+            <input type="email" id="partnerEmailInput" placeholder="email@example.com">
+            <button class="btn-main" onclick="invitePartner()">שליחת הזמנה</button>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="catModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 id="catTitle">קטגוריה חדשה</h3>
+                <button onclick="document.getElementById('catModal').style.display='none'"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+
+            <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">שם הקטגוריה</label>
+            <input type="text" id="catName" placeholder="למשל: סופר, דלק, בילויים">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תקציב
+                חודשי (₪)</label>
+            <input type="number" id="catBudget" placeholder="0">
+
+            <!-- Wild Mode: Customization -->
+            <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">צבע
+                הקטגוריה 🎨</label>
+            <input type="color" id="catColor" value="#3B82F6"
+                style="width:100%; height:40px; border:none; padding:0; background:none; cursor:pointer;">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:8px; display:block; margin-top:10px;">אייקון
+                🏷️</label>
+            <div id="iconGrid"
+                style="display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; max-height:100px; overflow-y:auto; padding:5px; border:1px solid #eee; border-radius:8px;">
+                <!-- Filled by JS -->
+            </div>
+            <input type="hidden" id="catIcon" value="🏷️">
+
+
+
+
+
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-main" id="saveCatBtn" onclick="saveCategory()" style="margin-top:0;">שמירה</button>
+                <button id="delCatBtn" onclick="deleteCategory()"
+                    style="background:none; border:none; color:var(--danger); font-weight:600; cursor:pointer; display:none;">מחיקה</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="recurringModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>הוראות קבע 🔄</h3>
+                <span class="close-btn" onclick="closeModal('recurringModal')">&times;</span>
+            </div>
+
+            <div style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:20px;">
+                <h4 style="margin:0 0 15px 0;">הוסף מנוי חדש</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <div>
+                        <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">שם
+                            השירות</label>
+                        <input type="text" id="recName" placeholder="למשל: נטפליקס" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">עלות
+                            חודשית</label>
+                        <input type="number" id="recAmount" placeholder="₪" style="width:100%;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:10px;">
+                    <div>
+                        <label
+                            style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">קטגוריה</label>
+                        <select id="recCat" style="width:100%;"></select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">תאריך
+                            חיוב קרוב</label>
+                        <input type="date" id="recNextDate" lang="en-GB"
+                            style="width:100%; font-family: 'Rubik', sans-serif;">
+                        <div style="font-size:10px; color:var(--text-sub); margin-top:2px;">*פורמט התאריך נקבע לפי
+                            המכשיר</div>
+                    </div>
+                </div>
+                <button onclick="addRecurring()" class="btn-main" style="margin-top:20px;">הוספה לרשימה</button>
+            </div>
+
+            <h4 style="margin-bottom:10px;">פעילים</h4>
+            <div id="recurringList"
+                style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;">
+                <!-- List -->
+            </div>
+        </div>
+    </div>
+
+    <div id="incomeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>הוספת הכנסה 💰</h3>
+                <span class="close-btn" onclick="closeModal('incomeModal')">&times;</span>
+            </div>
+            <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">סכום</label>
+            <input type="number" id="incAmount" placeholder="0.00">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">מקור
+                הכנסה</label>
+            <input type="text" id="incSource" placeholder="למשל: משכורת, בונוס">
+
+            <label
+                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תאריך</label>
+            <input type="date" id="incDate">
+
+            <button class="btn-main" onclick="saveIncome()">שמירה</button>
+        </div>
+    </div>
+
+    <div id="logsModal" class="modal">
+        <div class="modal-content" style="max-height:80vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h3>יומן מערכת 📜</h3>
+                <span class="close-btn" onclick="closeModal('logsModal')">&times;</span>
+            </div>
+            <div id="logsList" style="flex:1; overflow-y:auto; padding:5px;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+
+        let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
+        let income = [], barChart = null;
+        let recurring = [];
+        let editMode = { active: false, id: null };
+        let catEditMode = { active: false, id: null };
+        let rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // Initial Fallback
+
+        async function fetchRates() {
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/ILS');
+                const data = await res.json();
+                if (data && data.rates) {
+                    // API returns 1 ILS = x USD. We need 1 USD = y ILS.
+                    rates.USD = 1 / data.rates.USD;
+                    rates.EUR = 1 / data.rates.EUR;
+                    document.getElementById('rateInfo').innerText = `מקור שערים: חי (עודכן ${new Date().toLocaleTimeString()})`;
+                    document.getElementById('rateInfo').style.color = 'var(--success)';
+                }
+            } catch (e) {
+                console.log("Failed to fetch rates", e);
+            }
+        }
+
+        // Init
+        fetchRates();
+
+        // Offline Status Listener
+        window.addEventListener('offline', () => showToast('🔌 אין חיבור אינטרנט. עובד במצב אופליין.', 'warning'));
+        window.addEventListener('online', () => showToast('🌐 החיבור חזר!', 'success'));
+
+        // Theme Init
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+
+        window.toggleTheme = () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('theme', target);
+        };
+
+        window.showToast = (msg, type = 'success') => {
+            const container = document.getElementById('toastContainer');
+            if (!container) return; // safety
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'fadeOutToast 0.5s ease forwards';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        };
+
+        window.hardResetApp = async () => {
+            if (!confirm("פעולה זו תרענן את האפליקציה ותנקה זיכרון מטמון. האם להמשיך?")) return;
+
+            // 1. Unregister Service Workers
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) await reg.unregister();
+            }
+
+            // 2. Clear Local Storage (Except Theme)
+            const theme = localStorage.getItem('theme');
+            localStorage.clear();
+            if (theme) localStorage.setItem('theme', theme);
+
+            // 3. Clear IndexedDB (Firebase Persistence)
+            try {
+                const dbs = await window.indexedDB.databases();
+                dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
+            } catch (e) { console.log("Could not clear IndexedDB", e); }
+
+            // 4. Reload
+            window.location.reload(true);
+        };
+
+        // --- NEW: Current Filter State ---
+        let currentYearMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+        // Set initial value for month picker
+        document.getElementById('monthPicker').value = currentYearMonth;
+        document.getElementById('monthPicker').addEventListener('change', (e) => {
+            currentYearMonth = e.target.value;
+            render(); // Re-render with new filter
+        });
+
+        window.openRecurring = () => {
+            document.getElementById('recurringModal').style.display = 'flex';
+            renderRecCats();
+            renderRecurring();
+        }
+
+        function renderRecCats() {
+            const sel = document.getElementById('recCat');
+            sel.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        window.addRecurring = async () => {
+            const name = document.getElementById('recName').value;
+            const amount = parseFloat(document.getElementById('recAmount').value);
+            const catId = document.getElementById('recCat').value;
+            const nextDate = document.getElementById('recNextDate').value;
+
+            if (!name || isNaN(amount) || !nextDate) return showToast("חסרים נתונים", 'error');
+
+            try {
+                await addDoc(collection(db, "recurring"), {
+                    uid: user.uid,
+                    name, amount, catId, nextDate, frequency: 'monthly'
+                });
+                showToast('הוראת קבע נוספה בהצלחה', 'success');
+                // Clear inputs
+                document.getElementById('recName').value = '';
+                document.getElementById('recAmount').value = '';
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בהוספה: ' + e.message, 'error');
+            }
+        };
+
+        // --- Filter System ---
+        let filterState = {
+            active: false,
+            start: '',
+            end: '',
+            min: '',
+            max: '',
+            cats: []
+        };
+
+        window.openFilterModal = () => {
+            const el = document.getElementById('filterCatChips');
+            el.innerHTML = cats.map(c => `
+                <div class="filter-chip ${filterState.cats.includes(c.id) ? 'selected' : ''}" 
+                     onclick="toggleFilterCat(this, '${c.id}')">
+                    ${c.icon || '🏷️'} ${c.name}
+                </div>
+            `).join('');
+
+            // Fill inputs
+            document.getElementById('filterStart').value = filterState.start;
+            document.getElementById('filterEnd').value = filterState.end;
+            document.getElementById('filterMin').value = filterState.min;
+            document.getElementById('filterMax').value = filterState.max;
+
+            document.getElementById('filterModal').style.display = 'flex';
+        };
+
+        window.toggleFilterCat = (el, id) => {
+            el.classList.toggle('selected');
+            if (el.classList.contains('selected')) {
+                filterState.cats.push(id);
+            } else {
+                filterState.cats = filterState.cats.filter(cid => cid !== id);
+            }
+        };
+
+        window.applyFilters = () => {
+            filterState.start = document.getElementById('filterStart').value;
+            filterState.end = document.getElementById('filterEnd').value;
+            filterState.min = document.getElementById('filterMin').value;
+            filterState.max = document.getElementById('filterMax').value;
+
+            // Check if any filter is active
+            filterState.active = !!(filterState.start || filterState.end || filterState.min || filterState.max || filterState.cats.length > 0);
+
+            closeModal('filterModal');
+            renderActivity(); // Re-render list
+
+            if (filterState.active) {
+                showToast('הסינון הופעל', 'success');
+                document.querySelector('.icon-btn[onclick="openFilterModal()"]').style.borderColor = 'var(--primary)';
+            } else {
+                document.querySelector('.icon-btn[onclick="openFilterModal()"]').style.borderColor = 'var(--input-border)';
+            }
+        };
+
+        window.clearFilters = () => {
+            filterState = { active: false, start: '', end: '', min: '', max: '', cats: [] };
+            document.querySelector('.icon-btn[onclick="openFilterModal()"]').style.borderColor = 'var(--input-border)';
+            closeModal('filterModal');
+            renderActivity();
+        };
+
+        window.deleteRecurring = async (id) => {
+            if (confirm('למחוק הוראת קבע זו?')) {
+                await deleteDoc(doc(db, "recurring", id)).catch(e => showToast("שגיאה במחיקה", 'error'));
+            }
+        };
+
+        // --- Navigation ---
+        window.switchView = (viewName, btn) => {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            // Show selected
+            document.getElementById(`view-${viewName}`).classList.add('active');
+
+            // Update Nav
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            // If switching to Charts, we might need to resize/update
+            if (viewName === 'insights') render();
+        };
+
+        function renderRecurring() {
+            const el = document.getElementById('recurringList');
+            if (!el) return;
+
+            // 1. Calculate Stats
+            const totalMonthly = recurring.reduce((sum, r) => sum + r.amount, 0);
+
+            // 2. Brand Detection Helper
+            const getBrand = (name) => {
+                const n = name.toLowerCase();
+                if (n.includes('netflix')) return { color: '#E50914', icon: '🍿', name: 'Netflix' };
+                if (n.includes('spotify')) return { color: '#1DB954', icon: '🎧', name: 'Spotify' };
+                if (n.includes('apple')) return { color: '#000000', icon: '🍎', name: 'Apple' };
+                if (n.includes('google') || n.includes('youtube')) return { color: '#FF0000', icon: '▶️', name: 'Google' };
+                if (n.includes('disney')) return { color: '#113CCF', icon: '🏰', name: 'Disney+' };
+                if (n.includes('amazon') || n.includes('prime')) return { color: '#00A8E1', icon: '📦', name: 'Amazon' };
+                if (n.includes('gym') || n.includes('homes') || n.includes('holmes')) return { color: '#FFA500', icon: '💪', name: 'Gym' };
+                return { color: 'var(--primary)', icon: '🔄', name: name };
+            };
+
+            // 3. Render Dashboard
+            let html = `
+                <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color:white; padding:20px; border-radius:16px; margin-bottom:20px; text-align:center; box-shadow:0 10px 25px -5px rgba(79, 70, 229, 0.4);">
+                    <div style="font-size:14px; opacity:0.8; margin-bottom:5px;">סך התחייבויות חודשיות</div>
+                    <div style="font-size:32px; font-weight:700;">₪${totalMonthly.toLocaleString()}</div>
+                    <div style="font-size:12px; opacity:0.9; margin-top:10px;">📉 מנוהל אוטומטית</div>
+                </div>
+            `;
+
+            html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
+
+            html += recurring.map(r => {
+                const brand = getBrand(r.name);
+                const [y, m, d] = r.nextDate.split('-');
+                const nextDate = new Date(r.nextDate);
+                const today = new Date();
+                const diffTime = nextDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                let timeText = diffDays < 0 ? 'היום!' : `בעוד ${diffDays} ימים`;
+
+                return `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:15px; border-radius:12px; border-right: 4px solid ${brand.color}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:40px; height:40px; background:${brand.color}15; color:${brand.color}; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px;">
+                            ${brand.icon}
+                        </div>
+                        <div>
+                            <div style="font-weight:600; font-size:16px;">${brand.name}</div>
+                            <div style="font-size:12px; color:var(--text-sub);">
+                                ${timeText} • ${r.nextDate.split('-')[2]}/${r.nextDate.split('-')[1]}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align:left;">
+                        <div style="font-weight:bold; color:var(--text-main);">₪${r.amount}</div>
+                        <button onclick="deleteRecurring('${r.id}')" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0; color:var(--text-sub); margin-top:4px;">בטל מנוי</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            html += `</div>`;
+            el.innerHTML = html;
+        }
+
+        // Flag to prevent infinite loop in recurring check
+        let lastRecurringCheck = 0;
+
+        async function checkRecurring() {
+            const now = Date.now();
+            if (now - lastRecurringCheck < 10000) return; // Debounce 10s
+            lastRecurringCheck = now;
+
+            const today = new Date().toISOString().slice(0, 10);
+            // --- LOGGING SYSTEM ---
+            window.logEvent = async (action, details = {}) => {
+                if (!user) return;
+                try {
+                    // Don't await this (fire and forget) to keep UI fast
+                    addDoc(collection(db, "logs"), {
+                        uid: user.uid,
+                        email: user.email,
+                        action: action,
+                        details: JSON.stringify(details),
+                        timestamp: Timestamp.now()
+                    }).catch(e => console.warn("Log failed", e));
+                } catch (e) { console.warn("Log setup failed", e); }
+            };
+
+            window.openLogs = async () => {
+                const el = document.getElementById('logsList');
+                el.innerHTML = '<div style="text-align:center;">טוען נתונים...</div>';
+                document.getElementById('logsModal').style.display = 'flex';
+
+                try {
+                    const q = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50));
+                    const snap = await getDocs(q);
+
+                    if (snap.empty) {
+                        el.innerHTML = '<div style="text-align:center; padding:20px;">אין רשומות</div>';
+                        return;
+                    }
+
+                    el.innerHTML = snap.docs.map(d => {
+                        const data = d.data();
+                        const date = data.timestamp ? new Date(data.timestamp.seconds * 1000) : new Date();
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const dateStr = date.toLocaleDateString();
+
+                        let color = '#6B7280';
+                        if (data.action.includes('ERROR')) color = '#EF4444';
+                        if (data.action.includes('ADD')) color = '#10B981';
+
+                        return `
+                    <div style="border-bottom:1px solid #eee; padding:8px 0; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                            <span style="font-weight:bold; color:${color}">${data.action}</span>
+                            <span style="color:#999; font-size:10px;">${dateStr} ${timeStr}</span>
+                        </div>
+                        <div style="color:#444;">${data.email}</div>
+                        <div style="color:#777; font-size:10px; font-family:monospace; margin-top:2px;">${(data.details || '').substring(0, 100)}</div>
+                    </div>`;
+                    }).join('');
+
+                } catch (e) {
+                    el.innerHTML = `<div style="color:red; text-align:center;">שגיאה בטעינת לוגים: ${e.message}</div>`;
+                }
+            };
+
+            // Flag to prevent infinite loop in recurring check
+            let lastRecurringCheck = 0;
+
+            async function checkRecurring() {
+                const now = Date.now();
+                if (now - lastRecurringCheck < 10000) return; // Debounce 10s
+                lastRecurringCheck = now;
+
+                const today = new Date().toISOString().slice(0, 10);
+
+                for (const r of recurring) {
+                    if (r.nextDate <= today) {
+                        try {
+                            // USE BATCH for Atomicity (Prevent Loops)
+                            const batch = writeBatch(db);
+
+                            // 1. Add Transaction
+                            const newTxRef = doc(collection(db, "transactions"));
+                            batch.set(newTxRef, {
+                                allowedUsers: [user.email],
+                                amount: r.amount,
+                                catId: r.catId,
+                                note: `הוראת קבע: ${r.name}`,
+                                date: Timestamp.fromDate(new Date(r.nextDate)),
+                                method: 'אשראי',
+                                currency: 'ILS'
+                            });
+
+                            // 2. Update Recurring Date
+                            const next = new Date(r.nextDate);
+                            next.setMonth(next.getMonth() + 1);
+                            const recRef = doc(db, "recurring", r.id);
+                            batch.update(recRef, {
+                                nextDate: next.toISOString().slice(0, 10)
+                            });
+
+                            // 3. Commit Both
+                            await batch.commit();
+
+                            console.log(`הוראת קבע בוצעה: ${r.name}`);
+                            logEvent("REC_RUN", { name: r.name, amt: r.amount });
+
+                        } catch (e) {
+                            logEvent("REC_ERROR", { msg: e.code || e.message });
+                            console.error("Recurring Failed", e);
+                            // Using batch ensures we don't have duplicate transactions if update fails
+                        }
+                    }
+                }
+            }
+
+            // ... OCR Logic ...
+            window.handleScan = async (input) => {
+                const file = input.files[0];
+                if (!file) return;
+
+                const statusEl = document.getElementById('scanStatus');
+                statusEl.style.display = 'flex';
+
+                try {
+                    // Pre-process Image via Canvas
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file);
+                    await new Promise(r => img.onload = r);
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    // Filters: Grayscale + Contrast
+                    const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    for (let i = 0; i < d.data.length; i += 4) {
+                        const avg = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 3;
+                        const c = avg > 128 ? 255 : 0; // High contrast threshold
+                        d.data[i] = d.data[i + 1] = d.data[i + 2] = c;
+                    }
+                    ctx.putImageData(d, 0, 0);
+                    const processedBlob = await new Promise(r => canvas.toBlob(r));
+
+                    const worker = await Tesseract.createWorker('heb');
+                    const ret = await worker.recognize(processedBlob);
+                    await worker.terminate();
+
+                    const text = ret.data.text;
+                    console.log("OCR Result:", text);
+
+                    // ... Regex Logic (Same as before) ...
+                    const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+                    if (dateMatch) {
+                        let [_, d, m, y] = dateMatch;
+                        if (y.length === 2) y = "20" + y;
+                        window.scannedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                        showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
+                    }
+
+                    let amount = 0;
+                    const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
+                    const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
+                    let match;
+                    while ((match = totalRegex.exec(text)) !== null) {
+                        const val = parseNum(match[1]);
+                        if (val > 0) amount = val;
+                    }
+                    if (amount === 0) {
+                        const numbers = text.match(/\d+\.\d{2}/g);
+                        if (numbers) {
+                            const max = Math.max(...numbers.map(n => parseFloat(n)));
+                            if (max > 0) amount = max;
+                        }
+                    }
+
+                    if (amount > 0) {
+                        document.getElementById('fAmt').value = amount;
+                        document.getElementById('fAmt').classList.add('flash-input');
+                        showToast(`סכום זוהה: ₪${amount}`, 'success');
+                    } else {
+                        showToast('לא זוהה סכום סופי, נסה תמונה ברורה יותר', 'warning');
+                    }
+
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                    if (lines.length > 0) {
+                        document.getElementById('expNote').value = lines[0].substring(0, 20);
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    showToast('שגיאה: ' + err.message, 'error');
+                } finally {
+                    statusEl.style.display = 'none';
+                    input.value = '';
+                }
+            };
+
+            onAuthStateChanged(auth, u => {
+                if (u) {
+                    console.log("Auth State Changed: Logged In", u.email);
+                    user = u;
+                    document.getElementById('authScreen').style.display = 'none';
+                    document.getElementById('mainApp').style.display = 'block';
+
+                    // Safe update of UI elements
+                    const emailDisplay = document.getElementById('userEmailDisplay');
+                    if (emailDisplay) emailDisplay.innerText = user.email.split('@')[0];
+
+                    const avatar = document.getElementById('avatarLetter');
+                    if (avatar) avatar.innerText = user.email[0].toUpperCase();
+
+                    startSync();
+
+                    // Check defaults logic (Merged from bottom)
+                    // We check after a short delay to ensure cats are synced? 
+                    // Actually, startSync starts listeners. We should check defaults inside the listener or after a delay.
+                    // For now, let's just properly call it if cats are empty after a few seconds? 
+                    // Better: Call it. It checks DB directly.
+                    checkAndCreateDefaults(u);
+                } else {
+                    console.log("Auth State Changed: Logged Out");
+                    document.getElementById('authScreen').style.display = 'flex';
+                    document.getElementById('mainApp').style.display = 'none';
+                }
+            });
+
+            function startSync() {
+                // Sync Categories
+                onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
+                    cats = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                    render();
+                });
+
+                // Sync Recurring
+                onSnapshot(query(collection(db, "recurring"), where("uid", "==", user.uid)), s => {
+                    recurring = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderRecurring();
+                    checkRecurring();
+                });
+
+                // Sync Income
+                onSnapshot(query(collection(db, "income"), where("uid", "==", user.uid), orderBy("date", "desc")), s => {
+                    income = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderIncome();
+                });
+
+                // Sync Transactions (Limit to last 150 to save quota)
+                onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc"), limit(150)), s => {
+                    txs = s.docs.map(d => {
+                        const data = d.data();
+                        // Convert Timestamp to js Date for easier filtering
+                        return { id: d.id, ...data, jsDate: data.date.toDate() };
+                    });
+                    render();
+                });
+
+                // Sync Savings
+                onSnapshot(query(collection(db, "savings"), where("owner", "==", user.email)), s => {
+                    savings = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderSavings();
+                });
+
+                // Sync Gift Cards
+                onSnapshot(query(collection(db, "giftcards"), where("owner", "==", user.email)), s => {
+                    cards = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderGiftCards();
+                });
+            }
+
+            function render() {
+                // 1. Filter Transactions by Selected Month (For Budget/Stats)
+                const filteredTxs = txs.filter(t => {
+                    const tDate = t.jsDate.toISOString().slice(0, 7); // "YYYY-MM"
+                    return tDate === currentYearMonth;
+                });
+
+                // 2. Handle Search Logic (For History List)
+                const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
+                // 1. Filter by Search
+                let displayTxs = txs.filter(t =>
+                    t.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.amount.toString().includes(searchQuery)
+                );
+
+                // 2. Filter by Advanced Filters (If active)
+                if (filterState.active) {
+                    displayTxs = displayTxs.filter(t => {
+                        const date = t.jsDate.toISOString().slice(0, 10);
+                        // Date Range
+                        if (filterState.start && date < filterState.start) return false;
+                        if (filterState.end && date > filterState.end) return false;
+                        // Amount Range
+                        if (filterState.min && t.amount < parseFloat(filterState.min)) return false;
+                        if (filterState.max && t.amount > parseFloat(filterState.max)) return false;
+                        // Categories
+                        if (filterState.cats.length > 0 && !filterState.cats.includes(t.catId)) return false;
+
+                        return true;
+                    });
+                } else {
+                    // Default: Filter by Current Month if NO search and NO advanced filter
+                    if (!searchQuery) {
+                        displayTxs = displayTxs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+                    }
+                }
+
+                // Sort by Date Descending
+                displayTxs.sort((a, b) => b.jsDate - a.jsDate);
+                // 3. Calculate Totals (Always based on Month)
+                let totalBudget = 0;
+                let totalSpent = 0;
+
+                // Render Categories (Always based on Month)
+                document.getElementById('catList').innerHTML = cats.map(c => {
+                    const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
+                    totalBudget += c.budget;
+                    totalSpent += catSpent;
+
+                    // Personalization Logic
+                    const icon = c.icon || '📂';
+                    // Calculate percentage FIRST
+                    const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
+                    // If user has a custom color, use it. Otherwise use the calculated status color.
+                    const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
+
+                    return `
+                <div class="cat-item">
+                    <div class="cat-header" onclick="openAddTx('${c.id}', '${c.name}')">
+                        <div class="cat-name">
+                            <span style="background:${c.color ? c.color + '20' : '#EEF2FF'}; padding:8px; border-radius:8px; color:${c.color || 'var(--primary)'}; font-size:18px; display:flex; align-items:center; justify-content:center; width:36px; height:36px;">${icon}</span>
+                            ${c.name}
+                        </div>
+                        <div class="cat-stats">
+                            <b style="color:var(--text-main)">₪${Math.round(catSpent).toLocaleString()}</b>
+                            <span style="color:var(--text-sub)"> / ₪${c.budget.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-bg">
+                        <div class="progress-fill" style="width:${perc}%; background:${color}"></div>
+                    </div>
+
+                    <div class="cat-actions">
+                        <div class="action-chip" onclick="openAddTx('${c.id}', '${c.name}')">➕ הוספה</div>
+                        <div class="action-chip" onclick="shareCat('${c.id}')">👥 שיתוף</div>
+                        <div class="action-chip" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')">⚙️ הגדרות</div>
+                    </div>
+                </div>`;
+                }).join('');
+
+                // Update Summary Chips
+                // Calculate Total Income for BALANCE
+                // Note: Income is global list, need filtering by month? 
+                // Let's filter income by same month for accurate "Monthly Balance"
+                const monthlyIncome = income.filter(i => i.date.slice(0, 7) === currentYearMonth)
+                    .reduce((sum, i) => sum + i.amount, 0);
+
+                // REAL Balance = (Monthly Income) - (Total Spent)
+                // If no income logged, maybe fallback to (Budget - Spent)? 
+                // User requested "Actual Income Tracking", so let's show Real Balance.
+                // If monthlyIncome is 0, we can show (Budget - Spent) or just negative spent.
+                // Let's settle on: Balance = Income - Spent.
+
+                // Wait, "Budget" is "Planned". "Income" is "Actual".
+                // Let's update chips:
+                // Chip 1: Income (Actual)
+                // Chip 2: Expenses
+                // Chip 3: Balance (Income - Expenses)
+
+                const elBudget = document.getElementById('totalBudgetDisplay');
+                if (elBudget) {
+                    elBudget.innerText = '₪' + monthlyIncome.toLocaleString();
+                    if (elBudget.previousElementSibling) elBudget.previousElementSibling.innerText = "הכנסות";
+                }
+
+                const elSpent = document.getElementById('totalSpentDisplay');
+                if (elSpent) elSpent.innerText = '₪' + Math.round(totalSpent).toLocaleString();
+
+                const elBal = document.getElementById('balanceDisplay');
+                if (elBal) elBal.innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
+
+                // Render History (Based on separate displayTxs)
+                const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
+                window.toggleHeaderMenu = () => {
+                    document.getElementById('headerDropdown').classList.toggle('show');
+                };
+
+                // Close dropdown when clicking outside
+                window.onclick = (e) => {
+                    if (!e.target.matches('.menu-btn')) {
+                        const d = document.getElementById('headerDropdown');
+                        if (d && d.classList.contains('show')) d.classList.remove('show');
+                    }
+                };
+
+                // Date UtilstoryList is now rendered by renderActivity, so this part is removed from the main render()
+                // document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
+                //     const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+                //     const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
+                //     return `
+                //     <div class="history-item">
+                //         <div class="tx-info">
+                //             <div class="tx-note">${t.note} ${subText}</div>
+                //             <div class="tx-meta">
+                //                 <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
+                //                 <span>•</span>
+                //                 <span>${t.method}</span>
+                //             </div>
+                //         </div>
+                //         <div style="display:flex; align-items:center; gap:10px;">
+                //             <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
+                //             <div class="tx-actions">
+                //                 <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
+                //                 <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
+                //             </div>
+                //         </div>
+                //     </div>`;
+                // }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
+
+
+                // Re-adding Donut to Main Home View if needed? 
+                // Actually, Plan said "Income vs Expenses" on Insights. 
+                // Home view has "Expenses by Category" list which has progress bars.
+                // Let's keep updateChart for the Insights Bar Chart.
+                updateBarChart(monthlyIncome, totalSpent);
+                updatePieChart(filteredTxs);
+
+                // Critical Fix: Trigger sub-renders for other tabs
+                renderActivity();
+                renderInsights();
+            }
+
+            // --- Income Logic ---
+            window.openAddIncome = () => {
+                document.getElementById('incDate').value = new Date().toISOString().slice(0, 10);
+                document.getElementById('incomeModal').style.display = 'flex';
+            };
+
+            window.saveIncome = async () => {
+                const amount = parseFloat(document.getElementById('incAmount').value);
+                const source = document.getElementById('incSource').value;
+                const date = document.getElementById('incDate').value;
+
+                if (!amount || !source || !date) return showToast("חסרים נתונים", 'error');
+
+                try {
+                    await addDoc(collection(db, "income"), {
+                        uid: user.uid,
+                        amount,
+                        source,
+                        date,
+                        timestamp: new Date()
+                    });
+                    document.getElementById('incomeModal').style.display = 'none';
+                    document.getElementById('incAmount').value = '';
+                    document.getElementById('incSource').value = '';
+                    showToast('הכנסה נוספה בהצלחה', 'success');
+                } catch (e) {
+                    console.error(e);
+                    showToast('שגיאה בשמירה: ' + e.message, 'error');
+                    document.getElementById('incomeModal').style.display = 'none';
+                }
+            }
+
+            window.deleteIncome = async (id) => {
+                if (confirm('למחוק הכנסה זו?')) await deleteDoc(doc(db, "income", id));
+            }
+
+            function renderIncome() {
+                // Filter by month
+                const filtered = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
+                const total = filtered.reduce((s, i) => s + i.amount, 0);
+                // This is for the Home view summary chip, which is now updated by render()
+                // document.getElementById('totalIncomeDisplay').innerText = '₪' + total.toLocaleString();
+
+                // This is for the Income List in the Insights tab, which is now handled by renderInsights()
+                // document.getElementById('incomeList').innerHTML = filtered.map(i => `
+                //     <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
+                //         <div>
+                //             <div style="font-weight:bold;">${i.source}</div>
+                //             <div style="font-size:12px; color:var(--text-sub);">${i.date}</div>
+                //         </div>
+                //         <div style="display:flex; align-items:center; gap:10px;">
+                //             <span style="color:var(--success); font-weight:bold;">+₪${i.amount.toLocaleString()}</span>
+                //             <button onclick="deleteIncome('${i.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
+                //         </div>
+                //     </div>
+                //  `).join('');
+
+                // Trigger render to update chips/charts if this changes
+                // render();
+            }
+
+            // Chart instances
+            let barChartInstance = null;
+            let pieChartInstance = null;
+            let lineChartInstance = null;
+
+            function updateBarChart(inc, exp) {
+                const ctx = document.getElementById('barChartRef') || document.getElementById('barChart');
+                if (!ctx) return;
+
+                if (barChartInstance) barChartInstance.destroy();
+
+                barChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['הכנסות', 'הוצאות'],
+                        datasets: [{
+                            label: 'סיכום חודשי',
+                            data: [inc, exp],
+                            backgroundColor: ['#10B981', '#EF4444'],
+                            borderRadius: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            function updateLineChart(transactions) {
+                const ctx = document.getElementById('lineChartRef');
+                if (!ctx) return;
+
+                if (lineChartInstance) lineChartInstance.destroy();
+
+                // 1. Group by day
+                const dayMap = {};
+                const daysInMonth = new Date(parseInt(currentYearMonth.slice(0, 4)), parseInt(currentYearMonth.slice(5, 7)), 0).getDate();
+
+                // Init zeros
+                for (let i = 1; i <= daysInMonth; i++) dayMap[i] = 0;
+
+                transactions.forEach(t => {
+                    const d = t.jsDate.getDate();
+                    dayMap[d] += t.amount;
+                });
+
+                // 2. Calculate Cumulative
+                const labels = [];
+                const data = [];
+                let sum = 0;
+                for (let i = 1; i <= daysInMonth; i++) {
+                    // Only plot up to today if current month, otherwise full month
+                    // For simplicity, plot all days
+                    labels.push(i);
+                    sum += dayMap[i];
+                    data.push(sum);
+                }
+
+                lineChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'הוצאה מצטברת',
+                            data: data,
+                            borderColor: '#6366F1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Chart Logic (Pie Chart: Expenses by Category)
+            function updatePieChart(dataTxs) {
+                const ctx = document.getElementById('pieChartRef') || document.getElementById('pieChart');
+                if (!ctx) return;
+
+                if (pieChartInstance) pieChartInstance.destroy();
+
+                const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
+                const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+
+                pieChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: cats.map(c => c.name),
+                        datasets: [{
+                            data,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { family: 'Rubik' }, boxWidth: 10 } }
+                        },
+                        cutout: '70%'
+                    }
+                });
+            }
+
+            // --- Actions ---
+            // Initialize Icon Grid
+            const icons = ['🏷️', '🍕', '🚗', '🏠', '🏥', '🎓', '✈️', '🎁', '💇', '📱', '💪', '🛒', '🍷', '🥦', '⛽', '💡', '🔧', '👶', '🐶', '📚', '🎮', '🎵', '🎬', '💻'];
+            const iconGrid = document.getElementById('iconGrid');
+            if (iconGrid) {
+                iconGrid.innerHTML = icons.map(icon => `
+                <button onclick="selectIcon('${icon}', this)" class="icon-option" style="font-size:18px; padding:5px; border:1px solid #eee; background:#fff; border-radius:6px; cursor:pointer;">${icon}</button>
+            `).join('');
+            }
+
+            window.selectIcon = (icon, btn) => {
+                document.getElementById('catIcon').value = icon;
+                document.querySelectorAll('.icon-option').forEach(b => b.style.borderColor = '#eee');
+                if (btn) btn.style.borderColor = 'var(--primary)';
+            };
+
+            window.openAddCat = () => {
+                catEditMode = { active: false, id: null };
+                document.getElementById('catTitle').innerText = "קטגוריה חדשה";
+                document.getElementById('catName').value = "";
+                document.getElementById('catBudget').value = "";
+                document.getElementById('catColor').value = "#3B82F6"; // Default Blue
+                selectIcon('🏷️', null); // Reset Icon
+                document.getElementById('delCatBtn').style.display = 'none'; // Hide delete btn
+                document.getElementById('catModal').style.display = 'flex';
+                document.getElementById('catName').focus();
+            };
+
+            window.openEditCat = (id, name, budget, color, icon) => {
+                catEditMode = { active: true, id: id };
+                document.getElementById('catTitle').innerText = "עריכת קטגוריה";
+                document.getElementById('catName').value = name;
+                document.getElementById('catBudget').value = budget;
+                document.getElementById('catColor').value = color || "#3B82F6";
+                selectIcon(icon || '🏷️', null);
+                document.getElementById('delCatBtn').style.display = 'block'; // Show delete btn
+                document.getElementById('catModal').style.display = 'flex';
+            };
+
+            window.saveCategory = async () => {
+                const name = document.getElementById('catName').value;
+                const budget = parseFloat(document.getElementById('catBudget').value);
+                const color = document.getElementById('catColor').value;
+                const icon = document.getElementById('catIcon').value;
+
+                if (!name || !budget) return showToast("נא למלא שם ותקציב", 'error');
+
+                const allowed = [user.email];
+                const partner = localStorage.getItem('partnerEmail');
+                if (partner) allowed.push(partner);
+
+                const data = {
+                    name,
+                    budget,
+                    uid: user.uid,
+                    allowedUsers: allowed,
+                    color: color,
+                    icon: icon
+                };
+
+                try {
+                    if (catEditMode.active) {
+                        await updateDoc(doc(db, "categories", catEditMode.id), data);
+                        showToast('קטגוריה עודכנה', 'success');
+                    } else {
+                        await addDoc(collection(db, "categories"), data);
+                        showToast('קטגוריה נוצרה', 'success');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    showToast("שגיאה בשמירה: " + e.message, 'error');
+                } finally {
+                    closeModal('catModal'); // Ensures verification of closure
+                }
+            };
+
+            window.deleteCategory = async () => {
+                if (confirm("למחוק את הקטגוריה הזו? (ההוצאות שלה יישארו אך ללא שיוך)")) {
+                    await deleteDoc(doc(db, "categories", catEditMode.id));
+                    document.getElementById('catModal').style.display = 'none';
+                }
+            };
+
+            window.openEditTx = (id) => {
+                const tx = txs.find(t => t.id === id);
+                editMode = { active: true, id: id };
+                window.currentCatId = tx.catId;
+                document.getElementById('expTitle').innerText = "עריכת הוצאה";
+                document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
+                document.getElementById('fCurr').value = tx.currency || "ILS";
+                document.getElementById('expNote').value = tx.note;
+                document.getElementById('pMethod').value = tx.method;
+                document.getElementById('expModal').style.display = 'flex';
+            };
+
+            window.openAddTx = (id, name) => {
+                editMode = { active: false, id: null };
+                window.currentCatId = id;
+                document.getElementById('expTitle').innerText = "הוצאה ב: " + name;
+                document.getElementById('fAmt').value = "";
+                document.getElementById('fCurr').value = "ILS";
+                document.getElementById('expNote').value = "";
+                document.getElementById('expModal').style.display = 'flex';
+                document.getElementById('fAmt').focus();
+            };
+
+            window.closeModal = (id) => {
+                if (id) {
+                    document.getElementById(id).style.display = 'none';
+                } else {
+                    // Close all known modals if no specific ID provided
+                    ['expModal', 'catModal', 'recurringModal', 'incomeModal'].forEach(mid => {
+                        const el = document.getElementById(mid);
+                        if (el) el.style.display = 'none';
+                    });
+                }
+            };
+
+            document.getElementById('saveTxBtn').onclick = async () => {
+                const rawAmt = parseFloat(document.getElementById('fAmt').value);
+                const curr = document.getElementById('fCurr').value;
+                if (!rawAmt) return showToast("נא להזין סכום", 'error');
+
+                const converted = rawAmt * rates[curr];
+
+                const allowed = [user.email];
+                const partner = localStorage.getItem('partnerEmail');
+                if (partner) allowed.push(partner);
+
+                const data = {
+                    amount: converted,
+                    originalAmount: rawAmt,
+                    currency: curr,
+                    note: document.getElementById('expNote').value || "הוצאה כללית",
+                    method: document.getElementById('pMethod').value,
+                    catId: window.currentCatId,
+                    allowedUsers: allowed,
+                    // Use scanned date, or existing date if editing, or now
+                    date: window.scannedDate ? Timestamp.fromDate(new Date(window.scannedDate)) : (editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now())
+                };
+
+                // Reset scanned date
+                window.scannedDate = null;
+
+                try {
+                    if (editMode.active) {
+                        await updateDoc(doc(db, "transactions", editMode.id), data);
+                        logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
+                    } else {
+                        await addDoc(collection(db, "transactions"), data);
+                        logEvent("TX_ADD", { amt: data.amount, cat: window.currentCatId });
+                    }
+                    showToast('הוצאה נשמרה בהצלחה', 'success');
+
+                    // --- Real-Time Budget Alert ---
+                    const cat = cats.find(c => c.id === window.currentCatId);
+                    if (cat && cat.budget > 0) {
+                        const currentMonth = new Date().toISOString().slice(0, 7);
+                        // Calc existing spent
+                        const existingSpent = txs
+                            .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                            .reduce((s, t) => s + t.amount, 0);
+
+                        // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
+                        // Actually, 'txs' array updates via onSnapshot, which is async. 
+                        // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
+                        // We should add 'converted' manually for the check.
+
+                        const newTotal = existingSpent + converted;
+                        const percent = (newTotal / cat.budget) * 100;
+
+                        if (percent > 100) {
+                            setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
+                        } else if (percent > 90) {
+                            setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
+                        }
+                    }
+                    // ------------------------------
+                } catch (e) {
+                    console.error(e);
+                    closeModal(); // Close modal immediately before showing error
+
+                    // User-friendly error messages
+                    if (e.code === 'resource-exhausted') {
+                        showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
+                    } else if (e.code === 'permission-denied') {
+                        showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
+                    } else {
+                        showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
+                    }
+                } finally {
+                    closeModal(); // ALWAYS close modal (double check)
+                }
+            };
+
+            window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+
+            function renderSavings() {
+                // This function now targets 'savingsListRef' if it exists, otherwise 'savingsList'
+                const el = document.getElementById('savingsListRef') || document.getElementById('savingsList');
+                if (!el) return;
+
+                el.innerHTML = savings.length ? savings.map(s => {
+                    const perc = Math.min((s.current / s.target) * 100, 100);
+                    return `
+                    <div style="padding:10px; background:#F9FAFB; border-radius:12px; border:1px solid #E5E7EB;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <span style="font-weight:600;">${s.name}</span>
+                            <div style="font-size:12px;">₪${s.current.toLocaleString()} / ₪${s.target.toLocaleString()}</div>
+                        </div>
+                        <div style="height:6px; background:#E5E7EB; border-radius:3px; overflow:hidden; margin-bottom:8px;">
+                            <div style="height:100%; background:var(--success); width:${perc}%;"></div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:5px;">
+                            <button onclick="depositSavings('${s.id}', ${s.current})" style="font-size:11px; padding:4px 8px; background:white; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer;">💰 הפקדה</button>
+                            <button onclick="deleteSavings('${s.id}')" style="font-size:11px; padding:4px 8px; background:white; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer; color:var(--danger)">🗑️</button>
+                        </div>
+                    </div>`;
+                }).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין יעדים עדיין</div>';
+            }
+
+            function renderGiftCards() {
+                // This function now targets 'giftCardsListRef' if it exists, otherwise 'giftCardsList'
+                const list = document.getElementById('giftCardsListRef') || document.getElementById('giftCardsList');
+                if (!list) return;
+
+                const select = document.getElementById('pGiftCardId');
+
+                // UI List
+                list.innerHTML = cards.length ? cards.map(c => `
+                <div style="display:flex; justify-content:space-between; align-items:center; adding:10px; background:#F0FDFA; border:1px solid #CCFBF1; border-radius:10px; padding:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:20px;">🎁</span>
+                        <div>
+                            <div style="font-weight:600; font-size:14px;">${c.name}</div>
+                            <div style="font-size:12px; color:#0D9488;">₪${c.current.toLocaleString()} נותר</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteGiftCard('${c.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">&times;</button>
+                </div>
+            `).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין כרטיסים</div>';
+
+                // Select Options
+                select.innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (₪${c.current})</option>`).join('');
+            }
+
+            window.toggleGiftCardSelect = () => {
+                const val = document.getElementById('pMethod').value;
+                document.getElementById('giftCardSelectDiv').style.display = val === '🎁 גיפט קארד' ? 'block' : 'none';
+            };
+
+            window.addGiftCard = async () => {
+                const n = prompt("שם הכרטיס (למשל: BuyMe):");
+                if (!n) return;
+                const b = prompt("סכום התחלתי:");
+                if (n && b) {
+                    addDoc(collection(db, "giftcards"), { name: n, initial: parseFloat(b), current: parseFloat(b), owner: user.email })
+                        .then(() => showToast('כרטיס מתנה נוסף', 'success'))
+                        .catch(e => showToast("שגיאה: " + e.message, 'error'));
+                }
+            };
+
+            window.deleteGiftCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "giftcards", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+
+            // --- RECEIPT SCANNER (OCR) ---
+            window.triggerScan = () => document.getElementById('scanInput').click();
+
+            window.handleScan = async (input) => {
+                const file = input.files[0];
+                if (!file) return;
+
+                const statusEl = document.getElementById('scanStatus');
+                statusEl.style.display = 'flex';
+
+                try {
+                    // Initialize worker
+                    const worker = await Tesseract.createWorker('heb');
+                    // You can add 'eng' too if needed: await Tesseract.createWorker(['heb', 'eng']);
+
+                    // Recognize
+                    const ret = await worker.recognize(file);
+                    console.log(ret.data.text);
+                    const text = ret.data.text;
+
+                    await worker.terminate();
+
+                    // --- Heuristic Parsing ---
+
+                    // 1. Find Date (DD.MM.YY or DD/MM/YYYY)
+                    const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+                    if (dateMatch) {
+                        let [_, d, m, y] = dateMatch;
+                        if (y.length === 2) y = "20" + y;
+                        // Format to YYYY-MM-DD for input
+                        const isoDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                        // Update editing mode date or current date? 
+                        // We don't have a date input in the modal visible (it uses editMode or Now).
+                        // But we can save it to a temp variable 'scannedDate' to use on save.
+                        window.scannedDate = isoDate; // Will use in saveTxBtn
+                        showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
+                    }
+
+                    // 2. Find Amount (Look for "Total" keywords or just max number)
+                    // Keywords: סה"כ, לתשלום, סכום, Total
+                    let amount = 0;
+
+                    // Helper to clean and parse
+                    const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
+
+                    const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
+                    let match;
+                    let foundTotal = false;
+
+                    // Try to find explicit total line
+                    while ((match = totalRegex.exec(text)) !== null) {
+                        const val = parseNum(match[1]);
+                        if (val > 0) {
+                            amount = val;
+                            foundTotal = true;
+                            // Keep searching, usually the last "Total" is the grand total
+                        }
+                    }
+
+                    // Fallback: Max number in text that looks like price (xx.xx)
+                    if (!foundTotal) {
+                        const numbers = text.match(/\d+\.\d{2}/g);
+                        if (numbers) {
+                            const max = Math.max(...numbers.map(n => parseFloat(n)));
+                            if (max > 0) amount = max;
+                        }
+                    }
+
+                    if (amount > 0) {
+                        document.getElementById('fAmt').value = amount;
+                        document.getElementById('fAmt').classList.add('flash-input'); // Visual cue?
+                        showToast(`סכום זוהה: ₪${amount}`, 'success');
+                    } else {
+                        showToast('לא זוהה סכום סופי, נא להזין ידנית', 'warning');
+                    }
+
+                    // 3. Merchant Name (First non-empty line usually)
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                    if (lines.length > 0) {
+                        document.getElementById('expNote').value = lines[0].substring(0, 20); // Limit length
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    showToast('שגיאה בסריקה: ' + err.message, 'error');
+                } finally {
+                    statusEl.style.display = 'none';
+                    input.value = ''; // Reset input
+                }
+            };
+
+            window.addSavingsGoal = async () => {
+                const n = prompt("שם היעד (למשל: חופשה ביוון):");
+                if (!n) return;
+                const t = prompt("סכום היעד:");
+                if (n && t) {
+                    addDoc(collection(db, "savings"), { name: n, target: parseFloat(t), current: 0, owner: user.email })
+                        .then(() => showToast('יעד חיסכון נוסף', 'success'))
+                        .catch(e => showToast("שגיאה: " + e.message, 'error'));
+                }
+            };
+
+            window.depositSavings = async (id, current) => {
+                const amount = prompt("כמה להפקיד ליעד זה?");
+                if (amount) {
+                    updateDoc(doc(db, "savings", id), { current: current + parseFloat(amount) })
+                        .then(() => showToast('הפקדה בוצעה!', 'success'))
+                        .catch(e => showToast("שגיאה בהפקדה", 'error'));
+                }
+            };
+
+            window.deleteSavings = async (id) => { if (confirm("למחוק את היעד הזה?")) await deleteDoc(doc(db, "savings", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+
+            window.shareCat = async (id) => {
+                const email = prompt("הכנס את האימייל של המשתמש איתו תרצה לשתף את הקטגוריה:");
+                if (email) {
+                    updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) })
+                        .then(() => showToast(`שותף בהצלחה עם ${email}`, 'success'))
+                        .catch(e => showToast("שגיאה בשיתוף " + e.message, 'error'));
+                }
+            };
+
+            window.invitePartner = async () => {
+                const email = document.getElementById('partnerEmailInput').value;
+                if (!email || !email.includes('@')) return showToast('נא להזין אימייל תקין', 'error');
+
+                try {
+                    // 1. Save preference
+                    localStorage.setItem('partnerEmail', email);
+
+                    // 2. Find all MY categories
+                    const myCats = cats.filter(c => c.uid === user.uid);
+
+                    // 3. Batch update
+                    const batch = writeBatch(db);
+                    myCats.forEach(c => {
+                        const ref = doc(db, "categories", c.id);
+                        batch.update(ref, { allowedUsers: arrayUnion(email) });
+                    });
+
+                    await batch.commit();
+
+                    document.getElementById('partnerModal').style.display = 'none';
+                    showToast(`הזמנה נשלחה! כל הקטגוריות שותפו עם ${email}`, 'success');
+                } catch (e) {
+                    console.error(e);
+                    showToast('שגיאה בשיתוף: ' + e.message, 'error');
+                }
+            };
+
+            window.csvInput = document.getElementById('csvInput');
+            window.triggerImport = () => window.csvInput.click();
+
+            window.handleCSVUpload = async (input) => {
+                const file = input.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const text = e.target.result;
+                    const rows = text.split('\n');
+
+                    // Find column indices
+                    const header = rows[0].toLowerCase().split(',');
+                    const dateIdx = header.findIndex(h => h.includes('date') || h.includes('תאריך'));
+                    const amountIdx = header.findIndex(h => h.includes('amount') || h.includes('סכום'));
+                    const noteIdx = header.findIndex(h => h.includes('note') || h.includes('desc') || h.includes('תיאור') || h.includes('פרטים'));
+
+                    if (dateIdx === -1 || amountIdx === -1) {
+                        showToast('לא זוהו עמודות חובה (Date, Amount)', 'error');
+                        return;
+                    }
+
+                    try {
+                        const batch = writeBatch(db);
+                        let count = 0;
+
+                        // Get General Category ID or first available
+                        const defaultCatId = cats[0]?.id;
+
+                        for (let i = 1; i < rows.length; i++) {
+                            const cols = rows[i].split(',');
+                            if (cols.length < 2) continue;
+
+                            const dateStr = cols[dateIdx]?.trim();
+                            const amountStr = cols[amountIdx]?.trim();
+                            const note = cols[noteIdx]?.trim() || "ייבוא בנק";
+
+                            if (!dateStr || !amountStr) continue;
+
+                            const date = new Date(dateStr);
+                            if (isNaN(date.getTime())) continue; // Skip invalid dates
+
+                            const amount = parseFloat(amountStr.replace(/[^\d.-]/g, '')); // Clean currency symbols
+
+                            const allowed = [user.email];
+                            const partner = localStorage.getItem('partnerEmail');
+                            if (partner) allowed.push(partner);
+
+                            const docRef = doc(collection(db, "transactions"));
+                            batch.set(docRef, {
+                                date: Timestamp.fromDate(date),
+                                amount: Math.abs(amount), // Assume expense
+                                originalAmount: Math.abs(amount),
+                                currency: 'ILS', // Default
+                                catId: defaultCatId,
+                                note: note,
+                                method: '💳 אשראי',
+                                allowedUsers: allowed
+                            });
+                            count++;
+                        }
+
+                        await batch.commit();
+                        showToast(`נשמרו ${count} הוצאות בהצלחה!`, 'success');
+                        input.value = ''; // Reset
+                    } catch (err) {
+                        console.error(err);
+                        showToast('שגיאה בייבוא: ' + err.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            window.exportToCSV = () => {
+                let csvContent = "\uFEFF"; // BOM for Hebrew support
+                csvContent += "Date,Amount,Currency,Category,Note,Method\n";
+
+                txs.forEach(t => {
+                    const date = t.jsDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+                    const catName = cats.find(c => c.id === t.catId)?.name || 'Unknown';
+                    const row = [
+                        date,
+                        t.originalAmount || t.amount,
+                        t.currency || 'ILS',
+                        `"${catName.replace(/"/g, '""')}"`,
+                        `"${t.note.replace(/"/g, '""')}"`,
+                        t.method
+                    ].join(",");
+                    csvContent += row + "\n";
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `budget_export_${new Date().toISOString().slice(0, 10)}.csv`;
+                link.click();
+            };
+
+            const loginBtn = document.getElementById('loginBtn');
+            const signupBtn = document.getElementById('signupBtn');
+
+            if (loginBtn) {
+                loginBtn.onclick = () => {
+                    const email = document.getElementById('email').value;
+                    const pass = document.getElementById('password').value;
+                    console.log("Attempting Login:", email);
+                    if (!email || !pass) {
+                        showToast("נא להזין אימייל וסיסמה", "error");
+                        return;
+                    }
+                    loginBtn.innerText = "מתחבר...";
+                    signInWithEmailAndPassword(auth, email, pass)
+                        .then(() => {
+                            console.log("Login Success");
+                            loginBtn.innerText = "כניסה";
+                        })
+                        .catch(e => {
+                            console.error("Login Error:", e);
+                            loginBtn.innerText = "כניסה";
+                            showToast("שגיאה בהתחברות: " + e.message, 'error');
+                            alert("Login Error: " + e.message); // Fallback for visibility
+                        });
+                };
+            }
+
+            if (signupBtn) {
+                signupBtn.onclick = () => {
+                    const email = document.getElementById('email').value;
+                    const pass = document.getElementById('password').value;
+                    if (!email || !pass) return showToast("נא להזין אימייל וסיסמה", "error");
+
+                    signupBtn.innerText = "נרשם...";
+                    createUserWithEmailAndPassword(auth, email, pass)
+                        .then(() => signupBtn.innerText = "הרשמה")
+                        .catch(e => {
+                            signupBtn.innerText = "הרשמה";
+                            showToast("שגיאה בהרשמה: " + e.message, 'error');
+                        });
+                };
+            }
+
+            // Navigation Logic
+            window.switchView = (viewId, btn) => {
+                if (!viewId) return;
+                // Hide all views
+                document.querySelectorAll('.view-section').forEach(el => {
+                    if (el) el.style.display = 'none';
+                });
+                // Show target
+                const target = document.getElementById(viewId);
+                if (target) {
+                    target.style.display = 'block';
+                } else {
+                    console.warn(`View ID '${viewId}' not found!`);
+                    return;
+                }
+
+                // Update buttons
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+
+                // Trigger specific renders if needed
+                if (viewId === 'view-activity') renderActivity();
+                if (viewId === 'view-insights') renderInsights();
+                if (viewId === 'view-assets') renderAssets();
+                if (viewId === 'view-calendar') renderCalendar();
+            };
+
+            // --- PHASE 9: AI Financial Advisor (Smart Logic) ---
+            function generateInsights(currentTxs, currentIncome, totalBudget) {
+                const insights = [];
+                const spent = currentTxs.reduce((s, t) => s + t.amount, 0);
+
+                // 1. Budget Health Check
+                if (totalBudget > 0) {
+                    const health = (spent / totalBudget) * 100;
+                    if (health > 90) {
+                        insights.push({ icon: '🚨', text: `שים לב: ניצלת **${Math.round(health)}%** מהתקציב החודשי שלך!`, type: 'danger' });
+                    } else if (health > 75) {
+                        insights.push({ icon: '⚠️', text: `התראת תקציב: הגעת ל-**${Math.round(health)}%** מהמסגרת. מומלץ להאט את הקצב.`, type: 'warning' });
+                    } else if (health < 40 && new Date().getDate() > 20) {
+                        insights.push({ icon: '🏆', text: `כל הכבוד! אנחנו בסוף החודש וניצלת רק **${Math.round(health)}%** מהתקציב.`, type: 'success' });
+                    }
+                }
+
+                // 2. Savings Opportunity
+                if (currentIncome > spent * 1.2) {
+                    const potential = currentIncome - spent;
+                    insights.push({ icon: '💰', text: `יש לך פוטנציאל חיסכון החודש! נותרו לך **₪${potential.toLocaleString()}**. שווה להעביר לחיסכון?`, type: 'success' });
+                }
+
+                // 3. Recurring Detector (Simple Heuristic: duplicate amounts > 1 time)
+                const map = {};
+                currentTxs.forEach(t => {
+                    const key = t.amount + '-' + t.note;
+                    map[key] = (map[key] || 0) + 1;
+                });
+                Object.keys(map).forEach(k => {
+                    if (map[k] >= 2) { // Found duplicate
+                        const [amt, note] = k.split('-');
+                        insights.push({ icon: '🔄', text: `שמנו לב ששילמת **₪${parseFloat(amt)}** על "${note}" מספר פעמים. האם זה מנוי קבוע?`, type: 'info' });
+                    }
+                });
+
+                // 4. Weekend Spender
+                const weekendSpend = currentTxs.filter(t => {
+                    const day = t.jsDate.getDay();
+                    return day === 5 || day === 6; // Fri/Sat in JS (0=Sun) - Adjust for IL? 
+                    // IL Weekend: Friday (5) and Saturday (6). Sunday (0) is work day.
+                }).reduce((s, t) => s + t.amount, 0);
+
+                if (weekendSpend > spent * 0.4 && spent > 0) {
+                    insights.push({ icon: '🎉', text: `ראינו ש-**${Math.round((weekendSpend / spent) * 100)}%** מההוצאות שלך קורות בסופ"ש.`, type: 'info' });
+                }
+
+                if (insights.length === 0) {
+                    insights.push({ icon: '✅', text: 'המצב הפיננסי שלך נראה יציב כרגע. המשך כך!', type: 'success' });
+                }
+
+                return insights;
+            }
+
+            // Render Functions for specific tabs
+            function renderActivity() {
+                const container = document.getElementById('activity-content');
+                // Move search bar here if not present? Or just render list
+                // For now, let's render the full list
+                let content = `
+                <div style="margin-bottom:15px;">
+                    <input type="text" id="actSearch" placeholder="חיפוש הוצאות..." oninput="filterActivity(this.value)">
+                </div>
+                <div class="history-list" id="fullHistoryList" style="max-height:none;">`;
+
+                content += txs.sort((a, b) => b.date - a.date).map(t => {
+                    const cat = cats.find(c => c.id === t.catId);
+                    const dateStr = t.jsDate.toLocaleDateString('he-IL');
+                    return `
+                <div class="history-item" onclick="openEditTx('${t.id}')">
+                    <div class="tx-info">
+                        <div class="tx-note">${t.note}</div>
+                        <div class="tx-meta">${cat?.name || '?'} • ${dateStr} • ${t.method}</div>
+                    </div>
+                    <div class="tx-actions">
+                         <div class="tx-amount">₪${t.amount.toLocaleString()}</div>
+                    </div>
+                </div>`;
+                }).join('');
+                content += '</div>';
+                container.innerHTML = content;
+            }
+
+            window.filterActivity = (q) => {
+                const list = document.getElementById('fullHistoryList');
+                if (!list) return;
+                const items = list.getElementsByClassName('history-item');
+                Array.from(items).forEach(item => {
+                    const text = item.innerText.toLowerCase();
+                    item.style.display = text.includes(q.toLowerCase()) ? 'flex' : 'none';
+                });
+            };
+
+            function renderInsights() {
+                const container = document.getElementById('insights-content');
+
+                // Calc stats for insights
+                const currentMonthTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+                const incomeTotal = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
+
+                // Calculate Total Budget
+                const totalBudget = cats.reduce((sum, c) => sum + c.budget, 0);
+                const smartTips = generateInsights(currentMonthTxs, incomeTotal, totalBudget);
+
+                container.innerHTML = `
+                <!-- Smart Advisor Card -->
+                <div class="card" style="margin-bottom:20px; border:2px solid #E0E7FF; background: linear-gradient(145deg, #ffffff 0%, #F5F7FF 100%);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 style="color:#4F46E5; display:flex; align-items:center; gap:8px;">🧠 Smart Advisor <span style="font-size:10px; background:#4F46E5; color:white; padding:2px 6px; border-radius:10px;">BETA</span></h3>
+                    </div>
+                    <!-- Search Bar -->
+            <div style="padding:0 20px; margin-bottom:10px; display:flex; gap:10px;">
+                <div style="flex:1; position:relative;">
+                    <input type="text" id="searchInput" placeholder="חיפוש הוצאות..." 
+                        style="width:100%; padding:12px 15px; padding-left:40px; border-radius:12px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--text-main);">
+                    <span style="position:absolute; left:15px; top:50%; transform:translateY(-50%); opacity:0.5;">🔍</span>
+                </div>
+                <button onclick="openFilterModal()" class="icon-btn" style="background:var(--card-bg); width:46px; border:1px solid var(--input-border);">🌪️</button>
+            </div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        ${smartTips.map(tip => `
+                            <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:white; border-radius:8px; border-right:4px solid var(--${tip.type}); box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                                <span style="font-size:20px;">${tip.icon}</span>
+                                <div style="font-size:13px; color:var(--text-main); line-height:1.4;">${tip.text}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="card" style="height:200px; margin-bottom:20px;">
+                    <h3>📊 הכנסות מול הוצאות</h3>
+                    <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                        <div>
+                            <span style="font-size:12px; color:var(--text-sub);">הכנסות החודש</span>
+                            <div style="font-size:18px; font-weight:700; color:var(--success);" id="totalIncomeDisplay2">₪${incomeTotal.toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <span style="font-size:12px; color:var(--text-sub);">הוצאות החודש</span>
+                            <div style="font-size:18px; font-weight:700; color:var(--danger);" id="totalExpenseDisplay2">₪${currentMonthTxs.reduce((s, t) => s + t.amount, 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <h3>הכנסות החודש</h3>
+                    <div style="font-size:24px; font-weight:700; color:var(--success);" id="totalIncomeDisplay2">₪0</div>
+                    <div id="incomeListRef" style="margin-top:10px;"></div>
+                </div>
+                <div class="card" style="height:250px; margin-bottom:20px;">
+                    <canvas id="barChartRef"></canvas>
+                </div>
+                <!-- Trends Chart (New) -->
+                <div class="card" style="height:250px; margin-bottom:20px;">
+                    <h3>📈 מגמת הוצאות (מצטבר)</h3>
+                    <canvas id="lineChartRef"></canvas>
+                </div>
+
+                <div class="card" style="height:250px;">
+                    <canvas id="pieChartRef"></canvas>
+                </div>
+            `;
+
+                // Re-render charts (reuse existing variables)
+                const expenseTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
+
+                document.getElementById('totalIncomeDisplay2').innerText = '₪' + incomeTotal.toLocaleString();
+
+                // Reuse existing render functions if possible, or call chart updates directly
+                updateBarChart(incomeTotal, expenseTotal);
+                updatePieChart(currentMonthTxs);
+                updateLineChart(currentMonthTxs); // New Function
+
+                // Render Income List here too
+                const incList = document.getElementById('incomeListRef');
+                const filteredInc = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
+                incList.innerHTML = filteredInc.map(i => `
+                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                    <span>${i.source}</span>
+                    <button onclick="deleteIncome('${i.id}')">🗑️</button>
+                </div>
+             `).join('');
+            }
+
+            function renderAssets() {
+                const container = document.getElementById('assets-content');
+                container.innerHTML = `
+                <div class="card" style="margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>🎯 יעדי חיסכון</h3>
+                       <button onclick="addSavingsGoal()" style="background:var(--success); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
+                    </div>
+                    <div id="savingsListRef" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+                
+                <div class="card">
+                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>🎁 גיפט קארדס</h3>
+                        <button onclick="addGiftCard()" style="background:var(--primary); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
+                    </div>
+                    <div id="giftCardsListRef" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+             `;
+
+                renderSavings();
+                renderGiftCards();
+            }
+
+            // --- CALENDAR LOGIC ---
+            function renderCalendar() {
+                const grid = document.getElementById('calendarGrid');
+                if (!grid) return;
+
+                grid.innerHTML = '';
+
+                const year = parseInt(currentYearMonth.split('-')[0]);
+                const month = parseInt(currentYearMonth.split('-')[1]) - 1; // JS months 0-11
+
+                // 1. Get Days in Month
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+
+                // 2. Padding for empty days
+                for (let i = 0; i < firstDay; i++) {
+                    grid.innerHTML += `<div class="calendar-day empty"></div>`;
+                }
+
+                // 3. Render Days
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                    // Find Events
+                    const dayTxs = txs.filter(t => t.jsDate.getDate() === d && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
+                    const dayInc = income.filter(i => {
+                        const iDate = new Date(i.date);
+                        return iDate.getDate() === d && iDate.getMonth() === month && iDate.getFullYear() === year;
+                    });
+
+                    // Find Recurring (Only if 'nextDate' matches current month OR if day matches frequency logic - simplified to nextDate match for now)
+                    const dayRec = recurring.filter(r => {
+                        const [rY, rM, rD] = r.nextDate.split('-');
+                        return parseInt(rD) === d && parseInt(rM) === (month + 1) && parseInt(rY) === year;
+                    });
+
+                    // Create Dots HTML
+                    let dotsHtml = '';
+                    dayTxs.forEach(() => dotsHtml += `<div class="dot expense"></div>`);
+                    dayInc.forEach(() => dotsHtml += `<div class="dot income"></div>`);
+                    dayRec.forEach(() => dotsHtml += `<div class="dot recurring"></div>`);
+
+                    // Limit dots to prevent overflow (e.g. max 6)
+                    // if (dayTxs.length + dayInc.length + dayRec.length > 5) ...
+
+                    grid.innerHTML += `
+                    <div class="calendar-day" onclick="openDayDetails(${d})">
+                        <div class="calendar-date">${d}</div>
+                        <div class="calendar-dots">${dotsHtml}</div>
+                    </div>
+                `;
+                }
+            }
+
+            window.openDayDetails = (day) => {
+                const year = parseInt(currentYearMonth.split('-')[0]);
+                const month = parseInt(currentYearMonth.split('-')[1]) - 1;
+
+                const dayTxs = txs.filter(t => t.jsDate.getDate() === day && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
+                const dayInc = income.filter(i => {
+                    const iDate = new Date(i.date);
+                    return iDate.getDate() === day && iDate.getMonth() === month && iDate.getFullYear() === year;
+                });
+                const dayRec = recurring.filter(r => {
+                    const [rY, rM, rD] = r.nextDate.split('-');
+                    return parseInt(rD) === day && parseInt(rM) === (month + 1) && parseInt(rY) === year;
+                });
+
+                const content = document.getElementById('dayDetailsContent');
+                content.innerHTML = '';
+
+                document.getElementById('dayTitle').innerText = `פעילות ליום ${day}/${month + 1}`;
+
+                if (dayTxs.length === 0 && dayInc.length === 0 && dayRec.length === 0) {
+                    content.innerHTML = '<div style="text-align:center; color:var(--text-sub);">אין פעילות ביום זה</div>';
+                } else {
+                    // Render Income
+                    dayInc.forEach(i => {
+                        content.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:#ECFDF5; border-radius:8px; align-items:center;">
+                            <b>💰 ${i.source}</b>
+                            <span style="color:var(--success);">+₪${i.amount.toLocaleString()}</span>
+                        </div>`;
+                    });
+
+                    // Render Recurring
+                    dayRec.forEach(r => {
+                        content.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:#EFF6FF; border-radius:8px; align-items:center;">
+                            <b>🔄 ${r.name} (צפוי)</b>
+                            <span style="color:var(--primary);">-₪${r.amount.toLocaleString()}</span>
+                        </div>`;
+                    });
+
+                    // Render Expenses
+                    dayTxs.forEach(t => {
+                        const cat = cats.find(c => c.id === t.catId);
+                        content.innerHTML += `
+                        <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
+                            <div>
+                                <b>${t.note}</b>
+                                <div style="font-size:10px; color:var(--text-sub);">${cat?.name || 'G'}</div>
+                            </div>
+                            <span style="color:var(--danger);">-₪${t.amount.toLocaleString()}</span>
+                        </div>`;
+                    });
+                }
+
+                document.getElementById('dayModal').style.display = 'flex';
+            };
+
+            window.logout = () => {
+                signOut(auth).then(() => showToast('התנתקת בהצלחה', 'success'));
+            };
+
+            // NUCLEAR OPTION: Force close backup
+            // This runs independently of the main logic to guarantee closure
+            const safeSaveBtn = document.getElementById('saveTxBtn');
+            if (safeSaveBtn) {
+                safeSaveBtn.addEventListener('click', () => {
+                    setTimeout(() => {
+                        closeModal();
+                    }, 500);
+                });
+            }
+
+            const safeSaveCatBtn = document.getElementById('saveCatBtn');
+            if (safeSaveCatBtn) {
+                safeSaveCatBtn.addEventListener('click', () => {
+                    setTimeout(() => {
+                        closeModal('catModal');
+                    }, 1000);
+                });
+            }
+            // --- Default Categories Logic ---
+            async function checkAndCreateDefaults(u) {
+                const q = query(collection(db, "categories"), where("allowedUsers", "array-contains", u.email));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    const defaults = [
+                        { name: 'אוכל וסופר', icon: '🍔', color: '#EF4444', budget: 2000 },
+                        { name: 'בית', icon: '🏠', color: '#3B82F6', budget: 4000 },
+                        { name: 'רכב', icon: '🚗', color: '#F59E0B', budget: 1000 },
+                        { name: 'קניות', icon: '🛍️', color: '#8B5CF6', budget: 500 },
+                        { name: 'אחר', icon: '❓', color: '#6B7280', budget: 200 }
+                    ];
+
+                    showToast('יוצר קטגוריות ברירת מחדל...', 'info');
+                    const batch = writeBatch(db);
+                    defaults.forEach(d => {
+                        const ref = doc(collection(db, "categories"));
+                        batch.set(ref, { ...d, uid: u.uid, allowedUsers: [u.email] });
+                    });
+                    await batch.commit();
+                    showToast('קטגוריות נוצרו בהצלחה!', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            }
+
+            // Duplicate onAuthStateChanged removed. Logic merged into the first listener.
+
+            // End of script
+        }
+    </script>
+</body>
+
+</html>
