@@ -38,6 +38,22 @@
             if (toggle) toggle.checked = isLocked;
             const menuToggle = document.getElementById('appLockMenuToggle');
             if (menuToggle) menuToggle.checked = isLocked;
+
+            // Init Biometrics UI
+            if (isLocked && window.PublicKeyCredential) {
+                // Show Registration option if locked enabled
+                const btn = document.getElementById('bioRegBtn');
+                if (btn) btn.style.display = 'flex';
+
+                // Show Unlock Button if registered
+                if (localStorage.getItem('bioRegistered') === 'true') {
+                    const unlockBtn = document.getElementById('bioUnlockBtn');
+                    if (unlockBtn) {
+                        unlockBtn.style.display = 'flex';
+                        // Auto-trigger? Maybe annoying. Let user click.
+                    }
+                }
+            }
         });
 
         window.checkPin = () => {
@@ -56,8 +72,75 @@
             localStorage.setItem('appLocked', isChecked);
             if (isChecked) {
                 showToast("נעילה הופעלה (קוד: 1234)", 'success');
+                // Show Bio Register if supported
+                if (window.PublicKeyCredential) {
+                    const btn = document.getElementById('bioRegBtn');
+                    if (btn) btn.style.display = 'flex';
+                }
             } else {
                 showToast("נעילה בוטלה", 'info');
+                document.getElementById('bioRegBtn').style.display = 'none';
+            }
+        };
+
+        // --- WebAuthn (Biometrics) Logic ---
+        // Simple client-side implementation for V1 God Mode
+        window.registerBiometrics = async () => {
+            if (!window.PublicKeyCredential) return showToast("המכשיר לא תומך בביומטרי", "error");
+
+            try {
+                // Random challenge
+                const challenge = new Uint8Array(32);
+                window.crypto.getRandomValues(challenge);
+
+                const publicKey = {
+                    challenge: challenge,
+                    rp: { name: "Budget App GodMode", id: window.location.hostname },
+                    user: {
+                        id: Uint8Array.from("USER_ID", c => c.charCodeAt(0)),
+                        name: "user@budget.app",
+                        displayName: "User"
+                    },
+                    pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+                    authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                    timeout: 60000,
+                    attestation: "none"
+                };
+
+                const credential = await navigator.credentials.create({ publicKey });
+                // We don't verify server-side for V1. We just trust the device creation succeeded.
+                // Save a flag that bio is registered
+                localStorage.setItem('bioRegistered', 'true');
+                showToast("ביומטרי נרשם בהצלחה!", "success");
+
+                // Show unlock button imediately?
+            } catch (e) {
+                console.error(e);
+                showToast("רישום נכשל: " + e.message, "error");
+            }
+        };
+
+        window.checkBiometrics = async () => {
+            if (!window.PublicKeyCredential) return;
+
+            try {
+                const challenge = new Uint8Array(32);
+                window.crypto.getRandomValues(challenge);
+
+                const publicKey = {
+                    challenge: challenge,
+                    rpId: window.location.hostname,
+                    userVerification: "required",
+                    timeout: 60000
+                };
+
+                const assertion = await navigator.credentials.get({ publicKey });
+                // If we got here, the device authenticated the user
+                document.getElementById('lockScreen').style.display = 'none';
+                showToast("אושר ביומטרית 🧬", "success");
+            } catch (e) {
+                console.error(e);
+                showToast("זיהוי נכשל", "error");
             }
         };
 
@@ -755,6 +838,10 @@
             <button onclick="checkPin()"
                 style="background:white; color:#4F46E5; border:none; border-radius:10px; padding:0 20px; font-weight:bold;">></button>
         </div>
+        <button onclick="checkBiometrics()" id="bioUnlockBtn"
+            style="display:none; margin-top:20px; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); border-radius:12px; padding:10px 20px; color:white; display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <span style="font-size:24px;">🧬</span> כניסה ביומטרית
+        </button>
         <p id="pinError" style="color:#FCA5A5; margin-top:10px; display:none;">קוד שגוי</p>
     </div>
 
@@ -812,6 +899,10 @@
                                 <span class="slider round"></span>
                             </label>
                         </div>
+                        <button onclick="registerBiometrics()" class="dropdown-item" id="bioRegBtn"
+                            style="display:none;">
+                            <span>🧬</span> רישום ביומטרי
+                        </button>
                         <div class="dropdown-divider"></div>
                         <button onclick="logout()" class="dropdown-item" style="color:var(--danger)">
                             <span>👋</span> יציאה
