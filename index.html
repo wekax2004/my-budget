@@ -711,7 +711,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v27.0</div>
+                v31.1 (Fix)</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -732,7 +732,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v27.0</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.1 (Fix)</span>
 
                     <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
 
@@ -1398,6 +1398,62 @@
             el.innerHTML = html;
         }
 
+        // --- LOGGING SYSTEM ---
+        // --- LOGGING SYSTEM ---
+        window.logEvent = async (action, details = {}) => {
+            if (!user) return;
+            try {
+                // Don't await this (fire and forget) to keep UI fast
+                addDoc(collection(db, "logs"), {
+                    uid: user.uid,
+                    email: user.email,
+                    action: action,
+                    details: JSON.stringify(details),
+                    timestamp: Timestamp.now()
+                }).catch(e => console.warn("Log failed", e));
+            } catch (e) { console.warn("Log setup failed", e); }
+        };
+
+        window.openLogs = async () => {
+            const el = document.getElementById('logsList');
+            el.innerHTML = '<div style="text-align:center;">טוען נתונים...</div>';
+            document.getElementById('logsModal').style.display = 'flex';
+
+            try {
+                const q = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50));
+                const snap = await getDocs(q);
+
+                if (snap.empty) {
+                    el.innerHTML = '<div style="text-align:center; padding:20px;">אין רשומות</div>';
+                    return;
+                }
+
+                el.innerHTML = snap.docs.map(d => {
+                    const data = d.data();
+                    const date = data.timestamp ? new Date(data.timestamp.seconds * 1000) : new Date();
+                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const dateStr = date.toLocaleDateString();
+
+                    let color = '#6B7280';
+                    if (data.action.includes('ERROR')) color = '#EF4444';
+                    if (data.action.includes('ADD')) color = '#10B981';
+
+                    return `
+                    <div style="border-bottom:1px solid #eee; padding:8px 0; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                            <span style="font-weight:bold; color:${color}">${data.action}</span>
+                            <span style="color:#999; font-size:10px;">${dateStr} ${timeStr}</span>
+                        </div>
+                        <div style="color:#444;">${data.email}</div>
+                        <div style="color:#777; font-size:10px; font-family:monospace; margin-top:2px;">${(data.details || '').substring(0, 100)}</div>
+                    </div>`;
+                }).join('');
+
+            } catch (e) {
+                el.innerHTML = `<div style="color:red; text-align:center;">שגיאה בטעינת לוגים: ${e.message}</div>`;
+            }
+        };
+
         // Flag to prevent infinite loop in recurring check
         let lastRecurringCheck = 0;
 
@@ -1407,310 +1463,261 @@
             lastRecurringCheck = now;
 
             const today = new Date().toISOString().slice(0, 10);
-            // --- LOGGING SYSTEM ---
-            window.logEvent = async (action, details = {}) => {
-                if (!user) return;
-                try {
-                    // Don't await this (fire and forget) to keep UI fast
-                    addDoc(collection(db, "logs"), {
-                        uid: user.uid,
-                        email: user.email,
-                        action: action,
-                        details: JSON.stringify(details),
-                        timestamp: Timestamp.now()
-                    }).catch(e => console.warn("Log failed", e));
-                } catch (e) { console.warn("Log setup failed", e); }
-            };
 
-            window.openLogs = async () => {
-                const el = document.getElementById('logsList');
-                el.innerHTML = '<div style="text-align:center;">טוען נתונים...</div>';
-                document.getElementById('logsModal').style.display = 'flex';
+            for (const r of recurring) {
+                if (r.nextDate <= today) {
+                    try {
+                        // USE BATCH for Atomicity (Prevent Loops)
+                        const batch = writeBatch(db);
 
-                try {
-                    const q = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50));
-                    const snap = await getDocs(q);
+                        // 1. Add Transaction
+                        const newTxRef = doc(collection(db, "transactions"));
+                        batch.set(newTxRef, {
+                            allowedUsers: [user.email],
+                            amount: r.amount,
+                            catId: r.catId,
+                            note: `הוראת קבע: ${r.name}`,
+                            date: Timestamp.fromDate(new Date(r.nextDate)),
+                            method: 'אשראי',
+                            currency: 'ILS'
+                        });
 
-                    if (snap.empty) {
-                        el.innerHTML = '<div style="text-align:center; padding:20px;">אין רשומות</div>';
-                        return;
-                    }
+                        // 2. Update Recurring Date
+                        const next = new Date(r.nextDate);
+                        next.setMonth(next.getMonth() + 1);
+                        const recRef = doc(db, "recurring", r.id);
+                        batch.update(recRef, {
+                            nextDate: next.toISOString().slice(0, 10)
+                        });
 
-                    el.innerHTML = snap.docs.map(d => {
-                        const data = d.data();
-                        const date = data.timestamp ? new Date(data.timestamp.seconds * 1000) : new Date();
-                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const dateStr = date.toLocaleDateString();
+                        // 3. Commit Both
+                        await batch.commit();
 
-                        let color = '#6B7280';
-                        if (data.action.includes('ERROR')) color = '#EF4444';
-                        if (data.action.includes('ADD')) color = '#10B981';
+                        console.log(`הוראת קבע בוצעה: ${r.name}`);
+                        logEvent("REC_RUN", { name: r.name, amt: r.amount });
 
-                        return `
-                    <div style="border-bottom:1px solid #eee; padding:8px 0; font-size:12px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                            <span style="font-weight:bold; color:${color}">${data.action}</span>
-                            <span style="color:#999; font-size:10px;">${dateStr} ${timeStr}</span>
-                        </div>
-                        <div style="color:#444;">${data.email}</div>
-                        <div style="color:#777; font-size:10px; font-family:monospace; margin-top:2px;">${(data.details || '').substring(0, 100)}</div>
-                    </div>`;
-                    }).join('');
-
-                } catch (e) {
-                    el.innerHTML = `<div style="color:red; text-align:center;">שגיאה בטעינת לוגים: ${e.message}</div>`;
-                }
-            };
-
-            // Flag to prevent infinite loop in recurring check
-            let lastRecurringCheck = 0;
-
-            async function checkRecurring() {
-                const now = Date.now();
-                if (now - lastRecurringCheck < 10000) return; // Debounce 10s
-                lastRecurringCheck = now;
-
-                const today = new Date().toISOString().slice(0, 10);
-
-                for (const r of recurring) {
-                    if (r.nextDate <= today) {
-                        try {
-                            // USE BATCH for Atomicity (Prevent Loops)
-                            const batch = writeBatch(db);
-
-                            // 1. Add Transaction
-                            const newTxRef = doc(collection(db, "transactions"));
-                            batch.set(newTxRef, {
-                                allowedUsers: [user.email],
-                                amount: r.amount,
-                                catId: r.catId,
-                                note: `הוראת קבע: ${r.name}`,
-                                date: Timestamp.fromDate(new Date(r.nextDate)),
-                                method: 'אשראי',
-                                currency: 'ILS'
-                            });
-
-                            // 2. Update Recurring Date
-                            const next = new Date(r.nextDate);
-                            next.setMonth(next.getMonth() + 1);
-                            const recRef = doc(db, "recurring", r.id);
-                            batch.update(recRef, {
-                                nextDate: next.toISOString().slice(0, 10)
-                            });
-
-                            // 3. Commit Both
-                            await batch.commit();
-
-                            console.log(`הוראת קבע בוצעה: ${r.name}`);
-                            logEvent("REC_RUN", { name: r.name, amt: r.amount });
-
-                        } catch (e) {
-                            logEvent("REC_ERROR", { msg: e.code || e.message });
-                            console.error("Recurring Failed", e);
-                            // Using batch ensures we don't have duplicate transactions if update fails
-                        }
+                    } catch (e) {
+                        logEvent("REC_ERROR", { msg: e.code || e.message });
+                        console.error("Recurring Failed", e);
+                        // Using batch ensures we don't have duplicate transactions if update fails
                     }
                 }
             }
+        }
 
-            // ... OCR Logic ...
-            window.handleScan = async (input) => {
-                const file = input.files[0];
-                if (!file) return;
+        // ... OCR Logic ...
+        window.handleScan = async (input) => {
+            const file = input.files[0];
+            if (!file) return;
 
-                const statusEl = document.getElementById('scanStatus');
-                statusEl.style.display = 'flex';
+            const statusEl = document.getElementById('scanStatus');
+            statusEl.style.display = 'flex';
 
-                try {
-                    // Pre-process Image via Canvas
-                    const img = new Image();
-                    img.src = URL.createObjectURL(file);
-                    await new Promise(r => img.onload = r);
+            try {
+                // Pre-process Image via Canvas
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                await new Promise(r => img.onload = r);
 
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
 
-                    // Filters: Grayscale + Contrast
-                    const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    for (let i = 0; i < d.data.length; i += 4) {
-                        const avg = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 3;
-                        const c = avg > 128 ? 255 : 0; // High contrast threshold
-                        d.data[i] = d.data[i + 1] = d.data[i + 2] = c;
-                    }
-                    ctx.putImageData(d, 0, 0);
-                    const processedBlob = await new Promise(r => canvas.toBlob(r));
-
-                    const worker = await Tesseract.createWorker('heb');
-                    const ret = await worker.recognize(processedBlob);
-                    await worker.terminate();
-
-                    const text = ret.data.text;
-                    console.log("OCR Result:", text);
-
-                    // ... Regex Logic (Same as before) ...
-                    const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-                    if (dateMatch) {
-                        let [_, d, m, y] = dateMatch;
-                        if (y.length === 2) y = "20" + y;
-                        window.scannedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                        showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
-                    }
-
-                    let amount = 0;
-                    const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
-                    const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
-                    let match;
-                    while ((match = totalRegex.exec(text)) !== null) {
-                        const val = parseNum(match[1]);
-                        if (val > 0) amount = val;
-                    }
-                    if (amount === 0) {
-                        const numbers = text.match(/\d+\.\d{2}/g);
-                        if (numbers) {
-                            const max = Math.max(...numbers.map(n => parseFloat(n)));
-                            if (max > 0) amount = max;
-                        }
-                    }
-
-                    if (amount > 0) {
-                        document.getElementById('fAmt').value = amount;
-                        document.getElementById('fAmt').classList.add('flash-input');
-                        showToast(`סכום זוהה: ₪${amount}`, 'success');
-                    } else {
-                        showToast('לא זוהה סכום סופי, נסה תמונה ברורה יותר', 'warning');
-                    }
-
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-                    if (lines.length > 0) {
-                        document.getElementById('expNote').value = lines[0].substring(0, 20);
-                    }
-
-                } catch (err) {
-                    console.error(err);
-                    showToast('שגיאה: ' + err.message, 'error');
-                } finally {
-                    statusEl.style.display = 'none';
-                    input.value = '';
+                // Filters: Grayscale + Contrast
+                const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < d.data.length; i += 4) {
+                    const avg = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 3;
+                    const c = avg > 128 ? 255 : 0; // High contrast threshold
+                    d.data[i] = d.data[i + 1] = d.data[i + 2] = c;
                 }
-            };
+                ctx.putImageData(d, 0, 0);
+                const processedBlob = await new Promise(r => canvas.toBlob(r));
 
-            onAuthStateChanged(auth, u => {
-                if (u) {
-                    user = u;
-                    document.getElementById('authScreen').style.display = 'none';
-                    document.getElementById('mainApp').style.display = 'block';
-                    document.getElementById('userEmailDisplay').innerText = user.email.split('@')[0];
-                    document.getElementById('avatarLetter').innerText = user.email[0].toUpperCase();
-                    startSync();
+                const worker = await Tesseract.createWorker('heb');
+                const ret = await worker.recognize(processedBlob);
+                await worker.terminate();
+
+                const text = ret.data.text;
+                console.log("OCR Result:", text);
+
+                // ... Regex Logic (Same as before) ...
+                const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+                if (dateMatch) {
+                    let [_, d, m, y] = dateMatch;
+                    if (y.length === 2) y = "20" + y;
+                    window.scannedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                    showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
+                }
+
+                let amount = 0;
+                const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
+                const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
+                let match;
+                while ((match = totalRegex.exec(text)) !== null) {
+                    const val = parseNum(match[1]);
+                    if (val > 0) amount = val;
+                }
+                if (amount === 0) {
+                    const numbers = text.match(/\d+\.\d{2}/g);
+                    if (numbers) {
+                        const max = Math.max(...numbers.map(n => parseFloat(n)));
+                        if (max > 0) amount = max;
+                    }
+                }
+
+                if (amount > 0) {
+                    document.getElementById('fAmt').value = amount;
+                    document.getElementById('fAmt').classList.add('flash-input');
+                    showToast(`סכום זוהה: ₪${amount}`, 'success');
                 } else {
-                    document.getElementById('authScreen').style.display = 'flex';
-                    document.getElementById('mainApp').style.display = 'none';
+                    showToast('לא זוהה סכום סופי, נסה תמונה ברורה יותר', 'warning');
                 }
+
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                if (lines.length > 0) {
+                    document.getElementById('expNote').value = lines[0].substring(0, 20);
+                }
+
+            } catch (err) {
+                console.error(err);
+                showToast('שגיאה: ' + err.message, 'error');
+            } finally {
+                statusEl.style.display = 'none';
+                input.value = '';
+            }
+        };
+
+        onAuthStateChanged(auth, u => {
+            if (u) {
+                console.log("Auth State Changed: Logged In", u.email);
+                user = u;
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+
+                // Safe update of UI elements
+                const emailDisplay = document.getElementById('userEmailDisplay');
+                if (emailDisplay) emailDisplay.innerText = user.email.split('@')[0];
+
+                const avatar = document.getElementById('avatarLetter');
+                if (avatar) avatar.innerText = user.email[0].toUpperCase();
+
+                startSync();
+
+                // Check defaults logic (Merged from bottom)
+                // We check after a short delay to ensure cats are synced? 
+                // Actually, startSync starts listeners. We should check defaults inside the listener or after a delay.
+                // For now, let's just properly call it if cats are empty after a few seconds? 
+                // Better: Call it. It checks DB directly.
+                checkAndCreateDefaults(u);
+            } else {
+                console.log("Auth State Changed: Logged Out");
+                document.getElementById('authScreen').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+            }
+        });
+
+        function startSync() {
+            // Sync Categories
+            onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
+                cats = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                render();
             });
 
-            function startSync() {
-                // Sync Categories
-                onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
-                    cats = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                    render();
-                });
+            // Sync Recurring
+            onSnapshot(query(collection(db, "recurring"), where("uid", "==", user.uid)), s => {
+                recurring = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderRecurring();
+                checkRecurring();
+            });
 
-                // Sync Recurring
-                onSnapshot(query(collection(db, "recurring"), where("uid", "==", user.uid)), s => {
-                    recurring = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderRecurring();
-                    checkRecurring();
-                });
+            // Sync Income
+            onSnapshot(query(collection(db, "income"), where("uid", "==", user.uid), orderBy("date", "desc")), s => {
+                income = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderIncome();
+            });
 
-                // Sync Income
-                onSnapshot(query(collection(db, "income"), where("uid", "==", user.uid), orderBy("date", "desc")), s => {
-                    income = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderIncome();
+            // Sync Transactions (Limit to last 150 to save quota)
+            onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc"), limit(150)), s => {
+                txs = s.docs.map(d => {
+                    const data = d.data();
+                    // Convert Timestamp to js Date for easier filtering
+                    return { id: d.id, ...data, jsDate: data.date.toDate() };
                 });
+                render();
+            });
 
-                // Sync Transactions (Limit to last 150 to save quota)
-                onSnapshot(query(collection(db, "transactions"), where("allowedUsers", "array-contains", user.email), orderBy("date", "desc"), limit(150)), s => {
-                    txs = s.docs.map(d => {
-                        const data = d.data();
-                        // Convert Timestamp to js Date for easier filtering
-                        return { id: d.id, ...data, jsDate: data.date.toDate() };
-                    });
-                    render();
-                });
+            // Sync Savings
+            onSnapshot(query(collection(db, "savings"), where("owner", "==", user.email)), s => {
+                savings = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderSavings();
+            });
 
-                // Sync Savings
-                onSnapshot(query(collection(db, "savings"), where("owner", "==", user.email)), s => {
-                    savings = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderSavings();
-                });
+            // Sync Gift Cards
+            onSnapshot(query(collection(db, "giftcards"), where("owner", "==", user.email)), s => {
+                cards = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderGiftCards();
+            });
+        }
 
-                // Sync Gift Cards
-                onSnapshot(query(collection(db, "giftcards"), where("owner", "==", user.email)), s => {
-                    cards = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderGiftCards();
+        function render() {
+            // 1. Filter Transactions by Selected Month (For Budget/Stats)
+            const filteredTxs = txs.filter(t => {
+                const tDate = t.jsDate.toISOString().slice(0, 7); // "YYYY-MM"
+                return tDate === currentYearMonth;
+            });
+
+            // 2. Handle Search Logic (For History List)
+            const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            // 1. Filter by Search
+            let displayTxs = txs.filter(t =>
+                t.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                t.amount.toString().includes(searchQuery)
+            );
+
+            // 2. Filter by Advanced Filters (If active)
+            if (filterState.active) {
+                displayTxs = displayTxs.filter(t => {
+                    const date = t.jsDate.toISOString().slice(0, 10);
+                    // Date Range
+                    if (filterState.start && date < filterState.start) return false;
+                    if (filterState.end && date > filterState.end) return false;
+                    // Amount Range
+                    if (filterState.min && t.amount < parseFloat(filterState.min)) return false;
+                    if (filterState.max && t.amount > parseFloat(filterState.max)) return false;
+                    // Categories
+                    if (filterState.cats.length > 0 && !filterState.cats.includes(t.catId)) return false;
+
+                    return true;
                 });
+            } else {
+                // Default: Filter by Current Month if NO search and NO advanced filter
+                if (!searchQuery) {
+                    displayTxs = displayTxs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+                }
             }
 
-            function render() {
-                // 1. Filter Transactions by Selected Month (For Budget/Stats)
-                const filteredTxs = txs.filter(t => {
-                    const tDate = t.jsDate.toISOString().slice(0, 7); // "YYYY-MM"
-                    return tDate === currentYearMonth;
-                });
+            // Sort by Date Descending
+            displayTxs.sort((a, b) => b.jsDate - a.jsDate);
+            // 3. Calculate Totals (Always based on Month)
+            let totalBudget = 0;
+            let totalSpent = 0;
 
-                // 2. Handle Search Logic (For History List)
-                const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
-                // 1. Filter by Search
-                let displayTxs = txs.filter(t =>
-                    t.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    t.amount.toString().includes(searchQuery)
-                );
+            // Render Categories (Always based on Month)
+            document.getElementById('catList').innerHTML = cats.map(c => {
+                const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
+                totalBudget += c.budget;
+                totalSpent += catSpent;
 
-                // 2. Filter by Advanced Filters (If active)
-                if (filterState.active) {
-                    displayTxs = displayTxs.filter(t => {
-                        const date = t.jsDate.toISOString().slice(0, 10);
-                        // Date Range
-                        if (filterState.start && date < filterState.start) return false;
-                        if (filterState.end && date > filterState.end) return false;
-                        // Amount Range
-                        if (filterState.min && t.amount < parseFloat(filterState.min)) return false;
-                        if (filterState.max && t.amount > parseFloat(filterState.max)) return false;
-                        // Categories
-                        if (filterState.cats.length > 0 && !filterState.cats.includes(t.catId)) return false;
+                // Personalization Logic
+                const icon = c.icon || '📂';
+                // Calculate percentage FIRST
+                const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
+                // If user has a custom color, use it. Otherwise use the calculated status color.
+                const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
 
-                        return true;
-                    });
-                } else {
-                    // Default: Filter by Current Month if NO search and NO advanced filter
-                    if (!searchQuery) {
-                        displayTxs = displayTxs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
-                    }
-                }
-
-                // Sort by Date Descending
-                displayTxs.sort((a, b) => b.jsDate - a.jsDate);
-                // 3. Calculate Totals (Always based on Month)
-                let totalBudget = 0;
-                let totalSpent = 0;
-
-                // Render Categories (Always based on Month)
-                document.getElementById('catList').innerHTML = cats.map(c => {
-                    const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
-                    totalBudget += c.budget;
-                    totalSpent += catSpent;
-
-                    // Personalization Logic
-                    const icon = c.icon || '📂';
-                    // Calculate percentage FIRST
-                    const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
-                    // If user has a custom color, use it. Otherwise use the calculated status color.
-                    const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
-
-                    return `
+                return `
                 <div class="cat-item">
                     <div class="cat-header" onclick="openAddTx('${c.id}', '${c.name}')">
                         <div class="cat-name">
@@ -1733,469 +1740,469 @@
                         <div class="action-chip" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')">⚙️ הגדרות</div>
                     </div>
                 </div>`;
-                }).join('');
+            }).join('');
 
-                // Update Summary Chips
-                // Calculate Total Income for BALANCE
-                // Note: Income is global list, need filtering by month? 
-                // Let's filter income by same month for accurate "Monthly Balance"
-                const monthlyIncome = income.filter(i => i.date.slice(0, 7) === currentYearMonth)
-                    .reduce((sum, i) => sum + i.amount, 0);
+            // Update Summary Chips
+            // Calculate Total Income for BALANCE
+            // Note: Income is global list, need filtering by month? 
+            // Let's filter income by same month for accurate "Monthly Balance"
+            const monthlyIncome = income.filter(i => i.date.slice(0, 7) === currentYearMonth)
+                .reduce((sum, i) => sum + i.amount, 0);
 
-                // REAL Balance = (Monthly Income) - (Total Spent)
-                // If no income logged, maybe fallback to (Budget - Spent)? 
-                // User requested "Actual Income Tracking", so let's show Real Balance.
-                // If monthlyIncome is 0, we can show (Budget - Spent) or just negative spent.
-                // Let's settle on: Balance = Income - Spent.
+            // REAL Balance = (Monthly Income) - (Total Spent)
+            // If no income logged, maybe fallback to (Budget - Spent)? 
+            // User requested "Actual Income Tracking", so let's show Real Balance.
+            // If monthlyIncome is 0, we can show (Budget - Spent) or just negative spent.
+            // Let's settle on: Balance = Income - Spent.
 
-                // Wait, "Budget" is "Planned". "Income" is "Actual".
-                // Let's update chips:
-                // Chip 1: Income (Actual)
-                // Chip 2: Expenses
-                // Chip 3: Balance (Income - Expenses)
+            // Wait, "Budget" is "Planned". "Income" is "Actual".
+            // Let's update chips:
+            // Chip 1: Income (Actual)
+            // Chip 2: Expenses
+            // Chip 3: Balance (Income - Expenses)
 
-                const elBudget = document.getElementById('totalBudgetDisplay');
-                if (elBudget) {
-                    elBudget.innerText = '₪' + monthlyIncome.toLocaleString();
-                    if (elBudget.previousElementSibling) elBudget.previousElementSibling.innerText = "הכנסות";
-                }
-
-                const elSpent = document.getElementById('totalSpentDisplay');
-                if (elSpent) elSpent.innerText = '₪' + Math.round(totalSpent).toLocaleString();
-
-                const elBal = document.getElementById('balanceDisplay');
-                if (elBal) elBal.innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
-
-                // Render History (Based on separate displayTxs)
-                const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
-                window.toggleHeaderMenu = () => {
-                    document.getElementById('headerDropdown').classList.toggle('show');
-                };
-
-                // Close dropdown when clicking outside
-                window.onclick = (e) => {
-                    if (!e.target.matches('.menu-btn')) {
-                        const d = document.getElementById('headerDropdown');
-                        if (d && d.classList.contains('show')) d.classList.remove('show');
-                    }
-                };
-
-                // Date UtilstoryList is now rendered by renderActivity, so this part is removed from the main render()
-                // document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
-                //     const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
-                //     const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
-                //     return `
-                //     <div class="history-item">
-                //         <div class="tx-info">
-                //             <div class="tx-note">${t.note} ${subText}</div>
-                //             <div class="tx-meta">
-                //                 <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
-                //                 <span>•</span>
-                //                 <span>${t.method}</span>
-                //             </div>
-                //         </div>
-                //         <div style="display:flex; align-items:center; gap:10px;">
-                //             <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
-                //             <div class="tx-actions">
-                //                 <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
-                //                 <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
-                //             </div>
-                //         </div>
-                //     </div>`;
-                // }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
-
-
-                // Re-adding Donut to Main Home View if needed? 
-                // Actually, Plan said "Income vs Expenses" on Insights. 
-                // Home view has "Expenses by Category" list which has progress bars.
-                // Let's keep updateChart for the Insights Bar Chart.
-                updateBarChart(monthlyIncome, totalSpent);
-                updatePieChart(filteredTxs);
-
-                // Critical Fix: Trigger sub-renders for other tabs
-                renderActivity();
-                renderInsights();
+            const elBudget = document.getElementById('totalBudgetDisplay');
+            if (elBudget) {
+                elBudget.innerText = '₪' + monthlyIncome.toLocaleString();
+                if (elBudget.previousElementSibling) elBudget.previousElementSibling.innerText = "הכנסות";
             }
 
-            // --- Income Logic ---
-            window.openAddIncome = () => {
-                document.getElementById('incDate').value = new Date().toISOString().slice(0, 10);
-                document.getElementById('incomeModal').style.display = 'flex';
+            const elSpent = document.getElementById('totalSpentDisplay');
+            if (elSpent) elSpent.innerText = '₪' + Math.round(totalSpent).toLocaleString();
+
+            const elBal = document.getElementById('balanceDisplay');
+            if (elBal) elBal.innerText = '₪' + Math.round(monthlyIncome - totalSpent).toLocaleString();
+
+            // Render History (Based on separate displayTxs)
+            const emptyMsg = searchQuery ? 'לא נמצאו תוצאות' : 'אין נתונים לחודש זה';
+            window.toggleHeaderMenu = () => {
+                document.getElementById('headerDropdown').classList.toggle('show');
             };
 
-            window.saveIncome = async () => {
-                const amount = parseFloat(document.getElementById('incAmount').value);
-                const source = document.getElementById('incSource').value;
-                const date = document.getElementById('incDate').value;
-
-                if (!amount || !source || !date) return showToast("חסרים נתונים", 'error');
-
-                try {
-                    await addDoc(collection(db, "income"), {
-                        uid: user.uid,
-                        amount,
-                        source,
-                        date,
-                        timestamp: new Date()
-                    });
-                    document.getElementById('incomeModal').style.display = 'none';
-                    document.getElementById('incAmount').value = '';
-                    document.getElementById('incSource').value = '';
-                    showToast('הכנסה נוספה בהצלחה', 'success');
-                } catch (e) {
-                    console.error(e);
-                    showToast('שגיאה בשמירה: ' + e.message, 'error');
-                    document.getElementById('incomeModal').style.display = 'none';
+            // Close dropdown when clicking outside
+            window.onclick = (e) => {
+                if (!e.target.matches('.menu-btn')) {
+                    const d = document.getElementById('headerDropdown');
+                    if (d && d.classList.contains('show')) d.classList.remove('show');
                 }
+            };
+
+            // Date UtilstoryList is now rendered by renderActivity, so this part is removed from the main render()
+            // document.getElementById('historyList').innerHTML = displayTxs.length ? displayTxs.map(t => {
+            //     const sym = t.currency === 'USD' ? '$' : (t.currency === 'EUR' ? '€' : '₪');
+            //     const subText = t.currency !== 'ILS' ? `<span style="font-size:11px; color:gray">(${sym}${t.originalAmount})</span>` : '';
+            //     return `
+            //     <div class="history-item">
+            //         <div class="tx-info">
+            //             <div class="tx-note">${t.note} ${subText}</div>
+            //             <div class="tx-meta">
+            //                 <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
+            //                 <span>•</span>
+            //                 <span>${t.method}</span>
+            //             </div>
+            //         </div>
+            //         <div style="display:flex; align-items:center; gap:10px;">
+            //             <div class="tx-amount">₪${Math.round(t.amount).toLocaleString()}</div>
+            //             <div class="tx-actions">
+            //                 <button title="עריכה" onclick="openEditTx('${t.id}')">✏️</button>
+            //                 <button title="מחיקה" onclick="deleteTx('${t.id}')" style="color:var(--danger)">🗑️</button>
+            //             </div>
+            //         </div>
+            //     </div>`;
+            // }).join('') : `<div style="text-align:center; padding:20px; color:var(--text-sub);">${emptyMsg}</div>`;
+
+
+            // Re-adding Donut to Main Home View if needed? 
+            // Actually, Plan said "Income vs Expenses" on Insights. 
+            // Home view has "Expenses by Category" list which has progress bars.
+            // Let's keep updateChart for the Insights Bar Chart.
+            updateBarChart(monthlyIncome, totalSpent);
+            updatePieChart(filteredTxs);
+
+            // Critical Fix: Trigger sub-renders for other tabs
+            renderActivity();
+            renderInsights();
+        }
+
+        // --- Income Logic ---
+        window.openAddIncome = () => {
+            document.getElementById('incDate').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('incomeModal').style.display = 'flex';
+        };
+
+        window.saveIncome = async () => {
+            const amount = parseFloat(document.getElementById('incAmount').value);
+            const source = document.getElementById('incSource').value;
+            const date = document.getElementById('incDate').value;
+
+            if (!amount || !source || !date) return showToast("חסרים נתונים", 'error');
+
+            try {
+                await addDoc(collection(db, "income"), {
+                    uid: user.uid,
+                    amount,
+                    source,
+                    date,
+                    timestamp: new Date()
+                });
+                document.getElementById('incomeModal').style.display = 'none';
+                document.getElementById('incAmount').value = '';
+                document.getElementById('incSource').value = '';
+                showToast('הכנסה נוספה בהצלחה', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בשמירה: ' + e.message, 'error');
+                document.getElementById('incomeModal').style.display = 'none';
             }
+        }
 
-            window.deleteIncome = async (id) => {
-                if (confirm('למחוק הכנסה זו?')) await deleteDoc(doc(db, "income", id));
-            }
+        window.deleteIncome = async (id) => {
+            if (confirm('למחוק הכנסה זו?')) await deleteDoc(doc(db, "income", id));
+        }
 
-            function renderIncome() {
-                // Filter by month
-                const filtered = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
-                const total = filtered.reduce((s, i) => s + i.amount, 0);
-                // This is for the Home view summary chip, which is now updated by render()
-                // document.getElementById('totalIncomeDisplay').innerText = '₪' + total.toLocaleString();
+        function renderIncome() {
+            // Filter by month
+            const filtered = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
+            const total = filtered.reduce((s, i) => s + i.amount, 0);
+            // This is for the Home view summary chip, which is now updated by render()
+            // document.getElementById('totalIncomeDisplay').innerText = '₪' + total.toLocaleString();
 
-                // This is for the Income List in the Insights tab, which is now handled by renderInsights()
-                // document.getElementById('incomeList').innerHTML = filtered.map(i => `
-                //     <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
-                //         <div>
-                //             <div style="font-weight:bold;">${i.source}</div>
-                //             <div style="font-size:12px; color:var(--text-sub);">${i.date}</div>
-                //         </div>
-                //         <div style="display:flex; align-items:center; gap:10px;">
-                //             <span style="color:var(--success); font-weight:bold;">+₪${i.amount.toLocaleString()}</span>
-                //             <button onclick="deleteIncome('${i.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
-                //         </div>
-                //     </div>
-                //  `).join('');
+            // This is for the Income List in the Insights tab, which is now handled by renderInsights()
+            // document.getElementById('incomeList').innerHTML = filtered.map(i => `
+            //     <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
+            //         <div>
+            //             <div style="font-weight:bold;">${i.source}</div>
+            //             <div style="font-size:12px; color:var(--text-sub);">${i.date}</div>
+            //         </div>
+            //         <div style="display:flex; align-items:center; gap:10px;">
+            //             <span style="color:var(--success); font-weight:bold;">+₪${i.amount.toLocaleString()}</span>
+            //             <button onclick="deleteIncome('${i.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
+            //         </div>
+            //     </div>
+            //  `).join('');
 
-                // Trigger render to update chips/charts if this changes
-                // render();
-            }
+            // Trigger render to update chips/charts if this changes
+            // render();
+        }
 
-            // Chart instances
-            let barChartInstance = null;
-            let pieChartInstance = null;
-            let lineChartInstance = null;
+        // Chart instances
+        let barChartInstance = null;
+        let pieChartInstance = null;
+        let lineChartInstance = null;
 
-            function updateBarChart(inc, exp) {
-                const ctx = document.getElementById('barChartRef') || document.getElementById('barChart');
-                if (!ctx) return;
+        function updateBarChart(inc, exp) {
+            const ctx = document.getElementById('barChartRef') || document.getElementById('barChart');
+            if (!ctx) return;
 
-                if (barChartInstance) barChartInstance.destroy();
+            if (barChartInstance) barChartInstance.destroy();
 
-                barChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['הכנסות', 'הוצאות'],
-                        datasets: [{
-                            label: 'סיכום חודשי',
-                            data: [inc, exp],
-                            backgroundColor: ['#10B981', '#EF4444'],
-                            borderRadius: 10
-                        }]
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['הכנסות', 'הוצאות'],
+                    datasets: [{
+                        label: 'סיכום חודשי',
+                        data: [inc, exp],
+                        backgroundColor: ['#10B981', '#EF4444'],
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
+                    scales: {
+                        y: { beginAtZero: true }
                     }
-                });
-            }
-
-            function updateLineChart(transactions) {
-                const ctx = document.getElementById('lineChartRef');
-                if (!ctx) return;
-
-                if (lineChartInstance) lineChartInstance.destroy();
-
-                // 1. Group by day
-                const dayMap = {};
-                const daysInMonth = new Date(parseInt(currentYearMonth.slice(0, 4)), parseInt(currentYearMonth.slice(5, 7)), 0).getDate();
-
-                // Init zeros
-                for (let i = 1; i <= daysInMonth; i++) dayMap[i] = 0;
-
-                transactions.forEach(t => {
-                    const d = t.jsDate.getDate();
-                    dayMap[d] += t.amount;
-                });
-
-                // 2. Calculate Cumulative
-                const labels = [];
-                const data = [];
-                let sum = 0;
-                for (let i = 1; i <= daysInMonth; i++) {
-                    // Only plot up to today if current month, otherwise full month
-                    // For simplicity, plot all days
-                    labels.push(i);
-                    sum += dayMap[i];
-                    data.push(sum);
                 }
+            });
+        }
 
-                lineChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'הוצאה מצטברת',
-                            data: data,
-                            borderColor: '#6366F1',
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+        function updateLineChart(transactions) {
+            const ctx = document.getElementById('lineChartRef');
+            if (!ctx) return;
+
+            if (lineChartInstance) lineChartInstance.destroy();
+
+            // 1. Group by day
+            const dayMap = {};
+            const daysInMonth = new Date(parseInt(currentYearMonth.slice(0, 4)), parseInt(currentYearMonth.slice(5, 7)), 0).getDate();
+
+            // Init zeros
+            for (let i = 1; i <= daysInMonth; i++) dayMap[i] = 0;
+
+            transactions.forEach(t => {
+                const d = t.jsDate.getDate();
+                dayMap[d] += t.amount;
+            });
+
+            // 2. Calculate Cumulative
+            const labels = [];
+            const data = [];
+            let sum = 0;
+            for (let i = 1; i <= daysInMonth; i++) {
+                // Only plot up to today if current month, otherwise full month
+                // For simplicity, plot all days
+                labels.push(i);
+                sum += dayMap[i];
+                data.push(sum);
             }
 
-            // Chart Logic (Pie Chart: Expenses by Category)
-            function updatePieChart(dataTxs) {
-                const ctx = document.getElementById('pieChartRef') || document.getElementById('pieChart');
-                if (!ctx) return;
+            lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'הוצאה מצטברת',
+                        data: data,
+                        borderColor: '#6366F1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
 
-                if (pieChartInstance) pieChartInstance.destroy();
+        // Chart Logic (Pie Chart: Expenses by Category)
+        function updatePieChart(dataTxs) {
+            const ctx = document.getElementById('pieChartRef') || document.getElementById('pieChart');
+            if (!ctx) return;
 
-                const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
-                const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+            if (pieChartInstance) pieChartInstance.destroy();
 
-                pieChartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: cats.map(c => c.name),
-                        datasets: [{
-                            data,
-                            backgroundColor: colors,
-                            borderWidth: 0,
-                            hoverOffset: 4
-                        }]
+            const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
+            const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+
+            pieChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: cats.map(c => c.name),
+                    datasets: [{
+                        data,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Rubik' }, boxWidth: 10 } }
                     },
-                    options: {
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'bottom', labels: { font: { family: 'Rubik' }, boxWidth: 10 } }
-                        },
-                        cutout: '70%'
-                    }
-                });
-            }
+                    cutout: '70%'
+                }
+            });
+        }
 
-            // --- Actions ---
-            // Initialize Icon Grid
-            const icons = ['🏷️', '🍕', '🚗', '🏠', '🏥', '🎓', '✈️', '🎁', '💇', '📱', '💪', '🛒', '🍷', '🥦', '⛽', '💡', '🔧', '👶', '🐶', '📚', '🎮', '🎵', '🎬', '💻'];
-            const iconGrid = document.getElementById('iconGrid');
-            if (iconGrid) {
-                iconGrid.innerHTML = icons.map(icon => `
+        // --- Actions ---
+        // Initialize Icon Grid
+        const icons = ['🏷️', '🍕', '🚗', '🏠', '🏥', '🎓', '✈️', '🎁', '💇', '📱', '💪', '🛒', '🍷', '🥦', '⛽', '💡', '🔧', '👶', '🐶', '📚', '🎮', '🎵', '🎬', '💻'];
+        const iconGrid = document.getElementById('iconGrid');
+        if (iconGrid) {
+            iconGrid.innerHTML = icons.map(icon => `
                 <button onclick="selectIcon('${icon}', this)" class="icon-option" style="font-size:18px; padding:5px; border:1px solid #eee; background:#fff; border-radius:6px; cursor:pointer;">${icon}</button>
             `).join('');
-            }
+        }
 
-            window.selectIcon = (icon, btn) => {
-                document.getElementById('catIcon').value = icon;
-                document.querySelectorAll('.icon-option').forEach(b => b.style.borderColor = '#eee');
-                if (btn) btn.style.borderColor = 'var(--primary)';
+        window.selectIcon = (icon, btn) => {
+            document.getElementById('catIcon').value = icon;
+            document.querySelectorAll('.icon-option').forEach(b => b.style.borderColor = '#eee');
+            if (btn) btn.style.borderColor = 'var(--primary)';
+        };
+
+        window.openAddCat = () => {
+            catEditMode = { active: false, id: null };
+            document.getElementById('catTitle').innerText = "קטגוריה חדשה";
+            document.getElementById('catName').value = "";
+            document.getElementById('catBudget').value = "";
+            document.getElementById('catColor').value = "#3B82F6"; // Default Blue
+            selectIcon('🏷️', null); // Reset Icon
+            document.getElementById('delCatBtn').style.display = 'none'; // Hide delete btn
+            document.getElementById('catModal').style.display = 'flex';
+            document.getElementById('catName').focus();
+        };
+
+        window.openEditCat = (id, name, budget, color, icon) => {
+            catEditMode = { active: true, id: id };
+            document.getElementById('catTitle').innerText = "עריכת קטגוריה";
+            document.getElementById('catName').value = name;
+            document.getElementById('catBudget').value = budget;
+            document.getElementById('catColor').value = color || "#3B82F6";
+            selectIcon(icon || '🏷️', null);
+            document.getElementById('delCatBtn').style.display = 'block'; // Show delete btn
+            document.getElementById('catModal').style.display = 'flex';
+        };
+
+        window.saveCategory = async () => {
+            const name = document.getElementById('catName').value;
+            const budget = parseFloat(document.getElementById('catBudget').value);
+            const color = document.getElementById('catColor').value;
+            const icon = document.getElementById('catIcon').value;
+
+            if (!name || !budget) return showToast("נא למלא שם ותקציב", 'error');
+
+            const allowed = [user.email];
+            const partner = localStorage.getItem('partnerEmail');
+            if (partner) allowed.push(partner);
+
+            const data = {
+                name,
+                budget,
+                uid: user.uid,
+                allowedUsers: allowed,
+                color: color,
+                icon: icon
             };
 
-            window.openAddCat = () => {
-                catEditMode = { active: false, id: null };
-                document.getElementById('catTitle').innerText = "קטגוריה חדשה";
-                document.getElementById('catName').value = "";
-                document.getElementById('catBudget').value = "";
-                document.getElementById('catColor').value = "#3B82F6"; // Default Blue
-                selectIcon('🏷️', null); // Reset Icon
-                document.getElementById('delCatBtn').style.display = 'none'; // Hide delete btn
-                document.getElementById('catModal').style.display = 'flex';
-                document.getElementById('catName').focus();
-            };
-
-            window.openEditCat = (id, name, budget, color, icon) => {
-                catEditMode = { active: true, id: id };
-                document.getElementById('catTitle').innerText = "עריכת קטגוריה";
-                document.getElementById('catName').value = name;
-                document.getElementById('catBudget').value = budget;
-                document.getElementById('catColor').value = color || "#3B82F6";
-                selectIcon(icon || '🏷️', null);
-                document.getElementById('delCatBtn').style.display = 'block'; // Show delete btn
-                document.getElementById('catModal').style.display = 'flex';
-            };
-
-            window.saveCategory = async () => {
-                const name = document.getElementById('catName').value;
-                const budget = parseFloat(document.getElementById('catBudget').value);
-                const color = document.getElementById('catColor').value;
-                const icon = document.getElementById('catIcon').value;
-
-                if (!name || !budget) return showToast("נא למלא שם ותקציב", 'error');
-
-                const allowed = [user.email];
-                const partner = localStorage.getItem('partnerEmail');
-                if (partner) allowed.push(partner);
-
-                const data = {
-                    name,
-                    budget,
-                    uid: user.uid,
-                    allowedUsers: allowed,
-                    color: color,
-                    icon: icon
-                };
-
-                try {
-                    if (catEditMode.active) {
-                        await updateDoc(doc(db, "categories", catEditMode.id), data);
-                        showToast('קטגוריה עודכנה', 'success');
-                    } else {
-                        await addDoc(collection(db, "categories"), data);
-                        showToast('קטגוריה נוצרה', 'success');
-                    }
-                } catch (e) {
-                    console.error(e);
-                    showToast("שגיאה בשמירה: " + e.message, 'error');
-                } finally {
-                    closeModal('catModal'); // Ensures verification of closure
-                }
-            };
-
-            window.deleteCategory = async () => {
-                if (confirm("למחוק את הקטגוריה הזו? (ההוצאות שלה יישארו אך ללא שיוך)")) {
-                    await deleteDoc(doc(db, "categories", catEditMode.id));
-                    document.getElementById('catModal').style.display = 'none';
-                }
-            };
-
-            window.openEditTx = (id) => {
-                const tx = txs.find(t => t.id === id);
-                editMode = { active: true, id: id };
-                window.currentCatId = tx.catId;
-                document.getElementById('expTitle').innerText = "עריכת הוצאה";
-                document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
-                document.getElementById('fCurr').value = tx.currency || "ILS";
-                document.getElementById('expNote').value = tx.note;
-                document.getElementById('pMethod').value = tx.method;
-                document.getElementById('expModal').style.display = 'flex';
-            };
-
-            window.openAddTx = (id, name) => {
-                editMode = { active: false, id: null };
-                window.currentCatId = id;
-                document.getElementById('expTitle').innerText = "הוצאה ב: " + name;
-                document.getElementById('fAmt').value = "";
-                document.getElementById('fCurr').value = "ILS";
-                document.getElementById('expNote').value = "";
-                document.getElementById('expModal').style.display = 'flex';
-                document.getElementById('fAmt').focus();
-            };
-
-            window.closeModal = (id) => {
-                if (id) {
-                    document.getElementById(id).style.display = 'none';
+            try {
+                if (catEditMode.active) {
+                    await updateDoc(doc(db, "categories", catEditMode.id), data);
+                    showToast('קטגוריה עודכנה', 'success');
                 } else {
-                    // Close all known modals if no specific ID provided
-                    ['expModal', 'catModal', 'recurringModal', 'incomeModal'].forEach(mid => {
-                        const el = document.getElementById(mid);
-                        if (el) el.style.display = 'none';
-                    });
+                    await addDoc(collection(db, "categories"), data);
+                    showToast('קטגוריה נוצרה', 'success');
                 }
+            } catch (e) {
+                console.error(e);
+                showToast("שגיאה בשמירה: " + e.message, 'error');
+            } finally {
+                closeModal('catModal'); // Ensures verification of closure
+            }
+        };
+
+        window.deleteCategory = async () => {
+            if (confirm("למחוק את הקטגוריה הזו? (ההוצאות שלה יישארו אך ללא שיוך)")) {
+                await deleteDoc(doc(db, "categories", catEditMode.id));
+                document.getElementById('catModal').style.display = 'none';
+            }
+        };
+
+        window.openEditTx = (id) => {
+            const tx = txs.find(t => t.id === id);
+            editMode = { active: true, id: id };
+            window.currentCatId = tx.catId;
+            document.getElementById('expTitle').innerText = "עריכת הוצאה";
+            document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
+            document.getElementById('fCurr').value = tx.currency || "ILS";
+            document.getElementById('expNote').value = tx.note;
+            document.getElementById('pMethod').value = tx.method;
+            document.getElementById('expModal').style.display = 'flex';
+        };
+
+        window.openAddTx = (id, name) => {
+            editMode = { active: false, id: null };
+            window.currentCatId = id;
+            document.getElementById('expTitle').innerText = "הוצאה ב: " + name;
+            document.getElementById('fAmt').value = "";
+            document.getElementById('fCurr').value = "ILS";
+            document.getElementById('expNote').value = "";
+            document.getElementById('expModal').style.display = 'flex';
+            document.getElementById('fAmt').focus();
+        };
+
+        window.closeModal = (id) => {
+            if (id) {
+                document.getElementById(id).style.display = 'none';
+            } else {
+                // Close all known modals if no specific ID provided
+                ['expModal', 'catModal', 'recurringModal', 'incomeModal'].forEach(mid => {
+                    const el = document.getElementById(mid);
+                    if (el) el.style.display = 'none';
+                });
+            }
+        };
+
+        document.getElementById('saveTxBtn').onclick = async () => {
+            const rawAmt = parseFloat(document.getElementById('fAmt').value);
+            const curr = document.getElementById('fCurr').value;
+            if (!rawAmt) return showToast("נא להזין סכום", 'error');
+
+            const converted = rawAmt * rates[curr];
+
+            const allowed = [user.email];
+            const partner = localStorage.getItem('partnerEmail');
+            if (partner) allowed.push(partner);
+
+            const data = {
+                amount: converted,
+                originalAmount: rawAmt,
+                currency: curr,
+                note: document.getElementById('expNote').value || "הוצאה כללית",
+                method: document.getElementById('pMethod').value,
+                catId: window.currentCatId,
+                allowedUsers: allowed,
+                // Use scanned date, or existing date if editing, or now
+                date: window.scannedDate ? Timestamp.fromDate(new Date(window.scannedDate)) : (editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now())
             };
 
-            document.getElementById('saveTxBtn').onclick = async () => {
-                const rawAmt = parseFloat(document.getElementById('fAmt').value);
-                const curr = document.getElementById('fCurr').value;
-                if (!rawAmt) return showToast("נא להזין סכום", 'error');
+            // Reset scanned date
+            window.scannedDate = null;
 
-                const converted = rawAmt * rates[curr];
-
-                const allowed = [user.email];
-                const partner = localStorage.getItem('partnerEmail');
-                if (partner) allowed.push(partner);
-
-                const data = {
-                    amount: converted,
-                    originalAmount: rawAmt,
-                    currency: curr,
-                    note: document.getElementById('expNote').value || "הוצאה כללית",
-                    method: document.getElementById('pMethod').value,
-                    catId: window.currentCatId,
-                    allowedUsers: allowed,
-                    // Use scanned date, or existing date if editing, or now
-                    date: window.scannedDate ? Timestamp.fromDate(new Date(window.scannedDate)) : (editMode.active ? txs.find(t => t.id === editMode.id).date : Timestamp.now())
-                };
-
-                // Reset scanned date
-                window.scannedDate = null;
-
-                try {
-                    if (editMode.active) {
-                        await updateDoc(doc(db, "transactions", editMode.id), data);
-                        logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
-                    } else {
-                        await addDoc(collection(db, "transactions"), data);
-                        logEvent("TX_ADD", { amt: data.amount, cat: window.currentCatId });
-                    }
-                    showToast('הוצאה נשמרה בהצלחה', 'success');
-
-                    // --- Real-Time Budget Alert ---
-                    const cat = cats.find(c => c.id === window.currentCatId);
-                    if (cat && cat.budget > 0) {
-                        const currentMonth = new Date().toISOString().slice(0, 7);
-                        // Calc existing spent
-                        const existingSpent = txs
-                            .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
-                            .reduce((s, t) => s + t.amount, 0);
-
-                        // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
-                        // Actually, 'txs' array updates via onSnapshot, which is async. 
-                        // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
-                        // We should add 'converted' manually for the check.
-
-                        const newTotal = existingSpent + converted;
-                        const percent = (newTotal / cat.budget) * 100;
-
-                        if (percent > 100) {
-                            setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
-                        } else if (percent > 90) {
-                            setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
-                        }
-                    }
-                    // ------------------------------
-                } catch (e) {
-                    console.error(e);
-                    closeModal(); // Close modal immediately before showing error
-
-                    // User-friendly error messages
-                    if (e.code === 'resource-exhausted') {
-                        showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
-                    } else if (e.code === 'permission-denied') {
-                        showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
-                    } else {
-                        showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
-                    }
-                } finally {
-                    closeModal(); // ALWAYS close modal (double check)
+            try {
+                if (editMode.active) {
+                    await updateDoc(doc(db, "transactions", editMode.id), data);
+                    logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
+                } else {
+                    await addDoc(collection(db, "transactions"), data);
+                    logEvent("TX_ADD", { amt: data.amount, cat: window.currentCatId });
                 }
-            };
+                showToast('הוצאה נשמרה בהצלחה', 'success');
 
-            window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+                // --- Real-Time Budget Alert ---
+                const cat = cats.find(c => c.id === window.currentCatId);
+                if (cat && cat.budget > 0) {
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+                    // Calc existing spent
+                    const existingSpent = txs
+                        .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                        .reduce((s, t) => s + t.amount, 0);
 
-            function renderSavings() {
-                // This function now targets 'savingsListRef' if it exists, otherwise 'savingsList'
-                const el = document.getElementById('savingsListRef') || document.getElementById('savingsList');
-                if (!el) return;
+                    // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
+                    // Actually, 'txs' array updates via onSnapshot, which is async. 
+                    // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
+                    // We should add 'converted' manually for the check.
 
-                el.innerHTML = savings.length ? savings.map(s => {
-                    const perc = Math.min((s.current / s.target) * 100, 100);
-                    return `
+                    const newTotal = existingSpent + converted;
+                    const percent = (newTotal / cat.budget) * 100;
+
+                    if (percent > 100) {
+                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
+                    } else if (percent > 90) {
+                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
+                    }
+                }
+                // ------------------------------
+            } catch (e) {
+                console.error(e);
+                closeModal(); // Close modal immediately before showing error
+
+                // User-friendly error messages
+                if (e.code === 'resource-exhausted') {
+                    showToast('⚠️ הגעת למכסת Firebase היומית', 'error');
+                } else if (e.code === 'permission-denied') {
+                    showToast('⚠️ אין לך הרשאה לבצע פעולה זו', 'error');
+                } else {
+                    showToast('⚠️ שגיאה בשמירה: ' + (e.message || 'לא ידוע'), 'error');
+                }
+            } finally {
+                closeModal(); // ALWAYS close modal (double check)
+            }
+        };
+
+        window.deleteTx = async (id) => { if (confirm("למחוק את ההוצאה הזו לצמיתות?")) await deleteDoc(doc(db, "transactions", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+
+        function renderSavings() {
+            // This function now targets 'savingsListRef' if it exists, otherwise 'savingsList'
+            const el = document.getElementById('savingsListRef') || document.getElementById('savingsList');
+            if (!el) return;
+
+            el.innerHTML = savings.length ? savings.map(s => {
+                const perc = Math.min((s.current / s.target) * 100, 100);
+                return `
                     <div style="padding:10px; background:#F9FAFB; border-radius:12px; border:1px solid #E5E7EB;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                             <span style="font-weight:600;">${s.name}</span>
@@ -2209,18 +2216,18 @@
                             <button onclick="deleteSavings('${s.id}')" style="font-size:11px; padding:4px 8px; background:white; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer; color:var(--danger)">🗑️</button>
                         </div>
                     </div>`;
-                }).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין יעדים עדיין</div>';
-            }
+            }).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין יעדים עדיין</div>';
+        }
 
-            function renderGiftCards() {
-                // This function now targets 'giftCardsListRef' if it exists, otherwise 'giftCardsList'
-                const list = document.getElementById('giftCardsListRef') || document.getElementById('giftCardsList');
-                if (!list) return;
+        function renderGiftCards() {
+            // This function now targets 'giftCardsListRef' if it exists, otherwise 'giftCardsList'
+            const list = document.getElementById('giftCardsListRef') || document.getElementById('giftCardsList');
+            if (!list) return;
 
-                const select = document.getElementById('pGiftCardId');
+            const select = document.getElementById('pGiftCardId');
 
-                // UI List
-                list.innerHTML = cards.length ? cards.map(c => `
+            // UI List
+            list.innerHTML = cards.length ? cards.map(c => `
                 <div style="display:flex; justify-content:space-between; align-items:center; adding:10px; background:#F0FDFA; border:1px solid #CCFBF1; border-radius:10px; padding:10px;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:20px;">🎁</span>
@@ -2233,376 +2240,416 @@
                 </div>
             `).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין כרטיסים</div>';
 
-                // Select Options
-                select.innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (₪${c.current})</option>`).join('');
+            // Select Options
+            select.innerHTML = cards.map(c => `<option value="${c.id}">${c.name} (₪${c.current})</option>`).join('');
+        }
+
+        window.toggleGiftCardSelect = () => {
+            const val = document.getElementById('pMethod').value;
+            document.getElementById('giftCardSelectDiv').style.display = val === '🎁 גיפט קארד' ? 'block' : 'none';
+        };
+
+        window.addGiftCard = async () => {
+            const n = prompt("שם הכרטיס (למשל: BuyMe):");
+            if (!n) return;
+            const b = prompt("סכום התחלתי:");
+            if (n && b) {
+                addDoc(collection(db, "giftcards"), { name: n, initial: parseFloat(b), current: parseFloat(b), owner: user.email })
+                    .then(() => showToast('כרטיס מתנה נוסף', 'success'))
+                    .catch(e => showToast("שגיאה: " + e.message, 'error'));
             }
+        };
 
-            window.toggleGiftCardSelect = () => {
-                const val = document.getElementById('pMethod').value;
-                document.getElementById('giftCardSelectDiv').style.display = val === '🎁 גיפט קארד' ? 'block' : 'none';
-            };
+        window.deleteGiftCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "giftcards", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
 
-            window.addGiftCard = async () => {
-                const n = prompt("שם הכרטיס (למשל: BuyMe):");
-                if (!n) return;
-                const b = prompt("סכום התחלתי:");
-                if (n && b) {
-                    addDoc(collection(db, "giftcards"), { name: n, initial: parseFloat(b), current: parseFloat(b), owner: user.email })
-                        .then(() => showToast('כרטיס מתנה נוסף', 'success'))
-                        .catch(e => showToast("שגיאה: " + e.message, 'error'));
+        // --- RECEIPT SCANNER (OCR) ---
+        window.triggerScan = () => document.getElementById('scanInput').click();
+
+        window.handleScan = async (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById('scanStatus');
+            statusEl.style.display = 'flex';
+
+            try {
+                // Initialize worker
+                const worker = await Tesseract.createWorker('heb');
+                // You can add 'eng' too if needed: await Tesseract.createWorker(['heb', 'eng']);
+
+                // Recognize
+                const ret = await worker.recognize(file);
+                console.log(ret.data.text);
+                const text = ret.data.text;
+
+                await worker.terminate();
+
+                // --- Heuristic Parsing ---
+
+                // 1. Find Date (DD.MM.YY or DD/MM/YYYY)
+                const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+                if (dateMatch) {
+                    let [_, d, m, y] = dateMatch;
+                    if (y.length === 2) y = "20" + y;
+                    // Format to YYYY-MM-DD for input
+                    const isoDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                    // Update editing mode date or current date? 
+                    // We don't have a date input in the modal visible (it uses editMode or Now).
+                    // But we can save it to a temp variable 'scannedDate' to use on save.
+                    window.scannedDate = isoDate; // Will use in saveTxBtn
+                    showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
                 }
-            };
 
-            window.deleteGiftCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "giftcards", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+                // 2. Find Amount (Look for "Total" keywords or just max number)
+                // Keywords: סה"כ, לתשלום, סכום, Total
+                let amount = 0;
 
-            // --- RECEIPT SCANNER (OCR) ---
-            window.triggerScan = () => document.getElementById('scanInput').click();
+                // Helper to clean and parse
+                const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
 
-            window.handleScan = async (input) => {
-                const file = input.files[0];
-                if (!file) return;
+                const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
+                let match;
+                let foundTotal = false;
 
-                const statusEl = document.getElementById('scanStatus');
-                statusEl.style.display = 'flex';
-
-                try {
-                    // Initialize worker
-                    const worker = await Tesseract.createWorker('heb');
-                    // You can add 'eng' too if needed: await Tesseract.createWorker(['heb', 'eng']);
-
-                    // Recognize
-                    const ret = await worker.recognize(file);
-                    console.log(ret.data.text);
-                    const text = ret.data.text;
-
-                    await worker.terminate();
-
-                    // --- Heuristic Parsing ---
-
-                    // 1. Find Date (DD.MM.YY or DD/MM/YYYY)
-                    const dateMatch = text.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-                    if (dateMatch) {
-                        let [_, d, m, y] = dateMatch;
-                        if (y.length === 2) y = "20" + y;
-                        // Format to YYYY-MM-DD for input
-                        const isoDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                        // Update editing mode date or current date? 
-                        // We don't have a date input in the modal visible (it uses editMode or Now).
-                        // But we can save it to a temp variable 'scannedDate' to use on save.
-                        window.scannedDate = isoDate; // Will use in saveTxBtn
-                        showToast(`תאריך זוהה: ${d}/${m}/${y}`, 'success');
+                // Try to find explicit total line
+                while ((match = totalRegex.exec(text)) !== null) {
+                    const val = parseNum(match[1]);
+                    if (val > 0) {
+                        amount = val;
+                        foundTotal = true;
+                        // Keep searching, usually the last "Total" is the grand total
                     }
-
-                    // 2. Find Amount (Look for "Total" keywords or just max number)
-                    // Keywords: סה"כ, לתשלום, סכום, Total
-                    let amount = 0;
-
-                    // Helper to clean and parse
-                    const parseNum = (str) => parseFloat(str.replace(/[^\d.]/g, ''));
-
-                    const totalRegex = /(?:סה"?כ|לתשלום|סכום|Total).*?(\d+(?:\.\d{1,2})?)/g;
-                    let match;
-                    let foundTotal = false;
-
-                    // Try to find explicit total line
-                    while ((match = totalRegex.exec(text)) !== null) {
-                        const val = parseNum(match[1]);
-                        if (val > 0) {
-                            amount = val;
-                            foundTotal = true;
-                            // Keep searching, usually the last "Total" is the grand total
-                        }
-                    }
-
-                    // Fallback: Max number in text that looks like price (xx.xx)
-                    if (!foundTotal) {
-                        const numbers = text.match(/\d+\.\d{2}/g);
-                        if (numbers) {
-                            const max = Math.max(...numbers.map(n => parseFloat(n)));
-                            if (max > 0) amount = max;
-                        }
-                    }
-
-                    if (amount > 0) {
-                        document.getElementById('fAmt').value = amount;
-                        document.getElementById('fAmt').classList.add('flash-input'); // Visual cue?
-                        showToast(`סכום זוהה: ₪${amount}`, 'success');
-                    } else {
-                        showToast('לא זוהה סכום סופי, נא להזין ידנית', 'warning');
-                    }
-
-                    // 3. Merchant Name (First non-empty line usually)
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-                    if (lines.length > 0) {
-                        document.getElementById('expNote').value = lines[0].substring(0, 20); // Limit length
-                    }
-
-                } catch (err) {
-                    console.error(err);
-                    showToast('שגיאה בסריקה: ' + err.message, 'error');
-                } finally {
-                    statusEl.style.display = 'none';
-                    input.value = ''; // Reset input
                 }
-            };
 
-            window.addSavingsGoal = async () => {
-                const n = prompt("שם היעד (למשל: חופשה ביוון):");
-                if (!n) return;
-                const t = prompt("סכום היעד:");
-                if (n && t) {
-                    addDoc(collection(db, "savings"), { name: n, target: parseFloat(t), current: 0, owner: user.email })
-                        .then(() => showToast('יעד חיסכון נוסף', 'success'))
-                        .catch(e => showToast("שגיאה: " + e.message, 'error'));
-                }
-            };
-
-            window.depositSavings = async (id, current) => {
-                const amount = prompt("כמה להפקיד ליעד זה?");
-                if (amount) {
-                    updateDoc(doc(db, "savings", id), { current: current + parseFloat(amount) })
-                        .then(() => showToast('הפקדה בוצעה!', 'success'))
-                        .catch(e => showToast("שגיאה בהפקדה", 'error'));
-                }
-            };
-
-            window.deleteSavings = async (id) => { if (confirm("למחוק את היעד הזה?")) await deleteDoc(doc(db, "savings", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
-
-            window.shareCat = async (id) => {
-                const email = prompt("הכנס את האימייל של המשתמש איתו תרצה לשתף את הקטגוריה:");
-                if (email) {
-                    updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) })
-                        .then(() => showToast(`שותף בהצלחה עם ${email}`, 'success'))
-                        .catch(e => showToast("שגיאה בשיתוף " + e.message, 'error'));
-                }
-            };
-
-            window.invitePartner = async () => {
-                const email = document.getElementById('partnerEmailInput').value;
-                if (!email || !email.includes('@')) return showToast('נא להזין אימייל תקין', 'error');
-
-                try {
-                    // 1. Save preference
-                    localStorage.setItem('partnerEmail', email);
-
-                    // 2. Find all MY categories
-                    const myCats = cats.filter(c => c.uid === user.uid);
-
-                    // 3. Batch update
-                    const batch = writeBatch(db);
-                    myCats.forEach(c => {
-                        const ref = doc(db, "categories", c.id);
-                        batch.update(ref, { allowedUsers: arrayUnion(email) });
-                    });
-
-                    await batch.commit();
-
-                    document.getElementById('partnerModal').style.display = 'none';
-                    showToast(`הזמנה נשלחה! כל הקטגוריות שותפו עם ${email}`, 'success');
-                } catch (e) {
-                    console.error(e);
-                    showToast('שגיאה בשיתוף: ' + e.message, 'error');
-                }
-            };
-
-            window.csvInput = document.getElementById('csvInput');
-            window.triggerImport = () => window.csvInput.click();
-
-            window.handleCSVUpload = async (input) => {
-                const file = input.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const text = e.target.result;
-                    const rows = text.split('\n');
-
-                    // Find column indices
-                    const header = rows[0].toLowerCase().split(',');
-                    const dateIdx = header.findIndex(h => h.includes('date') || h.includes('תאריך'));
-                    const amountIdx = header.findIndex(h => h.includes('amount') || h.includes('סכום'));
-                    const noteIdx = header.findIndex(h => h.includes('note') || h.includes('desc') || h.includes('תיאור') || h.includes('פרטים'));
-
-                    if (dateIdx === -1 || amountIdx === -1) {
-                        showToast('לא זוהו עמודות חובה (Date, Amount)', 'error');
-                        return;
+                // Fallback: Max number in text that looks like price (xx.xx)
+                if (!foundTotal) {
+                    const numbers = text.match(/\d+\.\d{2}/g);
+                    if (numbers) {
+                        const max = Math.max(...numbers.map(n => parseFloat(n)));
+                        if (max > 0) amount = max;
                     }
+                }
 
-                    try {
-                        const batch = writeBatch(db);
-                        let count = 0;
-
-                        // Get General Category ID or first available
-                        const defaultCatId = cats[0]?.id;
-
-                        for (let i = 1; i < rows.length; i++) {
-                            const cols = rows[i].split(',');
-                            if (cols.length < 2) continue;
-
-                            const dateStr = cols[dateIdx]?.trim();
-                            const amountStr = cols[amountIdx]?.trim();
-                            const note = cols[noteIdx]?.trim() || "ייבוא בנק";
-
-                            if (!dateStr || !amountStr) continue;
-
-                            const date = new Date(dateStr);
-                            if (isNaN(date.getTime())) continue; // Skip invalid dates
-
-                            const amount = parseFloat(amountStr.replace(/[^\d.-]/g, '')); // Clean currency symbols
-
-                            const allowed = [user.email];
-                            const partner = localStorage.getItem('partnerEmail');
-                            if (partner) allowed.push(partner);
-
-                            const docRef = doc(collection(db, "transactions"));
-                            batch.set(docRef, {
-                                date: Timestamp.fromDate(date),
-                                amount: Math.abs(amount), // Assume expense
-                                originalAmount: Math.abs(amount),
-                                currency: 'ILS', // Default
-                                catId: defaultCatId,
-                                note: note,
-                                method: '💳 אשראי',
-                                allowedUsers: allowed
-                            });
-                            count++;
-                        }
-
-                        await batch.commit();
-                        showToast(`נשמרו ${count} הוצאות בהצלחה!`, 'success');
-                        input.value = ''; // Reset
-                    } catch (err) {
-                        console.error(err);
-                        showToast('שגיאה בייבוא: ' + err.message, 'error');
-                    }
-                };
-                reader.readAsText(file);
-            };
-
-            window.exportToCSV = () => {
-                let csvContent = "\uFEFF"; // BOM for Hebrew support
-                csvContent += "Date,Amount,Currency,Category,Note,Method\n";
-
-                txs.forEach(t => {
-                    const date = t.jsDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
-                    const catName = cats.find(c => c.id === t.catId)?.name || 'Unknown';
-                    const row = [
-                        date,
-                        t.originalAmount || t.amount,
-                        t.currency || 'ILS',
-                        `"${catName.replace(/"/g, '""')}"`,
-                        `"${t.note.replace(/"/g, '""')}"`,
-                        t.method
-                    ].join(",");
-                    csvContent += row + "\n";
-                });
-
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `budget_export_${new Date().toISOString().slice(0, 10)}.csv`;
-                link.click();
-            };
-
-            document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => showToast("שגיאה בהתחברות: " + e.message, 'error'));
-            document.getElementById('signupBtn').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => showToast("שגיאה בהרשמה: " + e.message, 'error'));
-
-            // Navigation Logic
-            window.switchView = (viewId, btn) => {
-                if (!viewId) return;
-                // Hide all views
-                document.querySelectorAll('.view-section').forEach(el => {
-                    if (el) el.style.display = 'none';
-                });
-                // Show target
-                const target = document.getElementById(viewId);
-                if (target) {
-                    target.style.display = 'block';
+                if (amount > 0) {
+                    document.getElementById('fAmt').value = amount;
+                    document.getElementById('fAmt').classList.add('flash-input'); // Visual cue?
+                    showToast(`סכום זוהה: ₪${amount}`, 'success');
                 } else {
-                    console.warn(`View ID '${viewId}' not found!`);
+                    showToast('לא זוהה סכום סופי, נא להזין ידנית', 'warning');
+                }
+
+                // 3. Merchant Name (First non-empty line usually)
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                if (lines.length > 0) {
+                    document.getElementById('expNote').value = lines[0].substring(0, 20); // Limit length
+                }
+
+            } catch (err) {
+                console.error(err);
+                showToast('שגיאה בסריקה: ' + err.message, 'error');
+            } finally {
+                statusEl.style.display = 'none';
+                input.value = ''; // Reset input
+            }
+        };
+
+        window.addSavingsGoal = async () => {
+            const n = prompt("שם היעד (למשל: חופשה ביוון):");
+            if (!n) return;
+            const t = prompt("סכום היעד:");
+            if (n && t) {
+                addDoc(collection(db, "savings"), { name: n, target: parseFloat(t), current: 0, owner: user.email })
+                    .then(() => showToast('יעד חיסכון נוסף', 'success'))
+                    .catch(e => showToast("שגיאה: " + e.message, 'error'));
+            }
+        };
+
+        window.depositSavings = async (id, current) => {
+            const amount = prompt("כמה להפקיד ליעד זה?");
+            if (amount) {
+                updateDoc(doc(db, "savings", id), { current: current + parseFloat(amount) })
+                    .then(() => showToast('הפקדה בוצעה!', 'success'))
+                    .catch(e => showToast("שגיאה בהפקדה", 'error'));
+            }
+        };
+
+        window.deleteSavings = async (id) => { if (confirm("למחוק את היעד הזה?")) await deleteDoc(doc(db, "savings", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
+
+        window.shareCat = async (id) => {
+            const email = prompt("הכנס את האימייל של המשתמש איתו תרצה לשתף את הקטגוריה:");
+            if (email) {
+                updateDoc(doc(db, "categories", id), { allowedUsers: arrayUnion(email) })
+                    .then(() => showToast(`שותף בהצלחה עם ${email}`, 'success'))
+                    .catch(e => showToast("שגיאה בשיתוף " + e.message, 'error'));
+            }
+        };
+
+        window.invitePartner = async () => {
+            const email = document.getElementById('partnerEmailInput').value;
+            if (!email || !email.includes('@')) return showToast('נא להזין אימייל תקין', 'error');
+
+            try {
+                // 1. Save preference
+                localStorage.setItem('partnerEmail', email);
+
+                // 2. Find all MY categories
+                const myCats = cats.filter(c => c.uid === user.uid);
+
+                // 3. Batch update
+                const batch = writeBatch(db);
+                myCats.forEach(c => {
+                    const ref = doc(db, "categories", c.id);
+                    batch.update(ref, { allowedUsers: arrayUnion(email) });
+                });
+
+                await batch.commit();
+
+                document.getElementById('partnerModal').style.display = 'none';
+                showToast(`הזמנה נשלחה! כל הקטגוריות שותפו עם ${email}`, 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בשיתוף: ' + e.message, 'error');
+            }
+        };
+
+        window.csvInput = document.getElementById('csvInput');
+        window.triggerImport = () => window.csvInput.click();
+
+        window.handleCSVUpload = async (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n');
+
+                // Find column indices
+                const header = rows[0].toLowerCase().split(',');
+                const dateIdx = header.findIndex(h => h.includes('date') || h.includes('תאריך'));
+                const amountIdx = header.findIndex(h => h.includes('amount') || h.includes('סכום'));
+                const noteIdx = header.findIndex(h => h.includes('note') || h.includes('desc') || h.includes('תיאור') || h.includes('פרטים'));
+
+                if (dateIdx === -1 || amountIdx === -1) {
+                    showToast('לא זוהו עמודות חובה (Date, Amount)', 'error');
                     return;
                 }
 
-                // Update buttons
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                if (btn) btn.classList.add('active');
+                try {
+                    const batch = writeBatch(db);
+                    let count = 0;
 
-                // Trigger specific renders if needed
-                if (viewId === 'view-activity') renderActivity();
-                if (viewId === 'view-insights') renderInsights();
-                if (viewId === 'view-assets') renderAssets();
-                if (viewId === 'view-calendar') renderCalendar();
+                    // Get General Category ID or first available
+                    const defaultCatId = cats[0]?.id;
+
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i].split(',');
+                        if (cols.length < 2) continue;
+
+                        const dateStr = cols[dateIdx]?.trim();
+                        const amountStr = cols[amountIdx]?.trim();
+                        const note = cols[noteIdx]?.trim() || "ייבוא בנק";
+
+                        if (!dateStr || !amountStr) continue;
+
+                        const date = new Date(dateStr);
+                        if (isNaN(date.getTime())) continue; // Skip invalid dates
+
+                        const amount = parseFloat(amountStr.replace(/[^\d.-]/g, '')); // Clean currency symbols
+
+                        const allowed = [user.email];
+                        const partner = localStorage.getItem('partnerEmail');
+                        if (partner) allowed.push(partner);
+
+                        const docRef = doc(collection(db, "transactions"));
+                        batch.set(docRef, {
+                            date: Timestamp.fromDate(date),
+                            amount: Math.abs(amount), // Assume expense
+                            originalAmount: Math.abs(amount),
+                            currency: 'ILS', // Default
+                            catId: defaultCatId,
+                            note: note,
+                            method: '💳 אשראי',
+                            allowedUsers: allowed
+                        });
+                        count++;
+                    }
+
+                    await batch.commit();
+                    showToast(`נשמרו ${count} הוצאות בהצלחה!`, 'success');
+                    input.value = ''; // Reset
+                } catch (err) {
+                    console.error(err);
+                    showToast('שגיאה בייבוא: ' + err.message, 'error');
+                }
             };
+            reader.readAsText(file);
+        };
 
-            // --- PHASE 9: AI Financial Advisor (Smart Logic) ---
-            function generateInsights(currentTxs, currentIncome, totalBudget) {
-                const insights = [];
-                const spent = currentTxs.reduce((s, t) => s + t.amount, 0);
+        window.exportToCSV = () => {
+            let csvContent = "\uFEFF"; // BOM for Hebrew support
+            csvContent += "Date,Amount,Currency,Category,Note,Method\n";
 
-                // 1. Budget Health Check
-                if (totalBudget > 0) {
-                    const health = (spent / totalBudget) * 100;
-                    if (health > 90) {
-                        insights.push({ icon: '🚨', text: `שים לב: ניצלת **${Math.round(health)}%** מהתקציב החודשי שלך!`, type: 'danger' });
-                    } else if (health > 75) {
-                        insights.push({ icon: '⚠️', text: `התראת תקציב: הגעת ל-**${Math.round(health)}%** מהמסגרת. מומלץ להאט את הקצב.`, type: 'warning' });
-                    } else if (health < 40 && new Date().getDate() > 20) {
-                        insights.push({ icon: '🏆', text: `כל הכבוד! אנחנו בסוף החודש וניצלת רק **${Math.round(health)}%** מהתקציב.`, type: 'success' });
-                    }
+            txs.forEach(t => {
+                const date = t.jsDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+                const catName = cats.find(c => c.id === t.catId)?.name || 'Unknown';
+                const row = [
+                    date,
+                    t.originalAmount || t.amount,
+                    t.currency || 'ILS',
+                    `"${catName.replace(/"/g, '""')}"`,
+                    `"${t.note.replace(/"/g, '""')}"`,
+                    t.method
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `budget_export_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+        };
+
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+
+        if (loginBtn) {
+            loginBtn.onclick = () => {
+                const email = document.getElementById('email').value;
+                const pass = document.getElementById('password').value;
+                console.log("Attempting Login:", email);
+                if (!email || !pass) {
+                    showToast("נא להזין אימייל וסיסמה", "error");
+                    return;
                 }
+                loginBtn.innerText = "מתחבר...";
+                signInWithEmailAndPassword(auth, email, pass)
+                    .then(() => {
+                        console.log("Login Success");
+                        loginBtn.innerText = "כניסה";
+                    })
+                    .catch(e => {
+                        console.error("Login Error:", e);
+                        loginBtn.innerText = "כניסה";
+                        showToast("שגיאה בהתחברות: " + e.message, 'error');
+                        alert("Login Error: " + e.message); // Fallback for visibility
+                    });
+            };
+        }
 
-                // 2. Savings Opportunity
-                if (currentIncome > spent * 1.2) {
-                    const potential = currentIncome - spent;
-                    insights.push({ icon: '💰', text: `יש לך פוטנציאל חיסכון החודש! נותרו לך **₪${potential.toLocaleString()}**. שווה להעביר לחיסכון?`, type: 'success' });
-                }
+        if (signupBtn) {
+            signupBtn.onclick = () => {
+                const email = document.getElementById('email').value;
+                const pass = document.getElementById('password').value;
+                if (!email || !pass) return showToast("נא להזין אימייל וסיסמה", "error");
 
-                // 3. Recurring Detector (Simple Heuristic: duplicate amounts > 1 time)
-                const map = {};
-                currentTxs.forEach(t => {
-                    const key = t.amount + '-' + t.note;
-                    map[key] = (map[key] || 0) + 1;
-                });
-                Object.keys(map).forEach(k => {
-                    if (map[k] >= 2) { // Found duplicate
-                        const [amt, note] = k.split('-');
-                        insights.push({ icon: '🔄', text: `שמנו לב ששילמת **₪${parseFloat(amt)}** על "${note}" מספר פעמים. האם זה מנוי קבוע?`, type: 'info' });
-                    }
-                });
+                signupBtn.innerText = "נרשם...";
+                createUserWithEmailAndPassword(auth, email, pass)
+                    .then(() => signupBtn.innerText = "הרשמה")
+                    .catch(e => {
+                        signupBtn.innerText = "הרשמה";
+                        showToast("שגיאה בהרשמה: " + e.message, 'error');
+                    });
+            };
+        }
 
-                // 4. Weekend Spender
-                const weekendSpend = currentTxs.filter(t => {
-                    const day = t.jsDate.getDay();
-                    return day === 5 || day === 6; // Fri/Sat in JS (0=Sun) - Adjust for IL? 
-                    // IL Weekend: Friday (5) and Saturday (6). Sunday (0) is work day.
-                }).reduce((s, t) => s + t.amount, 0);
-
-                if (weekendSpend > spent * 0.4 && spent > 0) {
-                    insights.push({ icon: '🎉', text: `ראינו ש-**${Math.round((weekendSpend / spent) * 100)}%** מההוצאות שלך קורות בסופ"ש.`, type: 'info' });
-                }
-
-                if (insights.length === 0) {
-                    insights.push({ icon: '✅', text: 'המצב הפיננסי שלך נראה יציב כרגע. המשך כך!', type: 'success' });
-                }
-
-                return insights;
+        // Navigation Logic
+        window.switchView = (viewId, btn) => {
+            if (!viewId) return;
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => {
+                if (el) el.style.display = 'none';
+            });
+            // Show target
+            const target = document.getElementById(viewId);
+            if (target) {
+                target.style.display = 'block';
+            } else {
+                console.warn(`View ID '${viewId}' not found!`);
+                return;
             }
 
-            // Render Functions for specific tabs
-            function renderActivity() {
-                const container = document.getElementById('activity-content');
-                // Move search bar here if not present? Or just render list
-                // For now, let's render the full list
-                let content = `
+            // Update buttons
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            // Trigger specific renders if needed
+            if (viewId === 'view-activity') renderActivity();
+            if (viewId === 'view-insights') renderInsights();
+            if (viewId === 'view-assets') renderAssets();
+            if (viewId === 'view-calendar') renderCalendar();
+        };
+
+        // --- PHASE 9: AI Financial Advisor (Smart Logic) ---
+        function generateInsights(currentTxs, currentIncome, totalBudget) {
+            const insights = [];
+            const spent = currentTxs.reduce((s, t) => s + t.amount, 0);
+
+            // 1. Budget Health Check
+            if (totalBudget > 0) {
+                const health = (spent / totalBudget) * 100;
+                if (health > 90) {
+                    insights.push({ icon: '🚨', text: `שים לב: ניצלת **${Math.round(health)}%** מהתקציב החודשי שלך!`, type: 'danger' });
+                } else if (health > 75) {
+                    insights.push({ icon: '⚠️', text: `התראת תקציב: הגעת ל-**${Math.round(health)}%** מהמסגרת. מומלץ להאט את הקצב.`, type: 'warning' });
+                } else if (health < 40 && new Date().getDate() > 20) {
+                    insights.push({ icon: '🏆', text: `כל הכבוד! אנחנו בסוף החודש וניצלת רק **${Math.round(health)}%** מהתקציב.`, type: 'success' });
+                }
+            }
+
+            // 2. Savings Opportunity
+            if (currentIncome > spent * 1.2) {
+                const potential = currentIncome - spent;
+                insights.push({ icon: '💰', text: `יש לך פוטנציאל חיסכון החודש! נותרו לך **₪${potential.toLocaleString()}**. שווה להעביר לחיסכון?`, type: 'success' });
+            }
+
+            // 3. Recurring Detector (Simple Heuristic: duplicate amounts > 1 time)
+            const map = {};
+            currentTxs.forEach(t => {
+                const key = t.amount + '-' + t.note;
+                map[key] = (map[key] || 0) + 1;
+            });
+            Object.keys(map).forEach(k => {
+                if (map[k] >= 2) { // Found duplicate
+                    const [amt, note] = k.split('-');
+                    insights.push({ icon: '🔄', text: `שמנו לב ששילמת **₪${parseFloat(amt)}** על "${note}" מספר פעמים. האם זה מנוי קבוע?`, type: 'info' });
+                }
+            });
+
+            // 4. Weekend Spender
+            const weekendSpend = currentTxs.filter(t => {
+                const day = t.jsDate.getDay();
+                return day === 5 || day === 6; // Fri/Sat in JS (0=Sun) - Adjust for IL? 
+                // IL Weekend: Friday (5) and Saturday (6). Sunday (0) is work day.
+            }).reduce((s, t) => s + t.amount, 0);
+
+            if (weekendSpend > spent * 0.4 && spent > 0) {
+                insights.push({ icon: '🎉', text: `ראינו ש-**${Math.round((weekendSpend / spent) * 100)}%** מההוצאות שלך קורות בסופ"ש.`, type: 'info' });
+            }
+
+            if (insights.length === 0) {
+                insights.push({ icon: '✅', text: 'המצב הפיננסי שלך נראה יציב כרגע. המשך כך!', type: 'success' });
+            }
+
+            return insights;
+        }
+
+        // Render Functions for specific tabs
+        function renderActivity() {
+            const container = document.getElementById('activity-content');
+            // Move search bar here if not present? Or just render list
+            // For now, let's render the full list
+            let content = `
                 <div style="margin-bottom:15px;">
                     <input type="text" id="actSearch" placeholder="חיפוש הוצאות..." oninput="filterActivity(this.value)">
                 </div>
                 <div class="history-list" id="fullHistoryList" style="max-height:none;">`;
 
-                content += txs.sort((a, b) => b.date - a.date).map(t => {
-                    const cat = cats.find(c => c.id === t.catId);
-                    const dateStr = t.jsDate.toLocaleDateString('he-IL');
-                    return `
+            content += txs.sort((a, b) => b.date - a.date).map(t => {
+                const cat = cats.find(c => c.id === t.catId);
+                const dateStr = t.jsDate.toLocaleDateString('he-IL');
+                return `
                 <div class="history-item" onclick="openEditTx('${t.id}')">
                     <div class="tx-info">
                         <div class="tx-note">${t.note}</div>
@@ -2612,33 +2659,33 @@
                          <div class="tx-amount">₪${t.amount.toLocaleString()}</div>
                     </div>
                 </div>`;
-                }).join('');
-                content += '</div>';
-                container.innerHTML = content;
-            }
+            }).join('');
+            content += '</div>';
+            container.innerHTML = content;
+        }
 
-            window.filterActivity = (q) => {
-                const list = document.getElementById('fullHistoryList');
-                if (!list) return;
-                const items = list.getElementsByClassName('history-item');
-                Array.from(items).forEach(item => {
-                    const text = item.innerText.toLowerCase();
-                    item.style.display = text.includes(q.toLowerCase()) ? 'flex' : 'none';
-                });
-            };
+        window.filterActivity = (q) => {
+            const list = document.getElementById('fullHistoryList');
+            if (!list) return;
+            const items = list.getElementsByClassName('history-item');
+            Array.from(items).forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(q.toLowerCase()) ? 'flex' : 'none';
+            });
+        };
 
-            function renderInsights() {
-                const container = document.getElementById('insights-content');
+        function renderInsights() {
+            const container = document.getElementById('insights-content');
 
-                // Calc stats for insights
-                const currentMonthTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
-                const incomeTotal = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
+            // Calc stats for insights
+            const currentMonthTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+            const incomeTotal = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
 
-                // Calculate Total Budget
-                const totalBudget = cats.reduce((sum, c) => sum + c.budget, 0);
-                const smartTips = generateInsights(currentMonthTxs, incomeTotal, totalBudget);
+            // Calculate Total Budget
+            const totalBudget = cats.reduce((sum, c) => sum + c.budget, 0);
+            const smartTips = generateInsights(currentMonthTxs, incomeTotal, totalBudget);
 
-                container.innerHTML = `
+            container.innerHTML = `
                 <!-- Smart Advisor Card -->
                 <div class="card" style="margin-bottom:20px; border:2px solid #E0E7FF; background: linear-gradient(145deg, #ffffff 0%, #F5F7FF 100%);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -2698,30 +2745,30 @@
                 </div>
             `;
 
-                // Re-render charts (reuse existing variables)
-                const expenseTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
+            // Re-render charts (reuse existing variables)
+            const expenseTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
 
-                document.getElementById('totalIncomeDisplay2').innerText = '₪' + incomeTotal.toLocaleString();
+            document.getElementById('totalIncomeDisplay2').innerText = '₪' + incomeTotal.toLocaleString();
 
-                // Reuse existing render functions if possible, or call chart updates directly
-                updateBarChart(incomeTotal, expenseTotal);
-                updatePieChart(currentMonthTxs);
-                updateLineChart(currentMonthTxs); // New Function
+            // Reuse existing render functions if possible, or call chart updates directly
+            updateBarChart(incomeTotal, expenseTotal);
+            updatePieChart(currentMonthTxs);
+            updateLineChart(currentMonthTxs); // New Function
 
-                // Render Income List here too
-                const incList = document.getElementById('incomeListRef');
-                const filteredInc = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
-                incList.innerHTML = filteredInc.map(i => `
+            // Render Income List here too
+            const incList = document.getElementById('incomeListRef');
+            const filteredInc = income.filter(i => i.date.slice(0, 7) === currentYearMonth);
+            incList.innerHTML = filteredInc.map(i => `
                 <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
                     <span>${i.source}</span>
                     <button onclick="deleteIncome('${i.id}')">🗑️</button>
                 </div>
              `).join('');
-            }
+        }
 
-            function renderAssets() {
-                const container = document.getElementById('assets-content');
-                container.innerHTML = `
+        function renderAssets() {
+            const container = document.getElementById('assets-content');
+            container.innerHTML = `
                 <div class="card" style="margin-bottom:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h3>🎯 יעדי חיסכון</h3>
@@ -2739,108 +2786,108 @@
                 </div>
              `;
 
-                renderSavings();
-                renderGiftCards();
+            renderSavings();
+            renderGiftCards();
+        }
+
+        // --- CALENDAR LOGIC ---
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            if (!grid) return;
+
+            grid.innerHTML = '';
+
+            const year = parseInt(currentYearMonth.split('-')[0]);
+            const month = parseInt(currentYearMonth.split('-')[1]) - 1; // JS months 0-11
+
+            // 1. Get Days in Month
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+
+            // 2. Padding for empty days
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="calendar-day empty"></div>`;
             }
 
-            // --- CALENDAR LOGIC ---
-            function renderCalendar() {
-                const grid = document.getElementById('calendarGrid');
-                if (!grid) return;
+            // 3. Render Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
-                grid.innerHTML = '';
+                // Find Events
+                const dayTxs = txs.filter(t => t.jsDate.getDate() === d && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
+                const dayInc = income.filter(i => {
+                    const iDate = new Date(i.date);
+                    return iDate.getDate() === d && iDate.getMonth() === month && iDate.getFullYear() === year;
+                });
 
-                const year = parseInt(currentYearMonth.split('-')[0]);
-                const month = parseInt(currentYearMonth.split('-')[1]) - 1; // JS months 0-11
+                // Find Recurring (Only if 'nextDate' matches current month OR if day matches frequency logic - simplified to nextDate match for now)
+                const dayRec = recurring.filter(r => {
+                    const [rY, rM, rD] = r.nextDate.split('-');
+                    return parseInt(rD) === d && parseInt(rM) === (month + 1) && parseInt(rY) === year;
+                });
 
-                // 1. Get Days in Month
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+                // Create Dots HTML
+                let dotsHtml = '';
+                dayTxs.forEach(() => dotsHtml += `<div class="dot expense"></div>`);
+                dayInc.forEach(() => dotsHtml += `<div class="dot income"></div>`);
+                dayRec.forEach(() => dotsHtml += `<div class="dot recurring"></div>`);
 
-                // 2. Padding for empty days
-                for (let i = 0; i < firstDay; i++) {
-                    grid.innerHTML += `<div class="calendar-day empty"></div>`;
-                }
+                // Limit dots to prevent overflow (e.g. max 6)
+                // if (dayTxs.length + dayInc.length + dayRec.length > 5) ...
 
-                // 3. Render Days
-                for (let d = 1; d <= daysInMonth; d++) {
-                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-                    // Find Events
-                    const dayTxs = txs.filter(t => t.jsDate.getDate() === d && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
-                    const dayInc = income.filter(i => {
-                        const iDate = new Date(i.date);
-                        return iDate.getDate() === d && iDate.getMonth() === month && iDate.getFullYear() === year;
-                    });
-
-                    // Find Recurring (Only if 'nextDate' matches current month OR if day matches frequency logic - simplified to nextDate match for now)
-                    const dayRec = recurring.filter(r => {
-                        const [rY, rM, rD] = r.nextDate.split('-');
-                        return parseInt(rD) === d && parseInt(rM) === (month + 1) && parseInt(rY) === year;
-                    });
-
-                    // Create Dots HTML
-                    let dotsHtml = '';
-                    dayTxs.forEach(() => dotsHtml += `<div class="dot expense"></div>`);
-                    dayInc.forEach(() => dotsHtml += `<div class="dot income"></div>`);
-                    dayRec.forEach(() => dotsHtml += `<div class="dot recurring"></div>`);
-
-                    // Limit dots to prevent overflow (e.g. max 6)
-                    // if (dayTxs.length + dayInc.length + dayRec.length > 5) ...
-
-                    grid.innerHTML += `
+                grid.innerHTML += `
                     <div class="calendar-day" onclick="openDayDetails(${d})">
                         <div class="calendar-date">${d}</div>
                         <div class="calendar-dots">${dotsHtml}</div>
                     </div>
                 `;
-                }
             }
+        }
 
-            window.openDayDetails = (day) => {
-                const year = parseInt(currentYearMonth.split('-')[0]);
-                const month = parseInt(currentYearMonth.split('-')[1]) - 1;
+        window.openDayDetails = (day) => {
+            const year = parseInt(currentYearMonth.split('-')[0]);
+            const month = parseInt(currentYearMonth.split('-')[1]) - 1;
 
-                const dayTxs = txs.filter(t => t.jsDate.getDate() === day && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
-                const dayInc = income.filter(i => {
-                    const iDate = new Date(i.date);
-                    return iDate.getDate() === day && iDate.getMonth() === month && iDate.getFullYear() === year;
-                });
-                const dayRec = recurring.filter(r => {
-                    const [rY, rM, rD] = r.nextDate.split('-');
-                    return parseInt(rD) === day && parseInt(rM) === (month + 1) && parseInt(rY) === year;
-                });
+            const dayTxs = txs.filter(t => t.jsDate.getDate() === day && t.jsDate.getMonth() === month && t.jsDate.getFullYear() === year);
+            const dayInc = income.filter(i => {
+                const iDate = new Date(i.date);
+                return iDate.getDate() === day && iDate.getMonth() === month && iDate.getFullYear() === year;
+            });
+            const dayRec = recurring.filter(r => {
+                const [rY, rM, rD] = r.nextDate.split('-');
+                return parseInt(rD) === day && parseInt(rM) === (month + 1) && parseInt(rY) === year;
+            });
 
-                const content = document.getElementById('dayDetailsContent');
-                content.innerHTML = '';
+            const content = document.getElementById('dayDetailsContent');
+            content.innerHTML = '';
 
-                document.getElementById('dayTitle').innerText = `פעילות ליום ${day}/${month + 1}`;
+            document.getElementById('dayTitle').innerText = `פעילות ליום ${day}/${month + 1}`;
 
-                if (dayTxs.length === 0 && dayInc.length === 0 && dayRec.length === 0) {
-                    content.innerHTML = '<div style="text-align:center; color:var(--text-sub);">אין פעילות ביום זה</div>';
-                } else {
-                    // Render Income
-                    dayInc.forEach(i => {
-                        content.innerHTML += `
+            if (dayTxs.length === 0 && dayInc.length === 0 && dayRec.length === 0) {
+                content.innerHTML = '<div style="text-align:center; color:var(--text-sub);">אין פעילות ביום זה</div>';
+            } else {
+                // Render Income
+                dayInc.forEach(i => {
+                    content.innerHTML += `
                         <div style="display:flex; justify-content:space-between; padding:10px; background:#ECFDF5; border-radius:8px; align-items:center;">
                             <b>💰 ${i.source}</b>
                             <span style="color:var(--success);">+₪${i.amount.toLocaleString()}</span>
                         </div>`;
-                    });
+                });
 
-                    // Render Recurring
-                    dayRec.forEach(r => {
-                        content.innerHTML += `
+                // Render Recurring
+                dayRec.forEach(r => {
+                    content.innerHTML += `
                         <div style="display:flex; justify-content:space-between; padding:10px; background:#EFF6FF; border-radius:8px; align-items:center;">
                             <b>🔄 ${r.name} (צפוי)</b>
                             <span style="color:var(--primary);">-₪${r.amount.toLocaleString()}</span>
                         </div>`;
-                    });
+                });
 
-                    // Render Expenses
-                    dayTxs.forEach(t => {
-                        const cat = cats.find(c => c.id === t.catId);
-                        content.innerHTML += `
+                // Render Expenses
+                dayTxs.forEach(t => {
+                    const cat = cats.find(c => c.id === t.catId);
+                    content.innerHTML += `
                         <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg); border-radius:8px; align-items:center;">
                             <div>
                                 <b>${t.note}</b>
@@ -2848,79 +2895,98 @@
                             </div>
                             <span style="color:var(--danger);">-₪${t.amount.toLocaleString()}</span>
                         </div>`;
-                    });
-                }
-
-                document.getElementById('dayModal').style.display = 'flex';
-            };
-
-            window.logout = () => {
-                signOut(auth).then(() => showToast('התנתקת בהצלחה', 'success'));
-            };
-
-            // NUCLEAR OPTION: Force close backup
-            // This runs independently of the main logic to guarantee closure
-            const safeSaveBtn = document.getElementById('saveTxBtn');
-            if (safeSaveBtn) {
-                safeSaveBtn.addEventListener('click', () => {
-                    setTimeout(() => {
-                        closeModal();
-                    }, 500);
                 });
             }
 
-            const safeSaveCatBtn = document.getElementById('saveCatBtn');
-            if (safeSaveCatBtn) {
-                safeSaveCatBtn.addEventListener('click', () => {
-                    setTimeout(() => {
-                        closeModal('catModal');
-                    }, 1000);
-                });
-            }
-            // --- Default Categories Logic ---
-            async function checkAndCreateDefaults(u) {
-                const q = query(collection(db, "categories"), where("allowedUsers", "array-contains", u.email));
-                const snap = await getDocs(q);
-                if (snap.empty) {
-                    const defaults = [
-                        { name: 'אוכל וסופר', icon: '🍔', color: '#EF4444', budget: 2000 },
-                        { name: 'בית', icon: '🏠', color: '#3B82F6', budget: 4000 },
-                        { name: 'רכב', icon: '🚗', color: '#F59E0B', budget: 1000 },
-                        { name: 'קניות', icon: '🛍️', color: '#8B5CF6', budget: 500 },
-                        { name: 'אחר', icon: '❓', color: '#6B7280', budget: 200 }
-                    ];
+            document.getElementById('dayModal').style.display = 'flex';
+        };
 
-                    showToast('יוצר קטגוריות ברירת מחדל...', 'info');
-                    const batch = writeBatch(db);
-                    defaults.forEach(d => {
-                        const ref = doc(collection(db, "categories"));
-                        batch.set(ref, { ...d, uid: u.uid, allowedUsers: [u.email] });
-                    });
-                    await batch.commit();
-                    showToast('קטגוריות נוצרו בהצלחה!', 'success');
-                    setTimeout(() => window.location.reload(), 1500);
-                }
-            }
+        window.logout = () => {
+            signOut(auth).then(() => showToast('התנתקת בהצלחה', 'success'));
+        };
 
-            onAuthStateChanged(auth, (u) => {
-                if (u) {
-                    user = u;
-                    document.getElementById('authScreen').style.display = 'none';
-                    document.getElementById('mainApp').style.display = 'block';
-                    document.getElementById('userEmailDisplay').innerText = u.email;
-                    document.getElementById('avatarLetter').innerText = u.email[0].toUpperCase();
-
-                    // Initialize Data Listeners (If not already running - simple check)
-                    if (cats.length === 0) {
-                        // We can't easily check if listeners are on, but we can check defaults once
-                        checkAndCreateDefaults(u);
-                    }
-                } else {
-                    document.getElementById('authScreen').style.display = 'flex';
-                    document.getElementById('mainApp').style.display = 'none';
-                }
+        // NUCLEAR OPTION: Force close backup
+        // This runs independently of the main logic to guarantee closure
+        const safeSaveBtn = document.getElementById('saveTxBtn');
+        if (safeSaveBtn) {
+            safeSaveBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    closeModal();
+                }, 500);
             });
+        }
 
+        const safeSaveCatBtn = document.getElementById('saveCatBtn');
+        if (safeSaveCatBtn) {
+            safeSaveCatBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    closeModal('catModal');
+                }, 1000);
+            });
+        }
+        // --- Default Categories Logic ---
+        async function checkAndCreateDefaults(u) {
+            const q = query(collection(db, "categories"), where("allowedUsers", "array-contains", u.email));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+                const defaults = [
+                    { name: 'אוכל וסופר', icon: '🍔', color: '#EF4444', budget: 2000 },
+                    { name: 'בית', icon: '🏠', color: '#3B82F6', budget: 4000 },
+                    { name: 'רכב', icon: '🚗', color: '#F59E0B', budget: 1000 },
+                    { name: 'קניות', icon: '🛍️', color: '#8B5CF6', budget: 500 },
+                    { name: 'אחר', icon: '❓', color: '#6B7280', budget: 200 }
+                ];
+
+                showToast('יוצר קטגוריות ברירת מחדל...', 'info');
+                const batch = writeBatch(db);
+                defaults.forEach(d => {
+                    const ref = doc(collection(db, "categories"));
+                    batch.set(ref, { ...d, uid: u.uid, allowedUsers: [u.email] });
+                });
+                await batch.commit();
+                showToast('קטגוריות נוצרו בהצלחה!', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        }
+
+        // Duplicate onAuthStateChanged removed. Logic merged into the first listener.
+
+        // End of script
+    </script>
+    <script>
+        // NUCLEAR CACHE BUSTING & SW REGISTRATION
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for (let registration of registrations) {
+                        // Optional: Unregister everything first to be safe
+                        // registration.unregister();
+                    }
+
+                    navigator.serviceWorker.register('./sw.js').then(registration => {
+                        console.log('SW Registered: ', registration);
+
+                        registration.onupdatefound = () => {
+                            const installingWorker = registration.installing;
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        console.log('New content available; please refresh.');
+                                        if (confirm("עדכון זמין! האם לרענן כעת?")) {
+                                            window.location.reload();
+                                        }
+                                    } else {
+                                        console.log('Content is cached for offline use.');
+                                    }
+                                }
+                            };
+                        };
+                    }).catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+                });
+            });
+        }
     </script>
 </body>
 
