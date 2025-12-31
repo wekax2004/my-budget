@@ -732,7 +732,7 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.1 (Fix)</span>
+                    <span style="font-size:10px; opacity:0.3; font-family:monospace;">v31.2 (Fix)</span>
 
                     <button class="menu-btn" onclick="toggleHeaderMenu()">⋮</button>
 
@@ -968,7 +968,11 @@
                 <span id="rateInfo">מקור שערים: ברירת מחדל (קבוע)</span>
             </div>
 
-            <button class="btn-main" id="saveTxBtn">שמירה וסיום</button>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-main" id="saveTxBtn" style="margin-top:0;">שמירה וסיום</button>
+                <button id="delTxBtn" onclick="deleteCurrentTx()"
+                    style="background:none; border:none; color:var(--danger); font-weight:600; cursor:pointer; display:none;">מחיקה</button>
+            </div>
         </div>
     </div>
 
@@ -2081,6 +2085,20 @@
             }
         };
 
+        window.deleteCurrentTx = async () => {
+            if (editMode.active && editMode.id) {
+                if (confirm("למחוק את ההוצאה הזו לצמיתות?")) {
+                    try {
+                        await deleteDoc(doc(db, "transactions", editMode.id));
+                        showToast("ההוצאה נמחקה", "success");
+                        closeModal();
+                    } catch (e) {
+                        showToast("שגיאה במחיקה", "error");
+                    }
+                }
+            }
+        };
+
         window.openEditTx = (id) => {
             const tx = txs.find(t => t.id === id);
             editMode = { active: true, id: id };
@@ -2090,6 +2108,7 @@
             document.getElementById('fCurr').value = tx.currency || "ILS";
             document.getElementById('expNote').value = tx.note;
             document.getElementById('pMethod').value = tx.method;
+            document.getElementById('delTxBtn').style.display = 'block'; // Show delete btn
             document.getElementById('expModal').style.display = 'flex';
         };
 
@@ -2100,6 +2119,7 @@
             document.getElementById('fAmt').value = "";
             document.getElementById('fCurr').value = "ILS";
             document.getElementById('expNote').value = "";
+            document.getElementById('delTxBtn').style.display = 'none'; // Hide delete btn
             document.getElementById('expModal').style.display = 'flex';
             document.getElementById('fAmt').focus();
         };
