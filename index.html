@@ -108,12 +108,11 @@
                 };
 
                 const credential = await navigator.credentials.create({ publicKey });
-                // We don't verify server-side for V1. We just trust the device creation succeeded.
-                // Save a flag that bio is registered
+                // Save credential ID for verification
                 localStorage.setItem('bioRegistered', 'true');
-                showToast("ביומטרי נרשם בהצלחה!", "success");
+                localStorage.setItem('bioCredentialId', btoa(String.fromCharCode.apply(null, new Uint8Array(credential.id))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); // Base64URL string
 
-                // Show unlock button imediately?
+                showToast("ביומטרי נרשם בהצלחה!", "success");
             } catch (e) {
                 console.error(e);
                 showToast("רישום נכשל: " + e.message, "error");
@@ -122,6 +121,8 @@
 
         window.checkBiometrics = async () => {
             if (!window.PublicKeyCredential) return;
+
+            const savedId = localStorage.getItem('bioCredentialId');
 
             try {
                 const challenge = new Uint8Array(32);
@@ -134,13 +135,27 @@
                     timeout: 60000
                 };
 
+                // If we have a saved ID, restrict auth to that key (Required for non-resident keys)
+                if (savedId) {
+                    publicKey.allowCredentials = [{
+                        type: 'public-key',
+                        id: Uint8Array.from(atob(savedId.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+                        transports: ['internal']
+                    }];
+                }
+
                 const assertion = await navigator.credentials.get({ publicKey });
-                // If we got here, the device authenticated the user
+                // If we got here, authentication succeeded
                 document.getElementById('lockScreen').style.display = 'none';
                 showToast("אושר ביומטרית 🧬", "success");
             } catch (e) {
-                console.error(e);
-                showToast("זיהוי נכשל", "error");
+                console.error("Bio Error:", e);
+                // Better error message
+                if (e.name === 'NotAllowedError') {
+                    showToast("גישה נדחתה או בוטלה", "error");
+                } else {
+                    showToast("זיהוי נכשל: " + e.name, "error");
+                }
             }
         };
 
