@@ -465,23 +465,31 @@
             border: 1px solid #F3F4F6;
         }
 
-        /* Category List */
+        /* Categories */
         .cat-list {
             display: grid;
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            padding-bottom: 80px;
         }
 
-        .cat-item {
+        .cat-card {
             background: var(--card-bg);
             border-radius: 16px;
-            padding: 20px;
-            border: 1px solid #E5E7EB;
-            transition: 0.2s;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--input-border);
+            /* Remove margin-bottom as grid gap handles it */
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
             position: relative;
             overflow: hidden;
         }
 
-        .cat-item:hover {
+        .cat-card:hover {
             border-color: var(--primary);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
