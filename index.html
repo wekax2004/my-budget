@@ -991,226 +991,236 @@
                         <button onclick="toggleTheme()" class="dropdown-item">
                             <span>🌓</span> מצב לילה
                         </button>
-                        <label class="switch" style="margin:0; transform:scale(0.9);">
-                            <input type="checkbox" id="appLockMenuToggle" onchange="toggleAppLock(this.checked)">
-                            <span class="slider round"></span>
-                        </label>
+
+                        <div class="dropdown-item"
+                            style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                            <span style="display:flex; gap:8px;">🔐 נעילה</span>
+                            <label class="switch" style="margin:0; transform:scale(0.9);">
+                                <input type="checkbox" id="appLockMenuToggle" onchange="toggleAppLock(this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div class="dropdown-item"
+                            style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                            <span style="display:flex; gap:8px;">🔋 חסכון בסוללה</span>
+                            <label class="switch" style="margin:0; transform:scale(0.9);">
+                                <input type="checkbox" id="lowPowerMenuToggle" onchange="toggleLowPower(this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <button onclick="registerBiometrics()" class="dropdown-item" id="bioRegBtn"
+                            style="display:none;">
+                            <span>🧬</span> רישום ביומטרי
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="logout()" class="dropdown-item" style="color:var(--danger)">
+                            <span>👋</span> יציאה
+                        </button>
+                        <div
+                            style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
+                            v31.10.9 (Fix)
+                        </div>
                     </div>
-                    <div class="dropdown-item"
-                        style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                        <span style="display:flex; gap:8px;">🔋 חסכון בסוללה</span>
-                        <label class="switch" style="margin:0; transform:scale(0.9);">
-                            <input type="checkbox" id="lowPowerMenuToggle" onchange="toggleLowPower(this.checked)">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <button onclick="registerBiometrics()" class="dropdown-item" id="bioRegBtn" style="display:none;">
-                        <span>🧬</span> רישום ביומטרי
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    <button onclick="logout()" class="dropdown-item" style="color:var(--danger)">
-                        <span>👋</span> יציאה
-                    </button>
-                    <div
-                        style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                        v31.10.4 (Bio)</div>
                 </div>
             </div>
-        </div>
 
-        <div class="controls-bar">
-            <input type="month" id="monthPicker" class="date-picker">
-            <button onclick="openAddCat()" class="add-cat-btn">
-                <span>+</span> קטגוריה חדשה
-            </button>
-            <button onclick="exportToCSV()" class="icon-btn" title="ייצוא לאקסל"
-                style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
-                📥 ייצוא CSV
-            </button>
-            <button onclick="openRecurring()" class="icon-btn" title="הוצאות קבועות"
-                style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
-                🔄 הוראות קבע
-            </button>
-            <button onclick="generatePDF()" class="icon-btn" title="דוח חודשי"
-                style="width:auto; padding:0 15px; font-size:14px; gap:8px; background:#FDF2F8; color:#DB2777;">
-                📄 דוח PDF
-            </button>
-        </div>
+            <div class="controls-bar">
+                <input type="month" id="monthPicker" class="date-picker">
+                <button onclick="openAddCat()" class="add-cat-btn">
+                    <span>+</span> קטגוריה חדשה
+                </button>
+                <button onclick="exportToCSV()" class="icon-btn" title="ייצוא לאקסל"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
+                    📥 ייצוא CSV
+                </button>
+                <button onclick="openRecurring()" class="icon-btn" title="הוצאות קבועות"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px;">
+                    🔄 הוראות קבע
+                </button>
+                <button onclick="generatePDF()" class="icon-btn" title="דוח חודשי"
+                    style="width:auto; padding:0 15px; font-size:14px; gap:8px; background:#FDF2F8; color:#DB2777;">
+                    📄 דוח PDF
+                </button>
+            </div>
 
-        <!-- TAB 1: HOME -->
-        <div id="view-home" class="view-section active">
+            <!-- TAB 1: HOME -->
+            <div id="view-home" class="view-section active">
 
-            <!-- Smart Advisor Card -->
-            <div id="aiAdvisor"
-                style="background:linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color:white; border-radius:16px; padding:15px; margin-bottom:15px; display:flex; align-items:center; gap:12px; box-shadow:0 4px 12px rgba(99,102,241,0.2);">
+                <!-- Smart Advisor Card -->
+                <div id="aiAdvisor"
+                    style="background:linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color:white; border-radius:16px; padding:15px; margin-bottom:15px; display:flex; align-items:center; gap:12px; box-shadow:0 4px 12px rgba(99,102,241,0.2);">
+                    <div
+                        style="font-size:24px; background:rgba(255,255,255,0.2); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                        💡</div>
+                    <div>
+                        <div
+                            style="font-size:10px; opacity:0.8; font-weight:600; text-transform:uppercase; letter-spacing:1px;">
+                            Smart Tip</div>
+                        <div id="advisorText" style="font-size:13px; font-weight:500; line-height:1.3;">טוען תובנות
+                            חכמות...</div>
+                    </div>
+                </div>
+
+                <div class="summary-chips" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <!-- 1. Total Budget (Blue) -->
+                    <div class="sum-chip"
+                        style="background:#EFF6FF; border:1px solid #DBEAFE; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                        <span class="sum-lbl"
+                            style="font-size:11px; color:#3B82F6; font-weight:600; margin-bottom:2px;">תקציב כולל</span>
+                        <span class="sum-val" id="totalBudgetDisplay"
+                            style="color:#1E3A8A; font-size:16px; font-weight:700;">₪0</span>
+                    </div>
+
+                    <!-- 2. Spent (Red) -->
+                    <div class="sum-chip"
+                        style="background:#FEF2F2; border:1px solid #FEE2E2; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                        <span class="sum-lbl"
+                            style="font-size:11px; color:#EF4444; font-weight:600; margin-bottom:2px;">הוצאות</span>
+                        <span class="sum-val" id="totalSpentDisplay"
+                            style="color:#7F1D1D; font-size:16px; font-weight:700;">₪0</span>
+                    </div>
+
+                    <!-- 3. Left (Green/Red) -->
+                    <div class="sum-chip"
+                        style="background:#ECFDF5; border:1px solid #D1FAE5; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                        <span class="sum-lbl"
+                            style="font-size:11px; color:#10B981; font-weight:600; margin-bottom:2px;">נותר</span>
+                        <span class="sum-val" id="balanceDisplay"
+                            style="color:#064E3B; font-size:16px; font-weight:700;">₪0</span>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom:15px; color:var(--text-sub);">הוצאות לפי קטגוריות</h3>
+                <div id="catList" class="cat-list"></div>
+            </div>
+
+            <!-- TAB 2: ACTIVITY (History + Search) -->
+            <div id="view-activity" class="view-section">
+                <div class="header">
+                    <h3>היסטוריה 📄</h3>
+                    <button onclick="triggerImport()" class="icon-btn" title="ייבוא מ-CSV"
+                        style="width:auto; padding:0 12px; font-size:14px; gap:6px;">📂 ייבוא</button>
+                    <input type="file" id="csvInput" style="display:none" accept=".csv"
+                        onchange="handleCSVUpload(this)">
+                </div>
+                <div id="activity-content" style="padding-bottom:80px;"></div>
+            </div>
+
+            <!-- TAB 3: INSIGHTS (Charts + Income) -->
+            <div id="view-insights" class="view-section">
+                <div class="header">
+                    <h3>תובנות 📊</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="openForecast()" class="icon-btn" style="background:#EEF2FF; color:#4F46E5;">🔮
+                            צפי</button>
+                        <button onclick="document.getElementById('incomeModal').style.display='flex'" class="icon-btn"
+                            style="background:#ECFDF5; color:#10B981;">💰 הכנסה</button>
+                    </div>
+                </div>
+                <div id="insights-content" style="padding-bottom:80px;"></div>
+            </div>
+
+            <!-- TAB 4: ASSETS (Savings + Gifts) -->
+            <div id="view-assets" class="view-section">
+                <div class="header">
+                    <h3>נכסים 🎁</h3>
+                </div>
+                <div id="assets-content" style="padding-bottom:80px;"></div>
+            </div>
+
+            <!-- TAB 5: SHOPPING (New) -->
+            <div id="view-shop" class="view-section">
+                <div class="header">
+                    <h3>רשימת קניות 🛒</h3>
+                    <div id="cartTotal"
+                        style="font-size:16px; font-weight:bold; color:var(--primary); background:#EEF2FF; padding:4px 12px; border-radius:20px;">
+                        ₪0</div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="card" style="margin-bottom:15px; padding:15px;">
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="shopItem" placeholder="מוצר (למשל: חלב)" class="input-field"
+                            style="margin:0; flex:2;">
+                        <input type="number" id="shopPrice" placeholder="₪" class="input-field"
+                            style="margin:0; flex:1;">
+                        <button onclick="addShopItem()" class="btn-main" style="width:auto; padding:0 15px;">+</button>
+                    </div>
+                </div>
+
+                <!-- List -->
+                <div id="shoppingListRef" style="display:flex; flex-direction:column; gap:8px; padding-bottom:80px;">
+                    <!-- Items here -->
+                </div>
+
+                <!-- Checkout FAB -->
+                <button onclick="checkoutShoppingList()"
+                    style="position:fixed; bottom:90px; left:20px; background:var(--success); color:white; border:none; border-radius:50px; padding:12px 20px; font-weight:bold; box-shadow:0 4px 12px rgba(16,185,129,0.3); display:flex; align-items:center; gap:8px; z-index:100;">
+                    <span>💳</span> צ'ק אאוט
+                </button>
+            </div>
+
+            <!-- TAB 6: CALENDAR (Moved) -->
+            <div id="view-calendar" class="view-section">
+                <div class="header">
+                    <h3>לוח שנה 📅</h3>
+                </div>
+                <!-- ... Calendar Content ... -->
+                <div class="card" style="padding:15px;">
+                    <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:10px;">
+                        <div class="calendar-day-header">א'</div>
+                        <div class="calendar-day-header">ב'</div>
+                        <div class="calendar-day-header">ג'</div>
+                        <div class="calendar-day-header">ד'</div>
+                        <div class="calendar-day-header">ה'</div>
+                        <div class="calendar-day-header">ו'</div>
+                        <div class="calendar-day-header">ש'</div>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
                 <div
-                    style="font-size:24px; background:rgba(255,255,255,0.2); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-                    💡</div>
-                <div>
-                    <div
-                        style="font-size:10px; opacity:0.8; font-weight:600; text-transform:uppercase; letter-spacing:1px;">
-                        Smart Tip</div>
-                    <div id="advisorText" style="font-size:13px; font-weight:500; line-height:1.3;">טוען תובנות
-                        חכמות...</div>
+                    style="margin-top:20px; font-size:12px; color:var(--text-sub); display:flex; gap:15px; justify-content:center;">
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot expense"></div> הוצאה
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot recurring"></div> הוראת קבע
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center;">
+                        <div class="dot income"></div> הכנסה
+                    </span>
                 </div>
             </div>
 
-            <div class="summary-chips" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-                <!-- 1. Total Budget (Blue) -->
-                <div class="sum-chip"
-                    style="background:#EFF6FF; border:1px solid #DBEAFE; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
-                    <span class="sum-lbl"
-                        style="font-size:11px; color:#3B82F6; font-weight:600; margin-bottom:2px;">תקציב כולל</span>
-                    <span class="sum-val" id="totalBudgetDisplay"
-                        style="color:#1E3A8A; font-size:16px; font-weight:700;">₪0</span>
-                </div>
+        </div> <!-- End App Container -->
 
-                <!-- 2. Spent (Red) -->
-                <div class="sum-chip"
-                    style="background:#FEF2F2; border:1px solid #FEE2E2; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
-                    <span class="sum-lbl"
-                        style="font-size:11px; color:#EF4444; font-weight:600; margin-bottom:2px;">הוצאות</span>
-                    <span class="sum-val" id="totalSpentDisplay"
-                        style="color:#7F1D1D; font-size:16px; font-weight:700;">₪0</span>
-                </div>
-
-                <!-- 3. Left (Green/Red) -->
-                <div class="sum-chip"
-                    style="background:#ECFDF5; border:1px solid #D1FAE5; border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;">
-                    <span class="sum-lbl"
-                        style="font-size:11px; color:#10B981; font-weight:600; margin-bottom:2px;">נותר</span>
-                    <span class="sum-val" id="balanceDisplay"
-                        style="color:#064E3B; font-size:16px; font-weight:700;">₪0</span>
-                </div>
-            </div>
-
-            <h3 style="margin-bottom:15px; color:var(--text-sub);">הוצאות לפי קטגוריות</h3>
-            <div id="catList" class="cat-list"></div>
-        </div>
-
-        <!-- TAB 2: ACTIVITY (History + Search) -->
-        <div id="view-activity" class="view-section">
-            <div class="header">
-                <h3>היסטוריה 📄</h3>
-                <button onclick="triggerImport()" class="icon-btn" title="ייבוא מ-CSV"
-                    style="width:auto; padding:0 12px; font-size:14px; gap:6px;">📂 ייבוא</button>
-                <input type="file" id="csvInput" style="display:none" accept=".csv" onchange="handleCSVUpload(this)">
-            </div>
-            <div id="activity-content" style="padding-bottom:80px;"></div>
-        </div>
-
-        <!-- TAB 3: INSIGHTS (Charts + Income) -->
-        <div id="view-insights" class="view-section">
-            <div class="header">
-                <h3>תובנות 📊</h3>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="openForecast()" class="icon-btn" style="background:#EEF2FF; color:#4F46E5;">🔮
-                        צפי</button>
-                    <button onclick="document.getElementById('incomeModal').style.display='flex'" class="icon-btn"
-                        style="background:#ECFDF5; color:#10B981;">💰 הכנסה</button>
-                </div>
-            </div>
-            <div id="insights-content" style="padding-bottom:80px;"></div>
-        </div>
-
-        <!-- TAB 4: ASSETS (Savings + Gifts) -->
-        <div id="view-assets" class="view-section">
-            <div class="header">
-                <h3>נכסים 🎁</h3>
-            </div>
-            <div id="assets-content" style="padding-bottom:80px;"></div>
-        </div>
-
-        <!-- TAB 5: SHOPPING (New) -->
-        <div id="view-shop" class="view-section">
-            <div class="header">
-                <h3>רשימת קניות 🛒</h3>
-                <div id="cartTotal"
-                    style="font-size:16px; font-weight:bold; color:var(--primary); background:#EEF2FF; padding:4px 12px; border-radius:20px;">
-                    ₪0</div>
-            </div>
-
-            <!-- Input Area -->
-            <div class="card" style="margin-bottom:15px; padding:15px;">
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="shopItem" placeholder="מוצר (למשל: חלב)" class="input-field"
-                        style="margin:0; flex:2;">
-                    <input type="number" id="shopPrice" placeholder="₪" class="input-field" style="margin:0; flex:1;">
-                    <button onclick="addShopItem()" class="btn-main" style="width:auto; padding:0 15px;">+</button>
-                </div>
-            </div>
-
-            <!-- List -->
-            <div id="shoppingListRef" style="display:flex; flex-direction:column; gap:8px; padding-bottom:80px;">
-                <!-- Items here -->
-            </div>
-
-            <!-- Checkout FAB -->
-            <button onclick="checkoutShoppingList()"
-                style="position:fixed; bottom:90px; left:20px; background:var(--success); color:white; border:none; border-radius:50px; padding:12px 20px; font-weight:bold; box-shadow:0 4px 12px rgba(16,185,129,0.3); display:flex; align-items:center; gap:8px; z-index:100;">
-                <span>💳</span> צ'ק אאוט
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="switchView('view-home', this)">
+                <span>🏠</span>
+                בית
             </button>
-        </div>
-
-        <!-- TAB 6: CALENDAR (Moved) -->
-        <div id="view-calendar" class="view-section">
-            <div class="header">
-                <h3>לוח שנה 📅</h3>
-            </div>
-            <!-- ... Calendar Content ... -->
-            <div class="card" style="padding:15px;">
-                <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:10px;">
-                    <div class="calendar-day-header">א'</div>
-                    <div class="calendar-day-header">ב'</div>
-                    <div class="calendar-day-header">ג'</div>
-                    <div class="calendar-day-header">ד'</div>
-                    <div class="calendar-day-header">ה'</div>
-                    <div class="calendar-day-header">ו'</div>
-                    <div class="calendar-day-header">ש'</div>
-                </div>
-                <div id="calendarGrid" class="calendar-grid">
-                    <!-- Filled by JS -->
-                </div>
-            </div>
-            <div
-                style="margin-top:20px; font-size:12px; color:var(--text-sub); display:flex; gap:15px; justify-content:center;">
-                <span style="display:flex; gap:5px; align-items:center;">
-                    <div class="dot expense"></div> הוצאה
-                </span>
-                <span style="display:flex; gap:5px; align-items:center;">
-                    <div class="dot recurring"></div> הוראת קבע
-                </span>
-                <span style="display:flex; gap:5px; align-items:center;">
-                    <div class="dot income"></div> הכנסה
-                </span>
-            </div>
-        </div>
-
-    </div> <!-- End App Container -->
-
-    <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="switchView('view-home', this)">
-            <span>🏠</span>
-            בית
-        </button>
-        <button class="nav-item" onclick="switchView('view-activity', this)">
-            <span>📄</span>
-            פעילות
-        </button>
-        <button class="nav-item" onclick="switchView('view-insights', this)">
-            <span>📊</span>
-            תובנות
-        </button>
-        <button class="nav-item" onclick="switchView('view-shop', this)">
-            <span>🛒</span>
-            קניות
-        </button>
-        <button class="nav-item" onclick="switchView('view-assets', this)">
-            <span>🧧</span>
-            נכסים
-        </button>
-        <!-- Calendar moved to side menu or just kept as 6th? Let's fit 5. Remove Assets? No user needs assets. 
+            <button class="nav-item" onclick="switchView('view-activity', this)">
+                <span>📄</span>
+                פעילות
+            </button>
+            <button class="nav-item" onclick="switchView('view-insights', this)">
+                <span>📊</span>
+                תובנות
+            </button>
+            <button class="nav-item" onclick="switchView('view-shop', this)">
+                <span>🛒</span>
+                קניות
+            </button>
+            <button class="nav-item" onclick="switchView('view-assets', this)">
+                <span>🧧</span>
+                נכסים
+            </button>
+            <!-- Calendar moved to side menu or just kept as 6th? Let's fit 5. Remove Assets? No user needs assets. 
                   Let's squeeze 5 icons. Calendar was 5th.
                   1. Home 2. Activity 3. Insights 4. Shop 5. Assets (Calendar is useful too...)
                   User didn't say remove Calendar. Let's try 6 items or put Calendar in menu?
@@ -1233,11 +1243,11 @@
                   Where did Calendar go? It was TAB 5.
                   I will make it: Home, Shop, Activity, Insights, Calendar. (Assets -> Menu).
             -->
-        <button class="nav-item" onclick="switchView('view-calendar', this)">
-            <span>📅</span>
-            יומן
-        </button>
-    </nav>
+            <button class="nav-item" onclick="switchView('view-calendar', this)">
+                <span>📅</span>
+                יומן
+            </button>
+        </nav>
     </div>
 
     <!-- Day Details Modal -->
