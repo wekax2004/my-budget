@@ -3409,14 +3409,7 @@
                         <h3 style="color:#4F46E5; display:flex; align-items:center; gap:8px;">🧠 Smart Advisor <span style="font-size:10px; background:#4F46E5; color:white; padding:2px 6px; border-radius:10px;">BETA</span></h3>
                     </div>
                     <!-- Search Bar -->
-            <div style="padding:0 20px; margin-bottom:10px; display:flex; gap:10px;">
-                <div style="flex:1; position:relative;">
-                    <input type="text" id="searchInput" placeholder="חיפוש הוצאות..." 
-                        style="width:100%; padding:12px 15px; padding-left:40px; border-radius:12px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--text-main);">
-                    <span style="position:absolute; left:15px; top:50%; transform:translateY(-50%); opacity:0.5;">🔍</span>
-                </div>
-                <button onclick="openFilterModal()" class="icon-btn" style="background:var(--card-bg); width:46px; border:1px solid var(--input-border);">🌪️</button>
-            </div>
+
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         ${smartTips.map(tip => `
                             <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:white; border-radius:8px; border-right:4px solid var(--${tip.type}); box-shadow:0 2px 4px rgba(0,0,0,0.05);">
