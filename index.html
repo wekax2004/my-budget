@@ -296,6 +296,73 @@
         }
 
         /* Controls */
+        .header-actions {
+            position: relative;
+            z-index: 1001;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            color: var(--text-main);
+        }
+
+        .menu-btn:hover {
+            background: var(--bg);
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 8px;
+            flex-direction: column;
+            gap: 5px;
+            width: 200px;
+            z-index: 2000;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 15px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            color: var(--text-main);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.2s;
+            text-align: right;
+            font-family: 'Rubik';
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--input-border);
+            margin: 5px 0;
+        }
+
         .controls-bar {
             display: flex;
             gap: 15px;
@@ -2581,6 +2648,26 @@
         }
 
         // --- Actions ---
+
+        window.toggleHeaderMenu = () => {
+            const menu = document.getElementById('headerDropdown');
+            if (menu.style.display === 'flex') {
+                menu.style.display = 'none';
+            } else {
+                menu.style.display = 'flex';
+                // Auto close on outside click
+                setTimeout(() => {
+                    const closer = (e) => {
+                        if (!menu.contains(e.target) && !e.target.closest('.menu-btn')) {
+                            menu.style.display = 'none';
+                            document.removeEventListener('click', closer);
+                        }
+                    };
+                    document.addEventListener('click', closer);
+                }, 10);
+            }
+        };
+
         // Initialize Icon Grid
         const icons = ['🏷️', '🍕', '🚗', '🏠', '🏥', '🎓', '✈️', '🎁', '💇', '📱', '💪', '🛒', '🍷', '🥦', '⛽', '💡', '🔧', '👶', '🐶', '📚', '🎮', '🎵', '🎬', '💻'];
         const iconGrid = document.getElementById('iconGrid');
