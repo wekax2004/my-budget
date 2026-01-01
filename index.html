@@ -3402,13 +3402,48 @@
             const totalBudget = cats.reduce((sum, c) => sum + c.budget, 0);
             const smartTips = generateInsights(currentMonthTxs, incomeTotal, totalBudget);
 
+            // Global Search Logic (New)
+            window.handleInsightSearch = (q) => {
+                const container = document.getElementById('advisorSearchRes');
+                if (!q || q.length < 2) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                const matches = txs.filter(t => t.note.toLowerCase().includes(q.toLowerCase()) || t.amount.toString().includes(q));
+                container.style.display = 'block';
+
+                if (matches.length === 0) {
+                    container.innerHTML = '<div style="padding:10px; text-align:center; opacity:0.6;">לא נמצאו תוצאות</div>';
+                } else {
+                    container.innerHTML = matches.slice(0, 5).map(t => {
+                        const cat = cats.find(c => c.id === t.catId);
+                        return `
+                        <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee; align-items:center;">
+                            <div>
+                                <div style="font-weight:600;">${t.note}</div>
+                                <div style="font-size:10px; color:gray;">${new Date(t.date).toLocaleDateString('he-IL')} • ${cat?.name || 'G'}</div>
+                            </div>
+                            <span style="color:var(--danger); font-weight:bold;">₪${t.amount.toLocaleString()}</span>
+                        </div>`;
+                    }).join('') + (matches.length > 5 ? `<div style="text-align:center; padding:5px; font-size:10px; color:var(--primary);">ועוד ${matches.length - 5} תוצאות...</div>` : '');
+                }
+            };
+
             container.innerHTML = `
                 <!-- Smart Advisor Card -->
                 <div class="card" style="margin-bottom:20px; border:2px solid #E0E7FF; background: linear-gradient(145deg, #ffffff 0%, #F5F7FF 100%);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h3 style="color:#4F46E5; display:flex; align-items:center; gap:8px;">🧠 Smart Advisor <span style="font-size:10px; background:#4F46E5; color:white; padding:2px 6px; border-radius:10px;">BETA</span></h3>
                     </div>
-                    <!-- Search Bar -->
+                    
+                    <!-- Search Bar (Restored & Functional) -->
+                    <div style="margin-bottom:15px; position:relative;">
+                        <input type="text" placeholder="חיפוש הוצאות (למשל: סופר)..." 
+                            oninput="handleInsightSearch(this.value)"
+                            style="width:100%; padding:10px 15px; border-radius:12px; border:1px solid #E0E7FF; background:white;">
+                        <div id="advisorSearchRes" style="display:none; position:absolute; top:45px; left:0; right:0; background:white; border:1px solid #E0E7FF; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:10; max-height:200px; overflow-y:auto;"></div>
+                    </div>
 
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         ${smartTips.map(tip => `
