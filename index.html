@@ -40,10 +40,15 @@
             if (menuToggle) menuToggle.checked = isLocked;
 
             // Init Low Power Mode
-            const isLowPower = localStorage.getItem('lowPowerMode') === 'true';
-            if (isLowPower) document.body.classList.add('low-power');
+            const lowPower = localStorage.getItem('lowPowerMode') === 'true';
             const lpToggle = document.getElementById('lowPowerMenuToggle');
-            if (lpToggle) lpToggle.checked = isLowPower;
+            if (lpToggle) lpToggle.checked = lowPower;
+            toggleLowPower(lowPower);
+
+            // Init Notification Toggle State
+            const notifEnabled = localStorage.getItem('notificationsEnabled') === 'true';
+            const notifToggle = document.getElementById('notifMenuToggle');
+            if (notifToggle) notifToggle.checked = notifEnabled;
 
             // Init Biometrics UI
             if (isLocked && window.PublicKeyCredential) {
@@ -1029,6 +1034,15 @@
                                 <span class="slider round"></span>
                             </label>
                         </div>
+                        <div class="dropdown-item"
+                            style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                            <span style="display:flex; gap:8px;">🔔 התראות חכמות</span>
+                            <label class="switch" style="margin:0; transform:scale(0.9);">
+                                <input type="checkbox" id="notifMenuToggle"
+                                    onchange="toggleNotifications(this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
 
                         <button onclick="registerBiometrics()" class="dropdown-item" id="bioRegBtn"
                             style="display:none;">
@@ -1529,6 +1543,71 @@
 
         const firebaseConfig = { apiKey: "AIzaSyB43p2CQBgAfhs1pDS9nVBM2o5Ty4-3aeU", authDomain: "expensetrackerpro-d216d.firebaseapp.com", projectId: "expensetrackerpro-d216d" };
         const app = initializeApp(firebaseConfig);
+        window.toggleNotifications = async (isChecked) => {
+            if (isChecked) {
+                if (!("Notification" in window)) {
+                    showToast("הדפדפן שלך לא תומך בהתראות", "error");
+                    document.getElementById('notifMenuToggle').checked = false;
+                    return;
+                }
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    localStorage.setItem('notificationsEnabled', 'true');
+                    showToast("התראות הופעלו! 🎉", "success");
+                    // Test notification
+                    new Notification("תקציב חכם", { body: "התראות פעילות! נעדכן אותך על חריגות ותשלומים.", icon: "./icon.png" });
+                } else {
+                    localStorage.setItem('notificationsEnabled', 'false');
+                    document.getElementById('notifMenuToggle').checked = false;
+                    showToast("דרוש אישור להצגת התראות", "warning");
+                }
+            } else {
+                localStorage.setItem('notificationsEnabled', 'false');
+                showToast("התראות כבויות", "info");
+            }
+        };
+
+        window.checkSmartNotifications = () => {
+            if (localStorage.getItem('notificationsEnabled') !== 'true') return;
+            if (localStorage.getItem('lowPowerMode') === 'true') return; // Save battery
+
+            const now = new Date().getTime();
+            const lastCheck = parseInt(localStorage.getItem('lastNotifCheck') || '0');
+            // Check only once every 6 hours to avoid spam
+            if (now - lastCheck < 6 * 60 * 60 * 1000) return;
+
+            // 1. Check Budget Alerts (>90%)
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            cats.forEach(c => {
+                if (c.budget > 0) {
+                    const spent = txs.filter(t => t.catId === c.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    const perc = spent / c.budget;
+                    if (perc >= 0.9 && perc < 1.0) {
+                        new Notification("⚠️ התקרבות לחריגה", { body: `ניצלת ${Math.round(perc * 100)}% מהתקציב בקטגוריה ${c.name}`, icon: "./icon.png" });
+                    } else if (perc >= 1.0) {
+                        new Notification("🚨 חריגה מתקציב", { body: `עברת את התקציב בקטגוריה ${c.name}!`, icon: "./icon.png" });
+                    }
+                }
+            });
+
+            // 2. Check Recurring Bills (Due Tomorrow or Today)
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+            recurring.forEach(r => {
+                if (r.nextDate === todayStr) {
+                    new Notification("📅 תשלום היום", { body: `אל תשכח: ${r.name} על סך ₪${r.amount} יורד היום.`, icon: "./icon.png" });
+                } else if (r.nextDate === tomorrowStr) {
+                    new Notification("📅 תשלום מחר", { body: `תזכורת: ${r.name} על סך ₪${r.amount} יורד מחר.`, icon: "./icon.png" });
+                }
+            });
+
+            localStorage.setItem('lastNotifCheck', now.toString());
+        };
+
         const auth = getAuth(app);
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
@@ -2120,6 +2199,11 @@
             // 3. Calculate Totals (Always based on Month)
             let totalBudget = 0;
             let totalSpent = 0;
+
+            // Trigger Notifications Check (Throttled)
+            if (cats.length && txs.length) {
+                checkSmartNotifications();
+            }
 
             // Render Categories (Always based on Month)
             document.getElementById('catList').innerHTML = cats.map(c => {
