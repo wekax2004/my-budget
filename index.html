@@ -1032,7 +1032,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.5</div>
+                v31.11.6</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1107,7 +1107,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.5
+                            v31.11.6
                         </div>
                     </div>
                 </div>
@@ -3061,6 +3061,35 @@
             window.scannedDate = null;
 
             try {
+                // --- Pre-Calculate Budget Impact (Fix Race Condition & Double Counting) ---
+                let percent = 0;
+                let catName = "";
+                const cat = cats.find(c => c.id === window.currentCatId);
+
+                if (cat && cat.budget > 0) {
+                    catName = cat.name;
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+
+                    // 1. Calc existing spent (from currently loaded txs)
+                    let existingSpent = txs
+                        .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
+                        .reduce((s, t) => s + t.amount, 0);
+
+                    // 2. Adjust for Edit Mode (Subtract old amount if it exists in this calc)
+                    if (editMode.active && editMode.id) {
+                        const oldTx = txs.find(t => t.id === editMode.id);
+                        // Only subtract if the old tx was indeed contributing to this category/month sum
+                        if (oldTx && oldTx.catId === cat.id && oldTx.jsDate.toISOString().slice(0, 7) === currentMonth) {
+                            existingSpent -= oldTx.amount;
+                        }
+                    }
+
+                    // 3. Add NEW amount to see projected total
+                    const newTotal = existingSpent + converted;
+                    percent = (newTotal / cat.budget) * 100;
+                }
+                // --------------------------------------------------------
+
                 if (editMode.active) {
                     await updateDoc(doc(db, "transactions", editMode.id), data);
                     logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
@@ -3070,30 +3099,14 @@
                 }
                 showToast('הוצאה נשמרה בהצלחה', 'success');
 
-                // --- Real-Time Budget Alert ---
-                const cat = cats.find(c => c.id === window.currentCatId);
-                if (cat && cat.budget > 0) {
-                    const currentMonth = new Date().toISOString().slice(0, 7);
-                    // Calc existing spent
-                    const existingSpent = txs
-                        .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
-                        .reduce((s, t) => s + t.amount, 0);
-
-                    // Add NEW amount (approximate, since we just added it to DB but local 'txs' array might not be synced yet)
-                    // Actually, 'txs' array updates via onSnapshot, which is async. 
-                    // So 'existingSpent' here likely DOES NOT include the new one yet (latency).
-                    // We should add 'converted' manually for the check.
-
-                    const newTotal = existingSpent + converted;
-                    const percent = (newTotal / cat.budget) * 100;
-
+                // --- Trigger Real-Time Alert (Using pre-calculated percent) ---
+                if (percent > 0) {
                     if (percent > 100) {
-                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'error'), 1000);
+                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${catName}`, 'error'), 1000);
                     } else if (percent > 90) {
-                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${cat.name}`, 'warning'), 1000);
+                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${catName}`, 'warning'), 1000);
                     }
                 }
-                // ------------------------------
             } catch (e) {
                 console.error(e);
                 closeModal(); // Close modal immediately before showing error
