@@ -19,6 +19,11 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
+                // Check if origin is supported (http/https) to avoid 'null' error
+                if (window.location.protocol === 'file:' || window.location.origin === "null") {
+                    console.log("Service Worker disabled on local file system.");
+                    return;
+                }
                 navigator.serviceWorker.register('./sw.js')
                     .then(reg => console.log('SW Registered!', reg))
                     .catch(err => console.log('SW Failed:', err));
@@ -112,6 +117,10 @@
         // --- WebAuthn (Biometrics) Logic ---
         // Simple client-side implementation for V1 God Mode
         window.registerBiometrics = async () => {
+            // Securty Check: WebAuthn requires HTTPS or localhost
+            if (!window.isSecureContext) {
+                return showToast("שגיאה! ביומטרי מחייב HTTPS או Localhost.", "error");
+            }
             if (!window.PublicKeyCredential) return showToast("המכשיר לא תומך בביומטרי", "error");
 
             try {
@@ -146,6 +155,10 @@
         };
 
         window.checkBiometrics = async () => {
+            if (!window.isSecureContext) {
+                console.log("Skipping Biometrics: Insecure Context");
+                return;
+            }
             if (!window.PublicKeyCredential) return;
 
             const savedId = localStorage.getItem('bioCredentialId');
@@ -1131,7 +1144,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.9</div>
+                v31.11.10</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1196,6 +1209,11 @@
                             </label>
                         </div>
 
+                        <button onclick="document.getElementById('settingsModal').style.display='flex'"
+                            class="dropdown-item">
+                            <span>⚙️</span> הגדרות
+                        </button>
+
                         <button onclick="registerBiometrics()" class="dropdown-item" id="bioRegBtn"
                             style="display:none;">
                             <span>🧬</span> רישום ביומטרי
@@ -1206,7 +1224,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.9
+                            v31.11.10
                         </div>
                     </div>
                 </div>
@@ -1497,6 +1515,14 @@
                 style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">תיאור</label>
             <input type="text" id="expNote" placeholder="על מה יצא הכסף?">
 
+            <!-- Smart Rule Checkbox -->
+            <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="saveRule" style="width:16px; height:16px;">
+                <label for="saveRule" style="font-size:12px; color:var(--text-sub); cursor:pointer;">
+                    🧠 זכור סיווג זה עבור ייבוא עתידי
+                </label>
+            </div>
+
             <label
                 style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
                 תשלום</label>
@@ -1690,7 +1716,67 @@
         </div>
     </div>
 
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>הגדרות ⚙️</h3>
+                <span class="close-btn" onclick="closeModal('settingsModal')">&times;</span>
+            </div>
+
+            <h4 style="margin-bottom:10px;">ערכת נושא 🎨</h4>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button onclick="setTheme('default')"
+                    style="width:40px; height:40px; border-radius:50%; background:#4F46E5; border:2px solid white; box-shadow:0 0 0 2px #4F46E5; cursor:pointer;"
+                    title="Classic Blue"></button>
+                <button onclick="setTheme('midnight')"
+                    style="width:40px; height:40px; border-radius:50%; background:#7C3AED; border:2px solid white; box-shadow:0 0 0 2px #7C3AED; cursor:pointer;"
+                    title="Midnight Purple"></button>
+                <button onclick="setTheme('forest')"
+                    style="width:40px; height:40px; border-radius:50%; background:#059669; border:2px solid white; box-shadow:0 0 0 2px #059669; cursor:pointer;"
+                    title="Forest Green"></button>
+                <button onclick="setTheme('ocean')"
+                    style="width:40px; height:40px; border-radius:50%; background:#0891B2; border:2px solid white; box-shadow:0 0 0 2px #0891B2; cursor:pointer;"
+                    title="Ocean Teal"></button>
+                <button onclick="setTheme('dark')"
+                    style="width:40px; height:40px; border-radius:50%; background:#1F2937; border:2px solid white; box-shadow:0 0 0 2px #1F2937; cursor:pointer;"
+                    title="Dark Mode"></button>
+            </div>
+
+            <h4 style="margin-bottom:10px;">ניהול נתונים 💾</h4>
+            <button onclick="exportToCSV()" class="btn-secondary" style="width:100%; margin-bottom:10px;">📥 ייצוא
+                ל-CSV</button>
+            <button onclick="document.getElementById('importConfirm').style.display='block'" class="btn-secondary"
+                style="width:100%; color:var(--danger); border-color:var(--danger);">🗑️ מחיקת כל הנתונים</button>
+            <div id="importConfirm"
+                style="display:none; margin-top:10px; padding:10px; background:#FEF2F2; border-radius:8px;">
+                <div style="font-size:12px; color:var(--danger); margin-bottom:5px;">זהירות! פעולה זו תמחק את כל המידע
+                    המקומי.</div>
+                <button onclick="localStorage.clear(); window.location.reload();"
+                    style="background:var(--danger); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:12px; cursor:pointer;">כן,
+                    מחק הכל</button>
+            </div>
+
+            <div style="margin-top:20px; text-align:center; font-size:12px; color:var(--text-sub);">
+                BudgetMaster Pro v31.11.9
+            </div>
+        </div>
+    </div>
+
     <script type="module">
+        // --- GLOBAL UTILS (Hoisted) ---
+        window.showToast = (msg, type = 'success') => {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'fadeOutToast 0.5s ease forwards';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        };
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, query, where, onSnapshot, addDoc, doc, deleteDoc, updateDoc, arrayUnion, Timestamp, orderBy, limit, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -1798,6 +1884,37 @@
 
         // Offline Status Listener
         window.addEventListener('offline', () => showToast('🔌 אין חיבור אינטרנט. עובד במצב אופליין.', 'warning'));
+
+        // --- THEMES ENGINE 🎨 ---
+        window.setTheme = (themeName) => {
+            const root = document.documentElement;
+            // Presets
+            const themes = {
+                default: { primary: '#4F46E5', bg: '#F3F4F6', card: '#FFFFFF', text: '#1F2937', sub: '#6B7280' },
+                midnight: { primary: '#7C3AED', bg: '#111827', card: '#1F2937', text: '#F9FAFB', sub: '#9CA3AF' },
+                forest: { primary: '#059669', bg: '#ECFDF5', card: '#FFFFFF', text: '#064E3B', sub: '#047857' },
+                ocean: { primary: '#0891B2', bg: '#ECFEFF', card: '#FFFFFF', text: '#164E63', sub: '#0E7490' },
+                dark: { primary: '#6366F1', bg: '#000000', card: '#121212', text: '#E5E7EB', sub: '#9CA3AF' } // OLED Black
+            };
+
+            const t = themes[themeName] || themes.default;
+
+            root.style.setProperty('--primary', t.primary);
+            root.style.setProperty('--bg', t.bg);
+            root.style.setProperty('--card-bg', t.card);
+            root.style.setProperty('--text-main', t.text);
+            root.style.setProperty('--text-sub', t.sub);
+
+            // Adjust secondary colors based on primary for harmony? 
+            // For now simple override.
+
+            localStorage.setItem('appTheme', themeName);
+            showToast(`ערכת נושא השתנתה: ${themeName}`, 'success');
+        };
+
+        // Load Theme on Init
+        const savedTheme = localStorage.getItem('appTheme');
+        if (savedTheme) window.setTheme(savedTheme);
         window.addEventListener('online', () => showToast('🌐 החיבור חזר!', 'success'));
 
         // Theme Init
@@ -1812,18 +1929,7 @@
             localStorage.setItem('theme', target);
         };
 
-        window.showToast = (msg, type = 'success') => {
-            const container = document.getElementById('toastContainer');
-            if (!container) return; // safety
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerText = msg;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'fadeOutToast 0.5s ease forwards';
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
-        };
+        // window.showToast was hoisted to top
 
         window.hardResetApp = async () => {
             if (!confirm("פעולה זו תרענן את האפליקציה ותנקה זיכרון מטמון. האם להמשיך?")) return;
@@ -3210,6 +3316,20 @@
                 }
                 // --------------------------------------------------------
 
+                // --- SAVE SMART RULE 🧠 ---
+                const saveRule = document.getElementById('saveRule').checked;
+                const noteVal = document.getElementById('expNote').value.trim();
+                if (saveRule && noteVal && !editMode.active) {
+                    try {
+                        let rules = JSON.parse(localStorage.getItem('importRules') || '{}');
+                        rules[noteVal] = window.currentCatId;
+                        localStorage.setItem('importRules', JSON.stringify(rules));
+                        showToast('🧠 החוק נשמר!', 'success');
+                    } catch (e) { console.error(e); }
+                }
+                document.getElementById('saveRule').checked = false; // Reset
+                // -------------------------
+
                 if (editMode.active) {
                     await updateDoc(doc(db, "transactions", editMode.id), data);
                     logEvent("TX_EDIT", { id: editMode.id, amt: data.amount });
@@ -3504,6 +3624,14 @@
             const file = input.files[0];
             if (!file) return;
 
+            // Load Smart Rules
+            let smartRules = {};
+            try {
+                smartRules = JSON.parse(localStorage.getItem('importRules') || '{}');
+            } catch (e) {
+                console.error("Failed to load smart rules", e);
+            }
+
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const text = e.target.result;
@@ -3523,6 +3651,7 @@
                 try {
                     const batch = writeBatch(db);
                     let count = 0;
+                    let rulesApplied = 0;
 
                     // Get General Category ID or first available
                     const defaultCatId = cats[0]?.id;
@@ -3546,13 +3675,30 @@
                         const partner = localStorage.getItem('partnerEmail');
                         if (partner) allowed.push(partner);
 
+                        // --- SMART RULE LOGIC 🧠 ---
+                        let assignedCatId = defaultCatId;
+                        let matchedRule = false;
+
+                        // Check exact matches or includes
+                        for (const [key, ruleCatId] of Object.entries(smartRules)) {
+                            if (note.toLowerCase().includes(key.toLowerCase())) {
+                                assignedCatId = ruleCatId;
+                                matchedRule = true;
+                                rulesApplied++;
+                                break; // Take first match
+                            }
+                        }
+
+                        // Auto-learn? No, that's dangerous. Let user teach manually explicitly (Phase 2).
+                        // -----------------------------
+
                         const docRef = doc(collection(db, "transactions"));
                         batch.set(docRef, {
                             date: Timestamp.fromDate(date),
                             amount: Math.abs(amount), // Assume expense
                             originalAmount: Math.abs(amount),
                             currency: 'ILS', // Default
-                            catId: defaultCatId,
+                            catId: assignedCatId,
                             note: note,
                             method: '💳 אשראי',
                             allowedUsers: allowed
@@ -3561,7 +3707,9 @@
                     }
 
                     await batch.commit();
-                    showToast(`נשמרו ${count} הוצאות בהצלחה!`, 'success');
+                    let msg = `נשמרו ${count} הוצאות בהצלחה!`;
+                    if (rulesApplied > 0) msg += ` (ו- ${rulesApplied} סווגו אוטומטית 🧠)`;
+                    showToast(msg, 'success');
                     input.value = ''; // Reset
                 } catch (err) {
                     console.error(err);
