@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-master-v31.11.4';
+const CACHE_NAME = 'budget-master-v31.11.5';
 const STATIC_ASSETS = [
     "./",
     "./index.html",
