@@ -597,6 +597,105 @@
             overflow: hidden;
         }
 
+        /* --- Micro-Animations --- */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInWidth {
+            from {
+                width: 0;
+            }
+
+            to {
+                width: 100%;
+            }
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .animate-slide-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+            opacity: 0;
+        }
+
+        /* Opacity 0 to start */
+        .animate-pop {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .animate-width {
+            width: 0;
+            animation: slideInWidth 1s ease-out forwards;
+        }
+
+        /* Width handled in JS, but this is helper */
+
+        /* Staggered Delays (up to 10 items) */
+        .delay-100 {
+            animation-delay: 0.05s;
+        }
+
+        .delay-200 {
+            animation-delay: 0.1s;
+        }
+
+        .delay-300 {
+            animation-delay: 0.15s;
+        }
+
+        .delay-400 {
+            animation-delay: 0.2s;
+        }
+
+        .delay-500 {
+            animation-delay: 0.25s;
+        }
+
         .progress-fill {
             height: 100%;
             border-radius: 4px;
@@ -1032,7 +1131,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.8</div>
+                v31.11.9</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1107,7 +1206,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.8
+                            v31.11.9
                         </div>
                     </div>
                 </div>
@@ -2264,7 +2363,7 @@
             }
 
             // Render Categories (Always based on Month)
-            document.getElementById('catList').innerHTML = cats.map(c => {
+            document.getElementById('catList').innerHTML = cats.map((c, index) => {
                 const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
                 totalBudget += c.budget;
                 totalSpent += catSpent;
@@ -2276,9 +2375,12 @@
                 // If user has a custom color, use it. Otherwise use the calculated status color.
                 const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
 
+                // Animation Delay Logic
+                const delayClass = `delay-${Math.min((index + 1) * 100, 500)}`;
+
                 return `
-                <div class="cat-item">
-                    <div class="cat-progress-slim" style="width:${perc}%; background:${color}"></div>
+                <div class="cat-item animate-slide-up ${delayClass}">
+                    <div class="cat-progress-slim" style="width:${perc}%; background:${color}; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                     
                     <div class="cat-main-click" onclick="openAddTx('${c.id}', '${c.name}')">
                         <div class="cat-icon-box" style="background:${c.color ? c.color + '20' : '#EEF2FF'}; color:${c.color || 'var(--primary)'}">
@@ -3010,7 +3112,16 @@
             document.getElementById('expNote').value = tx.note;
             document.getElementById('pMethod').value = tx.method;
             document.getElementById('delTxBtn').style.display = 'block'; // Show delete btn
-            document.getElementById('expModal').style.display = 'flex';
+
+            const modal = document.getElementById('expModal');
+            modal.style.display = 'flex';
+            modal.querySelector('.modal-content').classList.add('animate-pop');
+            // Remove class after animation to allow re-trigger? 
+            // Better to just add it. If it was already there, removing/adding forces reflow?
+            // Simple hack: remove then add
+            modal.querySelector('.modal-content').classList.remove('animate-pop');
+            void modal.offsetWidth; // Trigger reflow
+            modal.querySelector('.modal-content').classList.add('animate-pop');
         };
 
         window.openAddTx = (id, name) => {
@@ -3021,7 +3132,13 @@
             document.getElementById('fCurr').value = "ILS";
             document.getElementById('expNote').value = "";
             document.getElementById('delTxBtn').style.display = 'none'; // Hide delete btn
-            document.getElementById('expModal').style.display = 'flex';
+
+            const modal = document.getElementById('expModal');
+            modal.style.display = 'flex';
+            modal.querySelector('.modal-content').classList.remove('animate-pop');
+            void modal.offsetWidth;
+            modal.querySelector('.modal-content').classList.add('animate-pop');
+
             document.getElementById('fAmt').focus();
         };
 
