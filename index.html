@@ -1032,7 +1032,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.6</div>
+                v31.11.7</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1107,7 +1107,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.6
+                            v31.11.7
                         </div>
                     </div>
                 </div>
@@ -1631,16 +1631,19 @@
             // Check only once every 6 hours to avoid spam
             if (now - lastCheck < 6 * 60 * 60 * 1000) return;
 
-            // 1. Check Budget Alerts (>90%)
+            // 1. Check Budget Alerts (Align with new 50/80/100 logic? Or just Critical?)
+            // Background check is "catch up". Let's alert only on Critical (>90%) to avoid late spam for 50%.
+            // User requested "popups" when added (handled above).
+            // Let's keep this as a "Safety Net" for high usage.
             const currentMonth = new Date().toISOString().slice(0, 7);
             cats.forEach(c => {
                 if (c.budget > 0) {
                     const spent = txs.filter(t => t.catId === c.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
                         .reduce((sum, t) => sum + t.amount, 0);
                     const perc = spent / c.budget;
-                    if (perc >= 0.9 && perc < 1.0) {
-                        new Notification("⚠️ התקרבות לחריגה", { body: `ניצלת ${Math.round(perc * 100)}% מהתקציב בקטגוריה ${c.name}`, icon: "./icon.png" });
-                    } else if (perc >= 1.0) {
+
+                    // Only annoying alert if REALLY critical
+                    if (perc >= 1.0) {
                         new Notification("🚨 חריגה מתקציב", { body: `עברת את התקציב בקטגוריה ${c.name}!`, icon: "./icon.png" });
                     }
                 }
@@ -3099,12 +3102,47 @@
                 }
                 showToast('הוצאה נשמרה בהצלחה', 'success');
 
-                // --- Trigger Real-Time Alert (Using pre-calculated percent) ---
-                if (percent > 0) {
-                    if (percent > 100) {
-                        setTimeout(() => showToast(`🚨 חריגה! הגעת ל-${Math.round(percent)}% מתקציב ${catName}`, 'error'), 1000);
-                    } else if (percent > 90) {
-                        setTimeout(() => showToast(`⚠️ שים לב: הגעת ל-${Math.round(percent)}% מתקציב ${catName}`, 'warning'), 1000);
+                // --- Trigger Real-Time Alert (Threshold Crossing) ---
+                if (cat && cat.budget > 0) {
+                    // Logic: Alert only if we CROSSED a threshold this time
+                    // We need 'existingSpent' (calculated above).
+                    // BUT 'existingSpent' above included the 'editMode' adjustment.
+                    // Let's rely on 'percent' calculated above being the NEW state.
+                    // We need to calculate OLD state to know if we crossed.
+
+                    // Re-calculate OLD percent
+                    // Note: 'existingSpent' above was: (DB_Spent - Old_Tx_If_Edit). 
+                    // So 'existingSpent' effectively REPRESENTS the "Before this action" state?
+                    // YES. 'existingSpent' in the block above represents value BEFORE adding 'converted'.
+
+                    // So:
+                    // Old_State = existingSpent
+                    // New_State = existingSpent + converted (which is newTotal used for 'percent')
+
+                    const oldPerc = (existingSpent / cat.budget) * 100;
+                    const newPerc = percent; // Calculated above
+
+                    let alertMsg = "";
+                    let alertType = "info";
+
+                    // Check Thresholds
+                    if (oldPerc < 50 && newPerc >= 50) {
+                        alertMsg = `📢 שים לב: הגעת ל-50% מתקציב ${catName}`;
+                        alertType = "info";
+                    } else if (oldPerc < 80 && newPerc >= 80) {
+                        alertMsg = `⚠️ זהירות: הגעת ל-80% מתקציב ${catName}`;
+                        alertType = "warning";
+                    } else if (oldPerc < 100 && newPerc >= 100) {
+                        alertMsg = `🚨 עצור! ניצלת 100% מתקציב ${catName}`;
+                        alertType = "error";
+                    }
+
+                    if (alertMsg) {
+                        setTimeout(() => showToast(alertMsg, alertType), 800);
+                        // Optional: Fire notification as well?
+                        if (Notification.permission === 'granted' && localStorage.getItem('notificationsEnabled') === 'true') {
+                            new Notification("עדכון תקציב", { body: alertMsg, icon: "./icon.png" });
+                        }
                     }
                 }
             } catch (e) {
