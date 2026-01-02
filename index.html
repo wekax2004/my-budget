@@ -1032,7 +1032,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.7</div>
+                v31.11.8</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1107,7 +1107,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.7
+                            v31.11.8
                         </div>
                     </div>
                 </div>
@@ -2280,7 +2280,7 @@
                 <div class="cat-item">
                     <div class="cat-progress-slim" style="width:${perc}%; background:${color}"></div>
                     
-                    <div class="cat-main-click" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')">
+                    <div class="cat-main-click" onclick="openAddTx('${c.id}', '${c.name}')">
                         <div class="cat-icon-box" style="background:${c.color ? c.color + '20' : '#EEF2FF'}; color:${c.color || 'var(--primary)'}">
                             ${icon}
                         </div>
@@ -2292,8 +2292,8 @@
                         </div>
                     </div>
 
-                    <button class="add-mini-btn" onclick="openAddTx('${c.id}', '${c.name}')" title="הוסף הוצאה">
-                        +
+                    <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
+                        ⚙️
                     </button>
                 </div>`;
             }).join('');
