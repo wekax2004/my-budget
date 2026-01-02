@@ -1032,7 +1032,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.4</div>
+                v31.11.5</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1107,7 +1107,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.4
+                            v31.11.5
                         </div>
                     </div>
                 </div>
@@ -2836,9 +2836,14 @@
             }
 
             // 4. Colors
-            // Use category colors or fallback palette
+            // FORCE distinct palette colors for the chart so segments are readable, 
+            // even if user assigned the same color to multiple categories.
             const palette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-            const bgColors = finalData.map((item, i) => item.color || palette[i % palette.length]);
+            // 'Other' always gets Grey (#9CA3AF) if it exists
+            const bgColors = finalData.map((item, i) => {
+                if (item.name === 'אחר') return '#9CA3AF';
+                return palette[i % palette.length];
+            });
 
             pieChartInstance = new Chart(ctx, {
                 type: 'doughnut',
