@@ -1032,7 +1032,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.3</div>
+                v31.11.4</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1107,7 +1107,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.3
+                            v31.11.4
                         </div>
                     </div>
                 </div>
@@ -2813,16 +2813,40 @@
 
             if (pieChartInstance) pieChartInstance.destroy();
 
-            const data = cats.map(c => dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0));
-            const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+            // 1. Calculate totals per category
+            let catTotals = cats.map(c => {
+                return {
+                    name: c.name,
+                    amount: dataTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0),
+                    color: c.color // Use user's category color if available
+                };
+            }).filter(c => c.amount > 0);
+
+            // 2. Sort by amount (desc)
+            catTotals.sort((a, b) => b.amount - a.amount);
+
+            // 3. Group into Top 5 + Other
+            let finalData = [];
+            if (catTotals.length > 5) {
+                const top5 = catTotals.slice(0, 5);
+                const otherAmt = catTotals.slice(5).reduce((s, c) => s + c.amount, 0);
+                finalData = [...top5, { name: 'אחר', amount: otherAmt, color: '#9CA3AF' }];
+            } else {
+                finalData = catTotals;
+            }
+
+            // 4. Colors
+            // Use category colors or fallback palette
+            const palette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+            const bgColors = finalData.map((item, i) => item.color || palette[i % palette.length]);
 
             pieChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: cats.map(c => c.name),
+                    labels: finalData.map(c => c.name),
                     datasets: [{
-                        data,
-                        backgroundColor: colors,
+                        data: finalData.map(c => c.amount),
+                        backgroundColor: bgColors,
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -2830,9 +2854,23 @@
                 options: {
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom', labels: { font: { family: 'Rubik' }, boxWidth: 10 } }
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { family: 'Rubik' },
+                                boxWidth: 12,
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.label}: ₪${ctx.raw.toLocaleString()}`
+                            }
+                        }
                     },
-                    cutout: '70%'
+                    cutout: '65%',
+                    layout: { padding: 10 }
                 }
             });
         }
