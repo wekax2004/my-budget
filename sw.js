@@ -45,6 +45,12 @@ self.addEventListener("fetch", (e) => {
     }
 
     // 2. Default -> Network First (Safe for index.html updates)
+    // IMPORTANT: Only cache GET requests!
+    if (e.request.method !== 'GET') {
+        e.respondWith(fetch(e.request));
+        return;
+    }
+
     e.respondWith(
         fetch(e.request).then((res) => {
             const clone = res.clone();

@@ -1593,6 +1593,25 @@
         </div>
     </div>
 
+    <!-- Category History Modal -->
+    <div id="categoryHistoryModal" class="modal">
+        <div class="modal-content" style="max-height:80vh; display:flex; flex-direction:column;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <div>
+                    <h3 id="histCatName" style="margin:0;">היסטוריית קטגוריה</h3>
+                    <div id="histCatTotal" style="font-size:14px; color:var(--text-sub);">סה"כ: ₪0</div>
+                </div>
+                <button onclick="document.getElementById('categoryHistoryModal').style.display='none'"
+                    style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+
+            <div id="histContent" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px;">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
     <!-- Category Modal -->
     <div id="catModal" class="modal">
         <div class="modal-content">
@@ -2500,9 +2519,16 @@
                         </div>
                     </div>
 
-                    <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
-                        ⚙️
-                    </button>
+                    </div>
+
+                    <div style="display:flex; align-items:center;">
+                        <button class="add-mini-btn" onclick="openCategoryHistory('${c.id}')" title="היסטוריית תנועות" style="font-size:14px; background:none; color:var(--text-sub); border:none; margin-left:5px;">
+                            📜
+                        </button>
+                        <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
+                            ⚙️
+                        </button>
+                    </div>
                 </div>`;
             }).join('');
 
@@ -2935,6 +2961,45 @@
             // render();
         }
 
+            // Trigger render to update chips/charts if this changes
+            // render();
+        }
+
+        // --- Category History Logic ---
+        window.openCategoryHistory = (catId) => {
+            const cat = cats.find(c => c.id === catId);
+            if (!cat) return;
+
+            // correct month filtering
+            const targetMonth = currentYearMonth; // Global state
+
+            const histTxs = txs.filter(t => t.catId === catId && t.date.toDate().toISOString().startsWith(targetMonth));
+            const total = histTxs.reduce((sum, t) => sum + t.amount, 0);
+
+            // Populate Modal
+            document.getElementById('histCatName').innerText = `${cat.name} (${cat.icon || '📁'})`;
+            document.getElementById('histCatTotal').innerText = `סה"כ לחודש זה: ₪${Math.round(total).toLocaleString()}`;
+
+            const container = document.getElementById('histContent');
+            if (histTxs.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-sub);">אין פעילות בקטגוריה זו החודש</div>`;
+            } else {
+                container.innerHTML = histTxs.sort((a, b) => b.jsDate - a.jsDate).map(t => `
+                    <div style="background:var(--bg); border-radius:10px; padding:10px 15px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:500;">${t.note || 'ללא תיאור'}</div>
+                            <div style="font-size:12px; color:var(--text-sub);">
+                                ${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })} • ${t.method}
+                            </div>
+                        </div>
+                        <div style="font-weight:600; color:var(--text-main);">₪${Math.round(t.amount).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('categoryHistoryModal').style.display = 'flex';
+        };
+
         // Chart instances
         let barChartInstance = null;
         let pieChartInstance = null;
@@ -3290,6 +3355,7 @@
                 // --- Pre-Calculate Budget Impact (Fix Race Condition & Double Counting) ---
                 let percent = 0;
                 let catName = "";
+                let existingSpent = 0;
                 const cat = cats.find(c => c.id === window.currentCatId);
 
                 if (cat && cat.budget > 0) {
@@ -3297,7 +3363,7 @@
                     const currentMonth = new Date().toISOString().slice(0, 7);
 
                     // 1. Calc existing spent (from currently loaded txs)
-                    let existingSpent = txs
+                    existingSpent = txs
                         .filter(t => t.catId === cat.id && t.jsDate.toISOString().slice(0, 7) === currentMonth)
                         .reduce((s, t) => s + t.amount, 0);
 
