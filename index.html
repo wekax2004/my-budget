@@ -24,11 +24,48 @@
                     console.log("Service Worker disabled on local file system.");
                     return;
                 }
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW Registered!', reg))
+
+                // Unregister old workers to force update
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    for (let registration of registrations) {
+                        // Optional: Force unregister if stuck
+                    }
+                });
+
+                navigator.serviceWorker.register('./sw.js?v=2.1')
+                    .then(reg => {
+                        console.log('SW Registered!', reg);
+
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        // New update available
+                                        if (confirm("גרסה חדשה (v2.1) זמינה! לרענן עכשיו?")) {
+                                            window.location.reload();
+                                        }
+                                    }
+                                }
+                            };
+                        };
+                    })
                     .catch(err => console.log('SW Failed:', err));
             });
         }
+
+        window.forceRefresh = () => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                    window.location.reload();
+                });
+            } else {
+                window.location.reload();
+            }
+        };
 
         // --- App Lock Logic ---
         const APP_PIN = "1234"; // Hardcoded for V1 simplicity
@@ -215,6 +252,8 @@
             style="position:absolute; bottom:-8px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:8px solid rgba(0,0,0,0.85);">
         </div>
     </div>
+    <div style="position:fixed; bottom:2px; left:2px; font-size:10px; opacity:0.3; pointer-events:none; z-index:9999;">
+        v2.0</div>
     <style>
         :root {
             --primary: #4F46E5;
@@ -4248,41 +4287,7 @@
 
         // End of script
     </script>
-    <script>
-        // NUCLEAR CACHE BUSTING & SW REGISTRATION
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    for (let registration of registrations) {
-                        // Optional: Unregister everything first to be safe
-                        // registration.unregister();
-                    }
 
-                    navigator.serviceWorker.register('./sw.js').then(registration => {
-                        console.log('SW Registered: ', registration);
-
-                        registration.onupdatefound = () => {
-                            const installingWorker = registration.installing;
-                            installingWorker.onstatechange = () => {
-                                if (installingWorker.state === 'installed') {
-                                    if (navigator.serviceWorker.controller) {
-                                        console.log('New content available; please refresh.');
-                                        if (confirm("עדכון זמין! האם לרענן כעת?")) {
-                                            window.location.reload();
-                                        }
-                                    } else {
-                                        console.log('Content is cached for offline use.');
-                                    }
-                                }
-                            };
-                        };
-                    }).catch(registrationError => {
-                        console.log('SW registration failed: ', registrationError);
-                    });
-                });
-            });
-        }
-    </script>
 </body>
 
 </html>
