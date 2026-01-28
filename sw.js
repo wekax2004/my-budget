@@ -1,7 +1,5 @@
-const CACHE_NAME = 'budget-master-v31.11.14';
+const CACHE_NAME = 'budget-master-v31.11.17';
 const STATIC_ASSETS = [
-    "./",
-    "./index.html",
     "./manifest.json",
     "./icon.png",
     "https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap",
@@ -45,6 +43,12 @@ self.addEventListener("fetch", (e) => {
     }
 
     // 2. Default -> Network First (Safe for index.html updates)
+    // IMPORTANT: Only cache GET requests!
+    if (e.request.method !== 'GET') {
+        e.respondWith(fetch(e.request));
+        return;
+    }
+
     e.respondWith(
         fetch(e.request).then((res) => {
             const clone = res.clone();
