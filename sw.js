@@ -1,7 +1,5 @@
-const CACHE_NAME = 'budget-master-v31.11.14';
+const CACHE_NAME = 'budget-master-v31.11.17';
 const STATIC_ASSETS = [
-    "./",
-    "./index.html",
     "./manifest.json",
     "./icon.png",
     "https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap",

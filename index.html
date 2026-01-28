@@ -32,7 +32,7 @@
                     }
                 });
 
-                navigator.serviceWorker.register('./sw.js?v=2.1')
+                navigator.serviceWorker.register('./sw.js?v=2.5')
                     .then(reg => {
                         console.log('SW Registered!', reg);
 
@@ -252,8 +252,10 @@
             style="position:absolute; bottom:-8px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:8px solid rgba(0,0,0,0.85);">
         </div>
     </div>
-    <div style="position:fixed; bottom:2px; left:2px; font-size:10px; opacity:0.3; pointer-events:none; z-index:9999;">
-        v2.0</div>
+    <div onclick="forceRefresh()"
+        style="position:fixed; bottom:5px; left:5px; font-size:12px; opacity:0.6; z-index:9999; cursor:pointer; background:rgba(0,0,0,0.5); color:white; padding:4px 8px; border-radius:10px;">
+        v2.5 (לחץ לניקוי מטמון)
+    </div>
     <style>
         :root {
             --primary: #4F46E5;
@@ -1183,7 +1185,7 @@
         <div class="auth-card">
             <h2>BudgetMaster Pro</h2>
             <div style="font-size:12px; opacity:0.6; margin-top:-20px; margin-bottom: 20px; font-family:monospace;">
-                v31.11.10</div>
+                v2.5</div>
             <input type="email" id="email" placeholder="אימייל" class="input-field">
             <input type="password" id="password" placeholder="סיסמה" class="input-field">
             <button class="btn-main" id="loginBtn">כניסה</button>
@@ -1263,7 +1265,7 @@
                         </button>
                         <div
                             style="font-size:10px; text-align:center; opacity:0.3; margin-top:10px; font-family:monospace;">
-                            v31.11.10
+                            v2.5
                         </div>
                     </div>
                 </div>
@@ -1643,6 +1645,16 @@
                 </div>
                 <button onclick="document.getElementById('categoryHistoryModal').style.display='none'"
                     style="border:none; background:none; font-size:24px; color:var(--text-sub); cursor:pointer;">&times;</button>
+            </div>
+
+            <!-- Month Toggle -->
+            <div
+                style="display:flex; gap:5px; margin-bottom:15px; background:var(--bg); padding:4px; border-radius:10px;">
+                <button id="histBtnCurrent" onclick="toggleHistoryMonth(0)"
+                    style="flex:1; border:none; padding:8px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; background:var(--card-bg); color:var(--primary); box-shadow:0 2px 4px rgba(0,0,0,0.05);">החודש</button>
+                <button id="histBtnPrev" onclick="toggleHistoryMonth(-1)"
+                    style="flex:1; border:none; padding:8px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; background:none; color:var(--text-sub);">חודש
+                    שעבר</button>
             </div>
 
             <div id="histContent" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px;">
@@ -2546,7 +2558,7 @@
                 <div class="cat-item animate-slide-up ${delayClass}">
                     <div class="cat-progress-slim" style="width:${perc}%; background:${color}; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                     
-                    <div class="cat-main-click" onclick="openAddTx('${c.id}', '${c.name}')">
+                    <div class="cat-main-click" onclick="openAddTx('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
                         <div class="cat-icon-box" style="background:${c.color ? c.color + '20' : '#EEF2FF'}; color:${c.color || 'var(--primary)'}">
                             ${icon}
                         </div>
@@ -2558,13 +2570,11 @@
                         </div>
                     </div>
 
-                    </div>
-
                     <div style="display:flex; align-items:center;">
                         <button class="add-mini-btn" onclick="openCategoryHistory('${c.id}')" title="היסטוריית תנועות" style="font-size:14px; background:none; color:var(--text-sub); border:none; margin-left:5px;">
                             📜
                         </button>
-                        <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
+                        <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name.replace(/'/g, "\\'")}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
                             ⚙️
                         </button>
                     </div>
@@ -3005,38 +3015,73 @@
         }
 
         // --- Category History Logic ---
-        window.openCategoryHistory = (catId) => {
+        window.openCategoryHistory = (catId, offset = 0) => {
             const cat = cats.find(c => c.id === catId);
             if (!cat) return;
+            window.lastHistCatId = catId; // Remember for toggle
+            window.lastHistOffset = offset;
 
-            // correct month filtering
-            const targetMonth = currentYearMonth; // Global state
+            // Update Toggle UI
+            const btnCur = document.getElementById('histBtnCurrent');
+            const btnPrev = document.getElementById('histBtnPrev');
+            if (btnCur && btnPrev) {
+                if (offset === 0) {
+                    btnCur.style.background = 'var(--card-bg)';
+                    btnCur.style.color = 'var(--primary)';
+                    btnCur.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                    btnPrev.style.background = 'none';
+                    btnPrev.style.color = 'var(--text-sub)';
+                    btnPrev.style.boxShadow = 'none';
+                } else {
+                    btnPrev.style.background = 'var(--card-bg)';
+                    btnPrev.style.color = 'var(--primary)';
+                    btnPrev.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                    btnCur.style.background = 'none';
+                    btnCur.style.color = 'var(--text-sub)';
+                    btnCur.style.boxShadow = 'none';
+                }
+            }
 
-            const histTxs = txs.filter(t => t.catId === catId && t.date.toDate().toISOString().startsWith(targetMonth));
+            // Calc Target Month
+            let targetMonth = currentYearMonth;
+            if (offset !== 0) {
+                const [y, m] = currentYearMonth.split('-').map(Number);
+                const prevDate = new Date(y, m - 1 + offset, 1);
+                targetMonth = prevDate.toISOString().slice(0, 7);
+            }
+
+            const monthName = offset === 0 ? "החודש" : "חודש שעבר";
+            const histTxs = txs.filter(t => t.catId === catId && t.jsDate.toISOString().slice(0, 7) === targetMonth);
             const total = histTxs.reduce((sum, t) => sum + t.amount, 0);
 
             // Populate Modal
             document.getElementById('histCatName').innerText = `${cat.name} (${cat.icon || '📁'})`;
-            document.getElementById('histCatTotal').innerText = `סה"כ לחודש זה: ₪${Math.round(total).toLocaleString()}`;
+            document.getElementById('histCatTotal').innerText = `סה"כ ${monthName}: ₪${Math.round(total).toLocaleString()}`;
 
             const container = document.getElementById('histContent');
             if (histTxs.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-sub);">אין פעילות בקטגוריה זו החודש</div>`;
+                container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-sub);">אין פעילות בקטגוריה זו ${monthName}</div>`;
             } else {
                 container.innerHTML = histTxs.sort((a, b) => b.jsDate - a.jsDate).map(t => `
-                    <div style="background:var(--bg); border-radius:10px; padding:10px 15px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="background:var(--bg); border-radius:10px; padding:10px 15px; display:flex; justify-content:space-between; align-items:center; border: 1px solid rgba(0,0,0,0.03);">
                         <div>
-                            <div style="font-weight:500;">${t.note || 'ללא תיאור'}</div>
-                            <div style="font-size:12px; color:var(--text-sub);">
-                                ${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })} • ${t.method}
+                            <div style="font-weight:600; font-size:14px; color:var(--text-main);">${t.note || 'ללא תיאור'}</div>
+                            <div style="font-size:11px; color:var(--text-sub);">
+                                ${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })} • ${t.method}
                             </div>
                         </div>
-                        <div style="font-weight:600; color:var(--text-main);">₪${Math.round(t.amount).toLocaleString()}</div>
+                        <div style="font-weight:700; color:var(--text-main); font-size:15px;">₪${Math.round(t.amount).toLocaleString()}</div>
                     </div>
                 `).join('');
             }
 
             document.getElementById('categoryHistoryModal').style.display = 'flex';
+        };
+
+        window.toggleHistoryMonth = (offset) => {
+            if (window.lastHistCatId) {
+                openCategoryHistory(window.lastHistCatId, offset);
+            }
         };
 
         // Chart instances
