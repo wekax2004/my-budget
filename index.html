@@ -308,8 +308,6 @@
         h3 {
             margin: 0;
             font-weight: 700;
-            margin: 0;
-            font-weight: 700;
             color: var(--text-main);
         }
 
@@ -625,7 +623,6 @@
             color: white;
             border-color: var(--primary);
         }
-        }
 
         .cat-name {
             font-weight: 600;
@@ -856,7 +853,7 @@
         select:focus {
             border-color: var(--primary);
             outline: none;
-            ring: 2px solid #E0E7FF;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
         }
 
         .btn-main {
@@ -909,12 +906,7 @@
         @media (min-width: 600px) {
             .modal-content {
                 border-radius: 24px;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                border-radius: 24px;
-                animation: fadeIn 0.3s ease;
+                animation: popIn 0.3s ease;
             }
         }
 
@@ -985,15 +977,6 @@
             }
         }
 
-        @keyframes fadeIn {
-            transform: scale(0.95);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-        }
 
         /* Summary Chips */
         .summary-chips {
@@ -1567,9 +1550,6 @@
             <label
                 style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
                 תשלום</label>
-            <label
-                style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block; margin-top:10px;">אמצעי
-                תשלום</label>
             <select id="pMethod" onchange="toggleGiftCardSelect()">
                 <option value="💳 אשראי">💳 אשראי</option>
                 <option value="💵 מזומן">💵 מזומן</option>
@@ -1582,6 +1562,12 @@
                 <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">בחר כרטיס
                     לחיוב</label>
                 <select id="pGiftCardId"></select>
+            </div>
+
+            <div id="creditCardSelectDiv" style="display:none; margin-top:10px;">
+                <label style="font-size:12px; color:var(--text-sub); margin-bottom:4px; display:block;">בחר כרטיס
+                    אשראי</label>
+                <select id="pCreditCardId"></select>
             </div>
 
             <div
@@ -1710,12 +1696,24 @@
     <div id="recurringModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>הוראות קבע 🔄</h3>
+                <h3>ניהול קבועים 🔄</h3>
                 <span class="close-btn" onclick="closeModal('recurringModal')">&times;</span>
             </div>
 
-            <div style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:20px;">
-                <h4 style="margin:0 0 15px 0;">הוסף מנוי חדש</h4>
+            <!-- Tabs -->
+            <div
+                style="display:flex; gap:5px; margin-bottom:20px; background:var(--bg); padding:4px; border-radius:12px;">
+                <button id="recTabExp" onclick="switchRecTab('expense')"
+                    style="flex:1; border:none; padding:10px; border-radius:10px; font-weight:600; cursor:pointer;">💸
+                    הוראות קבע</button>
+                <button id="recTabInc" onclick="switchRecTab('income')"
+                    style="flex:1; border:none; padding:10px; border-radius:10px; font-weight:600; cursor:pointer;">💰
+                    הכנסות קבועות</button>
+            </div>
+
+            <div id="recFormExpense"
+                style="background:var(--bg); padding:15px; border-radius:12px; margin-bottom:20px;">
+                <h4 style="margin:0 0 15px 0;">הוסף הוראת קבע</h4>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
                     <div>
                         <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">שם
@@ -1737,16 +1735,37 @@
                     <div>
                         <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">תאריך
                             חיוב קרוב</label>
-                        <input type="date" id="recNextDate" lang="en-GB"
-                            style="width:100%; font-family: 'Rubik', sans-serif;">
-                        <div style="font-size:10px; color:var(--text-sub); margin-top:2px;">*פורמט התאריך נקבע לפי
-                            המכשיר</div>
+                        <input type="date" id="recNextDate" style="width:100%;">
                     </div>
                 </div>
                 <button onclick="addRecurring()" class="btn-main" style="margin-top:20px;">הוספה לרשימה</button>
             </div>
 
-            <h4 style="margin-bottom:10px;">פעילים</h4>
+            <div id="recFormIncome"
+                style="display:none; background:var(--bg); padding:15px; border-radius:12px; margin-bottom:20px;">
+                <h4 style="margin:0 0 15px 0;">הוסף הכנסה קבועה</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <div>
+                        <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">מקור
+                            הכנסה</label>
+                        <input type="text" id="recIncName" placeholder="למשל: משכורת" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">סכום
+                            חודשי</label>
+                        <input type="number" id="recIncAmount" placeholder="₪" style="width:100%;">
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label style="font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px;">תאריך קבלה
+                        קרוב</label>
+                    <input type="date" id="recIncNextDate" style="width:100%;">
+                </div>
+                <button onclick="addRecurringIncome()" class="btn-main"
+                    style="margin-top:20px; background:var(--success);">הוספה לרשימה</button>
+            </div>
+
+            <h4 id="recListTitle" style="margin-bottom:10px;">פעילים</h4>
             <div id="recurringList"
                 style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;">
                 <!-- List -->
@@ -1926,9 +1945,11 @@
             localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
         });
 
-        let user = null, cats = [], txs = [], savings = [], cards = [], chart = null;
+        let user = null, cats = [], txs = [], savings = [], cards = [], creditCards = [], chart = null;
         let income = [], barChart = null;
         let recurring = [];
+        let recurringIncome = [];
+        let recurringTab = 'expense'; // 'expense' or 'income'
         let editMode = { active: false, id: null };
         let catEditMode = { active: false, id: null };
         let rates = { ILS: 1, USD: 3.65, EUR: 3.95 }; // Initial Fallback
@@ -2038,13 +2059,67 @@
         window.openRecurring = () => {
             document.getElementById('recurringModal').style.display = 'flex';
             renderRecCats();
-            renderRecurring();
+            switchRecTab('expense'); // Default to expense
         }
 
         function renderRecCats() {
             const sel = document.getElementById('recCat');
             sel.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         }
+
+        window.switchRecTab = (tab) => {
+            recurringTab = tab;
+            document.getElementById('recFormExpense').style.display = tab === 'expense' ? 'block' : 'none';
+            document.getElementById('recFormIncome').style.display = tab === 'income' ? 'block' : 'none';
+
+            // Highlight Tab Buttons
+            const btnExp = document.getElementById('recTabExp');
+            const btnInc = document.getElementById('recTabInc');
+            if (tab === 'expense') {
+                btnExp.style.background = 'var(--card-bg)';
+                btnExp.style.color = 'var(--primary)';
+                btnExp.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                btnInc.style.background = 'none';
+                btnInc.style.color = 'var(--text-sub)';
+                btnInc.style.boxShadow = 'none';
+            } else {
+                btnInc.style.background = 'var(--card-bg)';
+                btnInc.style.color = 'var(--success)';
+                btnInc.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                btnExp.style.background = 'none';
+                btnExp.style.color = 'var(--text-sub)';
+                btnExp.style.boxShadow = 'none';
+            }
+
+            renderRecurring();
+        };
+
+        window.addRecurringIncome = async () => {
+            const name = document.getElementById('recIncName').value;
+            const amount = parseFloat(document.getElementById('recIncAmount').value);
+            const nextDate = document.getElementById('recIncNextDate').value;
+
+            if (!name || isNaN(amount) || !nextDate) return showToast("חסרים נתונים", 'error');
+
+            try {
+                await addDoc(collection(db, "recurring_income"), {
+                    uid: user.uid,
+                    name, amount, nextDate, frequency: 'monthly'
+                });
+                showToast('הכנסה קבועה נוספה', 'success');
+                document.getElementById('recIncName').value = '';
+                document.getElementById('recIncAmount').value = '';
+            } catch (e) {
+                console.error(e);
+                showToast('שגיאה בהוספה: ' + e.message, 'error');
+            }
+        };
+
+        window.deleteRecurringIncome = async (id) => {
+            if (confirm('למחוק הכנסה קבועה זו?')) {
+                await deleteDoc(doc(db, "recurring_income", id)).catch(e => showToast("שגיאה במחיקה", 'error'));
+            }
+        };
 
         window.addRecurring = async () => {
             const name = document.getElementById('recName').value;
@@ -2158,51 +2233,46 @@
             const el = document.getElementById('recurringList');
             if (!el) return;
 
-            // 1. Calculate Stats
-            const totalMonthly = recurring.reduce((sum, r) => sum + r.amount, 0);
+            const isExp = recurringTab === 'expense';
+            const data = isExp ? recurring : recurringIncome;
+            const title = isExp ? "הוראות קבע פעילות" : "הכנסות קבועות פעילות";
+            const total = data.reduce((sum, r) => sum + r.amount, 0);
 
-            // 2. Brand Detection Helper
-            const getBrand = (name) => {
-                const n = name.toLowerCase();
-                if (n.includes('netflix')) return { color: '#E50914', icon: '🍿', name: 'Netflix' };
-                if (n.includes('spotify')) return { color: '#1DB954', icon: '🎧', name: 'Spotify' };
-                if (n.includes('apple')) return { color: '#000000', icon: '🍎', name: 'Apple' };
-                if (n.includes('google') || n.includes('youtube')) return { color: '#FF0000', icon: '▶️', name: 'Google' };
-                if (n.includes('disney')) return { color: '#113CCF', icon: '🏰', name: 'Disney+' };
-                if (n.includes('amazon') || n.includes('prime')) return { color: '#00A8E1', icon: '📦', name: 'Amazon' };
-                if (n.includes('gym') || n.includes('homes') || n.includes('holmes')) return { color: '#FFA500', icon: '💪', name: 'Gym' };
-                return { color: 'var(--primary)', icon: '🔄', name: name };
-            };
+            // Update List Title
+            document.getElementById('recListTitle').innerText = title;
 
-            // 3. Render Dashboard
+            // 1. Dashboard Header
             let html = `
-                <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color:white; padding:20px; border-radius:16px; margin-bottom:20px; text-align:center; box-shadow:0 10px 25px -5px rgba(79, 70, 229, 0.4);">
-                    <div style="font-size:14px; opacity:0.8; margin-bottom:5px;">סך התחייבויות חודשיות</div>
-                    <div style="font-size:32px; font-weight:700;">₪${totalMonthly.toLocaleString()}</div>
+                <div style="background: linear-gradient(135deg, ${isExp ? '#4F46E5, #7C3AED' : '#10B981, #059669'}); color:white; padding:20px; border-radius:16px; margin-bottom:20px; text-align:center; box-shadow:0 10px 25px -5px ${isExp ? 'rgba(79, 70, 229, 0.4)' : 'rgba(16, 185, 129, 0.4)'};">
+                    <div style="font-size:14px; opacity:0.8; margin-bottom:5px;">סך הכל ${isExp ? 'התחייבויות' : 'הכנסות'}</div>
+                    <div style="font-size:32px; font-weight:700;">₪${total.toLocaleString()}</div>
                     <div style="font-size:12px; opacity:0.9; margin-top:10px;">📉 מנוהל אוטומטית</div>
                 </div>
             `;
 
             html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
-            html += recurring.map(r => {
-                const brand = getBrand(r.name);
-                const [y, m, d] = r.nextDate.split('-');
+            if (data.length === 0) {
+                html += `<div style="text-align:center; color:var(--text-sub); padding:20px;">אין ${isExp ? 'הוראות קבע' : 'הכנסות קבועות'} פעילות</div>`;
+            }
+
+            html += data.map(r => {
+                const icon = isExp ? '🔄' : '💰';
+                const color = isExp ? 'var(--primary)' : 'var(--success)';
                 const nextDate = new Date(r.nextDate);
                 const today = new Date();
                 const diffTime = nextDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
                 let timeText = diffDays < 0 ? 'היום!' : `בעוד ${diffDays} ימים`;
 
                 return `
-                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:15px; border-radius:12px; border-right: 4px solid ${brand.color}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:15px; border-radius:12px; border-right: 4px solid ${color}; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="width:40px; height:40px; background:${brand.color}15; color:${brand.color}; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px;">
-                            ${brand.icon}
+                        <div style="width:40px; height:40px; background:${color}15; color:${color}; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px;">
+                            ${icon}
                         </div>
                         <div>
-                            <div style="font-weight:600; font-size:16px;">${brand.name}</div>
+                            <div style="font-weight:600; font-size:16px;">${r.name}</div>
                             <div style="font-size:12px; color:var(--text-sub);">
                                 ${timeText} • ${r.nextDate.split('-')[2]}/${r.nextDate.split('-')[1]}
                             </div>
@@ -2210,7 +2280,7 @@
                     </div>
                     <div style="text-align:left;">
                         <div style="font-weight:bold; color:var(--text-main);">₪${r.amount}</div>
-                        <button onclick="deleteRecurring('${r.id}')" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0; color:var(--text-sub); margin-top:4px;">בטל מנוי</button>
+                        <button onclick="${isExp ? 'deleteRecurring' : 'deleteRecurringIncome'}('${r.id}')" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0; color:var(--text-sub); margin-top:4px;">בטל</button>
                     </div>
                 </div>`;
             }).join('');
@@ -2285,13 +2355,11 @@
 
             const today = new Date().toISOString().slice(0, 10);
 
+            // 1. Check Recurring Expenses
             for (const r of recurring) {
                 if (r.nextDate <= today) {
                     try {
-                        // USE BATCH for Atomicity (Prevent Loops)
                         const batch = writeBatch(db);
-
-                        // 1. Add Transaction
                         const newTxRef = doc(collection(db, "transactions"));
                         batch.set(newTxRef, {
                             allowedUsers: [user.email],
@@ -2302,26 +2370,34 @@
                             method: 'אשראי',
                             currency: 'ILS'
                         });
-
-                        // 2. Update Recurring Date
                         const next = new Date(r.nextDate);
                         next.setMonth(next.getMonth() + 1);
-                        const recRef = doc(db, "recurring", r.id);
-                        batch.update(recRef, {
-                            nextDate: next.toISOString().slice(0, 10)
-                        });
-
-                        // 3. Commit Both
+                        batch.update(doc(db, "recurring", r.id), { nextDate: next.toISOString().slice(0, 10) });
                         await batch.commit();
-
-                        console.log(`הוראת קבע בוצעה: ${r.name}`);
                         logEvent("REC_RUN", { name: r.name, amt: r.amount });
+                    } catch (e) { console.error("Recurring Expense Failed", e); }
+                }
+            }
 
-                    } catch (e) {
-                        logEvent("REC_ERROR", { msg: e.code || e.message });
-                        console.error("Recurring Failed", e);
-                        // Using batch ensures we don't have duplicate transactions if update fails
-                    }
+            // 2. Check Recurring Income
+            for (const r of recurringIncome) {
+                if (r.nextDate <= today) {
+                    try {
+                        const batch = writeBatch(db);
+                        const newIncRef = doc(collection(db, "income"));
+                        batch.set(newIncRef, {
+                            uid: user.uid,
+                            amount: r.amount,
+                            source: `הכנסה קבועה: ${r.name}`,
+                            date: r.nextDate,
+                            timestamp: new Date()
+                        });
+                        const next = new Date(r.nextDate);
+                        next.setMonth(next.getMonth() + 1);
+                        batch.update(doc(db, "recurring_income", r.id), { nextDate: next.toISOString().slice(0, 10) });
+                        await batch.commit();
+                        logEvent("REC_INC_RUN", { name: r.name, amt: r.amount });
+                    } catch (e) { console.error("Recurring Income Failed", e); }
                 }
             }
         }
@@ -2439,6 +2515,26 @@
             }
         });
 
+        // --- Budget Persistence Decoupling ---
+        window.getEffectiveBudget = (category, targetMonth) => {
+            if (!category) return 0;
+            const history = category.monthlyBudgets || {};
+            // 1. Exact match for month
+            if (history[targetMonth] !== undefined) return history[targetMonth];
+
+            // 2. Find the most recent update BEFORE this month
+            const sortedMonths = Object.keys(history).sort();
+            let effective = category.budget || 0;
+            for (const m of sortedMonths) {
+                if (m <= targetMonth) {
+                    effective = history[m];
+                } else {
+                    break;
+                }
+            }
+            return effective;
+        };
+
         function startSync() {
             // Sync Categories
             onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
@@ -2451,6 +2547,13 @@
                 recurring = s.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderRecurring();
                 checkRecurring();
+            });
+
+            // Sync Recurring Income
+            onSnapshot(query(collection(db, "recurring_income"), where("uid", "==", user.uid)), s => {
+                recurringIncome = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderRecurring();
+                checkRecurring(); // Will handle both
             });
 
             // Sync Income
@@ -2467,6 +2570,7 @@
                     return { id: d.id, ...data, jsDate: data.date.toDate() };
                 });
                 render();
+                if (document.getElementById('view-activity').style.display === 'block') renderActivity();
             });
 
             // Sync Savings
@@ -2479,6 +2583,12 @@
             onSnapshot(query(collection(db, "giftcards"), where("owner", "==", user.email)), s => {
                 cards = s.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderGiftCards();
+            });
+
+            // Sync Credit Cards
+            onSnapshot(query(collection(db, "credit_cards"), where("owner", "==", user.email)), s => {
+                creditCards = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderCreditCards();
             });
 
             // Sync Shopping List (Removed orderBy to avoid Index error)
@@ -2540,14 +2650,15 @@
 
             // Render Categories (Always based on Month)
             document.getElementById('catList').innerHTML = cats.map((c, index) => {
+                const effectiveBudget = getEffectiveBudget(c, currentYearMonth);
                 const catSpent = filteredTxs.filter(t => t.catId === c.id).reduce((s, t) => s + t.amount, 0);
-                totalBudget += c.budget;
+                totalBudget += effectiveBudget;
                 totalSpent += catSpent;
 
                 // Personalization Logic
                 const icon = c.icon || '📂';
                 // Calculate percentage FIRST
-                const perc = c.budget > 0 ? Math.min((catSpent / c.budget) * 100, 100) : 0;
+                const perc = effectiveBudget > 0 ? Math.min((catSpent / effectiveBudget) * 100, 100) : 0;
                 // If user has a custom color, use it. Otherwise use the calculated status color.
                 const color = c.color || (perc >= 100 ? 'var(--danger)' : (perc >= 80 ? 'var(--warning)' : 'var(--success)'));
 
@@ -2565,7 +2676,7 @@
                         <div>
                             <div style="font-weight:600; font-size:16px;">${c.name}</div>
                             <div style="font-size:12px; color:var(--text-sub);">
-                                <b style="color:var(--text-main)">₪${Math.round(catSpent).toLocaleString()}</b> / ₪${c.budget.toLocaleString()}
+                                <b style="color:var(--text-main)">₪${Math.round(catSpent).toLocaleString()}</b> / ₪${effectiveBudget.toLocaleString()}
                             </div>
                         </div>
                     </div>
@@ -2574,7 +2685,7 @@
                         <button class="add-mini-btn" onclick="openCategoryHistory('${c.id}')" title="היסטוריית תנועות" style="font-size:14px; background:none; color:var(--text-sub); border:none; margin-left:5px;">
                             📜
                         </button>
-                        <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name.replace(/'/g, "\\'")}', ${c.budget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
+                        <button class="add-mini-btn" onclick="openEditCat('${c.id}', '${c.name.replace(/'/g, "\\'")}', ${effectiveBudget}, '${c.color || ''}', '${c.icon || ''}')" title="עריכת קטגוריה" style="font-size:14px; background:none; color:var(--text-sub); border:none;">
                             ⚙️
                         </button>
                     </div>
@@ -2690,7 +2801,10 @@
                             <div class="tx-meta">
                                 <span>${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}</span>
                                 <span>•</span>
-                                <span>${t.method}</span>
+                                <span>${(() => {
+                            const card = t.cardId ? creditCards.find(c => c.id === t.cardId) : null;
+                            return card ? `${t.method} (${card.last4})` : t.method;
+                        })()}</span>
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px;">
@@ -2845,7 +2959,14 @@
                 });
                 recToday.forEach(r => runningBalance -= r.amount);
 
-                // C. Check Income (Approximate by day? No, hard to guess. Ignore for now or assume 1st of month?)
+                // C. Check Recurring Income
+                const incToday = recurringIncome.filter(r => {
+                    const rDate = new Date(r.nextDate);
+                    return rDate.getDate() === date.getDate();
+                });
+                incToday.forEach(r => runningBalance += r.amount);
+
+                // D. Check Income (Approximate by day? No, hard to guess. Ignore for now or assume 1st of month?)
                 // Let's just project expenses mostly.
 
                 if (i % 5 === 0) labels.push(dayStr); // Sparse labels
@@ -3063,7 +3184,10 @@
                         <div>
                             <div style="font-weight:600; font-size:14px; color:var(--text-main);">${t.note || 'ללא תיאור'}</div>
                             <div style="font-size:11px; color:var(--text-sub);">
-                                ${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })} • ${t.method}
+                                ${t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })} • ${(() => {
+                        const card = t.cardId ? creditCards.find(c => c.id === t.cardId) : null;
+                        return card ? `${t.method} (${card.last4})` : t.method;
+                    })()}
                             </div>
                         </div>
                         <div style="font-weight:700; color:var(--text-main); font-size:15px;">₪${Math.round(t.amount).toLocaleString()}</div>
@@ -3285,10 +3409,12 @@
         };
 
         window.openEditCat = (id, name, budget, color, icon) => {
+            const cat = cats.find(c => c.id === id);
+            const effectiveBudget = getEffectiveBudget(cat, currentYearMonth);
             catEditMode = { active: true, id: id };
             document.getElementById('catTitle').innerText = "עריכת קטגוריה";
             document.getElementById('catName').value = name;
-            document.getElementById('catBudget').value = budget;
+            document.getElementById('catBudget').value = effectiveBudget;
             document.getElementById('catColor').value = color || "#3B82F6";
             selectIcon(icon || '🏷️', null);
             document.getElementById('delCatBtn').style.display = 'block'; // Show delete btn
@@ -3301,7 +3427,7 @@
             const color = document.getElementById('catColor').value;
             const icon = document.getElementById('catIcon').value;
 
-            if (!name || !budget) return showToast("נא למלא שם ותקציב", 'error');
+            if (!name || isNaN(budget)) return showToast("נא למלא שם ותקציב", 'error');
 
             const allowed = [user.email];
             const partner = localStorage.getItem('partnerEmail');
@@ -3309,7 +3435,6 @@
 
             const data = {
                 name,
-                budget,
                 uid: user.uid,
                 allowedUsers: allowed,
                 color: color,
@@ -3318,9 +3443,20 @@
 
             try {
                 if (catEditMode.active) {
-                    await updateDoc(doc(db, "categories", catEditMode.id), data);
+                    const cat = cats.find(c => c.id === catEditMode.id);
+                    const historical = cat.monthlyBudgets || {};
+                    historical[currentYearMonth] = budget;
+
+                    await updateDoc(doc(db, "categories", catEditMode.id), {
+                        ...data,
+                        monthlyBudgets: historical
+                        // Note: We deliberately do NOT update 'budget' here to preserve legacy history fallback
+                    });
                     showToast('קטגוריה עודכנה', 'success');
                 } else {
+                    // New categories use the new budget as both legacy fallback and current month
+                    data.budget = budget;
+                    data.monthlyBudgets = { [currentYearMonth]: budget };
                     await addDoc(collection(db, "categories"), data);
                     showToast('קטגוריה נוצרה', 'success');
                 }
@@ -3328,7 +3464,7 @@
                 console.error(e);
                 showToast("שגיאה בשמירה: " + e.message, 'error');
             } finally {
-                closeModal('catModal'); // Ensures verification of closure
+                closeModal('catModal');
             }
         };
 
@@ -3361,7 +3497,10 @@
             document.getElementById('fAmt').value = tx.originalAmount || tx.amount;
             document.getElementById('fCurr').value = tx.currency || "ILS";
             document.getElementById('expNote').value = tx.note;
-            document.getElementById('pMethod').value = tx.method;
+            document.getElementById('pMethod').value = tx.method || '💳 אשראי';
+            document.getElementById('pGiftCardId').value = tx.giftCardId || '';
+            document.getElementById('pCreditCardId').value = tx.cardId || '';
+            toggleGiftCardSelect();
             document.getElementById('delTxBtn').style.display = 'block'; // Show delete btn
 
             const modal = document.getElementById('expModal');
@@ -3382,6 +3521,10 @@
             document.getElementById('fAmt').value = "";
             document.getElementById('fCurr').value = "ILS";
             document.getElementById('expNote').value = "";
+            document.getElementById('pMethod').value = '💳 אשראי';
+            document.getElementById('pGiftCardId').value = '';
+            document.getElementById('pCreditCardId').value = '';
+            toggleGiftCardSelect();
             document.getElementById('delTxBtn').style.display = 'none'; // Hide delete btn
 
             const modal = document.getElementById('expModal');
@@ -3422,6 +3565,7 @@
                 currency: curr,
                 note: document.getElementById('expNote').value || "הוצאה כללית",
                 method: document.getElementById('pMethod').value,
+                cardId: document.getElementById('pCreditCardId').value || null,
                 catId: window.currentCatId,
                 allowedUsers: allowed,
                 // Use scanned date, or existing date if editing, or now
@@ -3598,7 +3742,46 @@
         window.toggleGiftCardSelect = () => {
             const val = document.getElementById('pMethod').value;
             document.getElementById('giftCardSelectDiv').style.display = val === '🎁 גיפט קארד' ? 'block' : 'none';
+            document.getElementById('creditCardSelectDiv').style.display = val === '💳 אשראי' ? 'block' : 'none';
         };
+
+        function renderCreditCards() {
+            const list = document.getElementById('creditCardsListRef') || document.getElementById('creditCardsList');
+            if (!list) return;
+            const select = document.getElementById('pCreditCardId');
+
+            // UI List
+            list.innerHTML = (creditCards.length ? creditCards.map(c => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#EFF6FF; border:1px solid #DBEAFE; border-radius:10px; padding:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:20px;">💳</span>
+                        <div>
+                            <div style="font-weight:600; font-size:14px;">${c.name}</div>
+                            <div style="font-size:12px; color:#1E40AF;">**** ${c.last4}</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteCreditCard('${c.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer;">&times;</button>
+                </div>
+            `).join('') : '<div style="text-align:center; color:gray; font-size:12px;">אין כרטיסים</div>');
+
+            // Select Options
+            select.innerHTML = '<option value="">בחר כרטיס (אופציונלי)</option>' +
+                creditCards.map(c => `<option value="${c.id}">${c.name} (${c.last4})</option>`).join('');
+        }
+
+        window.addCreditCard = async () => {
+            const n = prompt("שם הכרטיס (למשל: Visa Gold):");
+            if (!n) return;
+            const b = prompt("4 ספרות אחרונות:");
+            if (n && b) {
+                if (b.length !== 4 || isNaN(b)) return showToast("נא להזין 4 ספרות בלבד", "error");
+                addDoc(collection(db, "credit_cards"), { name: n, last4: b, owner: user.email })
+                    .then(() => showToast('כרטיס אשראי נוסף', 'success'))
+                    .catch(e => showToast("שגיאה: " + e.message, 'error'));
+            }
+        };
+
+        window.deleteCreditCard = async (id) => { if (confirm("למחוק כרטיס זה?")) await deleteDoc(doc(db, "credit_cards", id)).catch(e => showToast("שגיאה במחיקה", 'error')); };
 
         window.addGiftCard = async () => {
             const n = prompt("שם הכרטיס (למשל: BuyMe):");
@@ -4029,11 +4212,13 @@
             content += txs.sort((a, b) => b.date - a.date).map(t => {
                 const cat = cats.find(c => c.id === t.catId);
                 const dateStr = t.jsDate.toLocaleDateString('he-IL');
+                const card = t.cardId ? creditCards.find(c => c.id === t.cardId) : null;
+                const methodStr = card ? `${t.method} (${card.last4})` : t.method;
                 return `
                 <div class="history-item" onclick="openEditTx('${t.id}')">
                     <div class="tx-info">
                         <div class="tx-note">${t.note}</div>
-                        <div class="tx-meta">${cat?.name || '?'} • ${dateStr} • ${t.method}</div>
+                        <div class="tx-meta">${cat?.name || '?'} • ${dateStr} • ${methodStr}</div>
                     </div>
                     <div class="tx-actions">
                          <div class="tx-amount">₪${t.amount.toLocaleString()}</div>
@@ -4151,6 +4336,14 @@
                     </div>
                     <div id="savingsListRef" style="display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>💳 כרטיסי אשראי</h3>
+                        <button onclick="addCreditCard()" style="background:var(--primary); color:white; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">+</button>
+                    </div>
+                    <div id="creditCardsListRef" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
                 
                 <div class="card">
                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -4162,6 +4355,7 @@
              `;
 
             renderSavings();
+            renderCreditCards();
             renderGiftCards();
         }
 
