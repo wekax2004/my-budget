@@ -17,6 +17,8 @@
     <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
 
     <script>
+        const APP_VERSION = 'v2.7';
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 // Check if origin is supported (http/https) to avoid 'null' error
@@ -32,7 +34,7 @@
                     }
                 });
 
-                navigator.serviceWorker.register('./sw.js?v=2.5')
+                navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`)
                     .then(reg => {
                         console.log('SW Registered!', reg);
 
@@ -42,9 +44,7 @@
                                 if (installingWorker.state === 'installed') {
                                     if (navigator.serviceWorker.controller) {
                                         // New update available
-                                        if (confirm("גרסה חדשה (v2.1) זמינה! לרענן עכשיו?")) {
-                                            window.location.reload();
-                                        }
+                                        showUpdateToast();
                                     }
                                 }
                             };
@@ -254,7 +254,7 @@
     </div>
     <div onclick="forceRefresh()"
         style="position:fixed; bottom:5px; left:5px; font-size:12px; opacity:0.6; z-index:9999; cursor:pointer; background:rgba(0,0,0,0.5); color:white; padding:4px 8px; border-radius:10px;">
-        v2.6 (לחץ לניקוי מטמון)
+        <span id="appVersionLabel"></span> (לחץ לניקוי מטמון)
     </div>
     <style>
         :root {
@@ -1865,6 +1865,23 @@
                 setTimeout(() => toast.remove(), 500);
             }, 3000);
         };
+
+        window.showUpdateToast = () => {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast info';
+            toast.style.cursor = 'pointer';
+            toast.style.background = 'blue';
+            toast.innerHTML = `<div>🚀 גרסה חדשה זמינה! <b>לחץ לעדכון</b></div>`;
+            toast.onclick = () => window.location.reload();
+            container.appendChild(toast);
+        };
+
+        // Initialize Version Label
+        window.addEventListener('load', () => {
+            document.querySelectorAll('#appVersionLabel').forEach(el => el.innerText = APP_VERSION);
+        });
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";

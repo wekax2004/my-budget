@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-master-v31.11.17';
+const CACHE_NAME = 'budget-master-v2.7';
 const STATIC_ASSETS = [
     "./manifest.json",
     "./icon.png",
