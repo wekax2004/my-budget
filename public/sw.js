@@ -1,13 +1,8 @@
-const CACHE_NAME = 'budget-master-v2.8';
+const CACHE_NAME = 'budget-master-v3.0-vite';
 const STATIC_ASSETS = [
-    "./manifest.json",
-    "./icon.png",
-    "https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap",
-    "https://cdn.jsdelivr.net/npm/chart.js",
-    "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+    "/index.html",
+    "/manifest.json",
+    "/icon.png"
 ];
 
 // Install Event: Cache Core Assets
