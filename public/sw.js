@@ -1,8 +1,8 @@
 const CACHE_NAME = 'budget-master-v3.0-vite';
 const STATIC_ASSETS = [
-    "/index.html",
-    "/manifest.json",
-    "/icon.png"
+    "/my-budget/index.html",
+    "/my-budget/manifest.json",
+    "/my-budget/icon.png"
 ];
 
 // Install Event: Cache Core Assets

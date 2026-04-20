@@ -7,16 +7,16 @@
     <meta name="theme-color" content="#4F46E5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="/my-budget/manifest.json" />
     <title>BudgetMaster Pro</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/my-budget/src/main.jsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(reg => {
+          navigator.serviceWorker.register('/my-budget/sw.js').then(reg => {
             console.log('SW Registered:', reg.scope);
           }).catch(err => {
             console.log('SW Registration Failed:', err);
