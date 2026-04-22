@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-master-v3.0-vite';
+const CACHE_NAME = 'budget-master-v3.1-vite';
 const STATIC_ASSETS = [
     "/my-budget/index.html",
     "/my-budget/manifest.json",
