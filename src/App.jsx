@@ -12,7 +12,7 @@ import './index.css';
 
 Chart.register(...registerables);
 
-const APP_VERSION = 'v3.0-react';
+const APP_VERSION = 'v3.3-react';
 const APP_PIN = "1234";
 const ICONS = ['🏷️','🍕','🚗','🏠','🏥','🎓','✈️','🎁','💇','📱','💪','🛒','🍷','🥦','⛽','💡','🔧','👶','🐶','📚','🎮','🎵','🎬','💻'];
 const THEMES = {
