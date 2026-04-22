@@ -799,7 +799,7 @@ export default function App() {
                   return filtered.sort((a, b) => b.jsDate - a.jsDate).map(t => {
                     const cat = cats.find(c => c.id === t.catId);
                     return (
-                      <div key={t.id} className="history-item interactive-node" onClick={() => openEditTx(t.id)}>
+                      <div key={t.id} className="history-item interactive-node" onClick={() => openEditTx(t)}>
                         <div className="tx-info">
                           <div className="tx-note">{t.note || 'הוצאה כללית'}</div>
                           <div className="tx-meta">{cat?.name || '?'} • {t.jsDate.toLocaleDateString('he-IL')} • {t.method}</div>
@@ -1153,7 +1153,7 @@ export default function App() {
               <div style={{ fontSize: 14, color: 'var(--text-sub)', marginBottom: 10 }}>סה"כ: ₪{Math.round(total).toLocaleString()}</div>
               {histTxs.length === 0 ? <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-sub)' }}>אין פעילות</div> :
                 histTxs.map(t => (
-                  <div key={t.id} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(0,0,0,0.03)', marginBottom: 8 }}>
+                  <div key={t.id} className="interactive-node" onClick={() => { setShowHistoryModal(false); openEditTx(t); }} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(0,0,0,0.03)', marginBottom: 8, cursor: 'pointer' }}>
                     <div><div style={{ fontWeight: 600, fontSize: 14 }}>{t.note || 'ללא תיאור'}</div><div style={{ fontSize: 11, color: 'var(--text-sub)' }}>{t.jsDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })} • {t.method}</div></div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>₪{Math.round(t.amount).toLocaleString()}</div>
                   </div>
