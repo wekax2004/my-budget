@@ -253,10 +253,28 @@ export default function App() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
         registrations.forEach(r => r.unregister());
-        window.location.reload();
+        window.location.reload(true);
       });
     } else {
-      window.location.reload();
+      window.location.reload(true);
+    }
+  };
+
+  const hardResetApp = async () => {
+    if (!confirm("האם אתה בטוח שברצונך לאפס את האפליקציה? זה ימחק הגדרות מקומיות אך הנתונים בענן ישמרו.")) return;
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (let reg of regs) { await reg.unregister(); }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (let key of keys) { await caches.delete(key); }
+      }
+      localStorage.clear();
+      window.location.reload(true);
+    } catch (e) {
+      showToast('שגיאה באיפוס: ' + e.message, 'error');
     }
   };
 
@@ -1132,7 +1150,8 @@ export default function App() {
         </div>
         <h4 style={{ marginBottom: 10 }}>ניהול נתונים 💾</h4>
         <button onClick={exportToCSV} style={{ width: '100%', padding: 12, background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: 12, cursor: 'pointer', fontFamily: 'Rubik', marginBottom: 10 }}>📥 ייצוא ל-CSV</button>
-        <button onClick={() => { if (confirm("למחוק הכל?")) { localStorage.clear(); window.location.reload(); } }} style={{ width: '100%', padding: 12, background: 'var(--card-bg)', border: '1px solid var(--danger)', borderRadius: 12, cursor: 'pointer', fontFamily: 'Rubik', color: 'var(--danger)' }}>🗑️ מחיקת כל הנתונים</button>
+        <button onClick={() => { if (confirm("למחוק הכל?")) { localStorage.clear(); window.location.reload(); } }} style={{ width: '100%', padding: 12, background: 'var(--card-bg)', border: '1px solid var(--danger)', borderRadius: 12, cursor: 'pointer', fontFamily: 'Rubik', color: 'var(--danger)', marginBottom: 10 }}>🗑️ מחיקת כל הנתונים</button>
+        <button onClick={hardResetApp} style={{ width: '100%', padding: 12, background: 'var(--warning)', border: '1px solid var(--warning)', borderRadius: 12, cursor: 'pointer', fontFamily: 'Rubik', color: 'white', fontWeight: 'bold' }}>⚠️ איפוס ותיקון שגיאות (Hard Reset)</button>
         <div style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: 'var(--text-sub)' }}>BudgetMaster Pro {APP_VERSION}</div>
       </Modal>
 

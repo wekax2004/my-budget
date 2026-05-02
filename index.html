@@ -13,23 +13,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/my-budget/src/main.jsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.getRegistrations().then(registrations => {
-            for (let reg of registrations) {
-              console.log('Unregistering old SW:', reg.scope);
-              reg.unregister();
-            }
-          }).then(() => {
-            navigator.serviceWorker.register('./sw.js').then(reg => {
-              console.log('SW Registered:', reg.scope);
-            }).catch(err => {
-              console.log('SW Registration Failed:', err);
-            });
-          });
-        });
-      }
-    </script>
   </body>
 </html>
