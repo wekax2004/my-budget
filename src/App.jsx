@@ -12,7 +12,7 @@ import './index.css';
 
 Chart.register(...registerables);
 
-const APP_VERSION = 'v3.3-react';
+const APP_VERSION = 'v3.4-react';
 const APP_PIN = "1234";
 const ICONS = ['🏷️','🍕','🚗','🏠','🏥','🎓','✈️','🎁','💇','📱','💪','🛒','🍷','🥦','⛽','💡','🔧','👶','🐶','📚','🎮','🎵','🎬','💻'];
 const THEMES = {
@@ -1037,6 +1037,10 @@ export default function App() {
             </select>
           </div>
         </div>
+        <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4, marginTop: 10 }}>קטגוריה</label>
+        <select value={expCatId || ''} onChange={e => setExpCatId(e.target.value)} style={{ width: '100%', fontWeight: 600 }}>
+          {cats.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        </select>
         <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4, marginTop: 10 }}>תיאור</label>
         <input type="text" value={expForm.note} onChange={e => setExpForm({ ...expForm, note: e.target.value })} placeholder="על מה יצא הכסף?" />
          <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4, marginTop: 10 }}>אמצעי תשלום</label>
