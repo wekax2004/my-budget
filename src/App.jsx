@@ -792,15 +792,24 @@ export default function App() {
                 ))
               ) : (
                 (() => {
-                  const filtered = filteredTxs.filter(t => {
+                  const search = searchTerm.toLowerCase();
+                  
+                  const filteredExp = filteredTxs.filter(t => {
                     const catName = cats.find(c => c.id === t.catId)?.name || '';
-                    const search = searchTerm.toLowerCase();
                     return (t.note || '').toLowerCase().includes(search) || 
                            catName.toLowerCase().includes(search) || 
                            t.amount.toString().includes(search);
-                  });
+                  }).map(t => ({ ...t, type: 'expense' }));
 
-                  if (filtered.length === 0) {
+                  const filteredInc = income.filter(i => {
+                    return i.date.slice(0, 7) === currentYearMonth && 
+                           ((i.source || '').toLowerCase().includes(search) || 
+                            i.amount.toString().includes(search));
+                  }).map(i => ({ ...i, type: 'income', jsDate: new Date(i.date) }));
+
+                  const combined = [...filteredExp, ...filteredInc].sort((a, b) => b.jsDate - a.jsDate);
+
+                  if (combined.length === 0) {
                     return (
                       <div className="empty-state-card">
                         <div className="empty-state-icon">{searchTerm ? '🔍' : '💸'}</div>
@@ -814,10 +823,27 @@ export default function App() {
                     );
                   }
 
-                  return filtered.sort((a, b) => b.jsDate - a.jsDate).map(t => {
+                  return combined.map(t => {
+                    if (t.type === 'income') {
+                      return (
+                        <div key={`inc_${t.id}`} className="history-item interactive-node" style={{ borderRight: '4px solid var(--success)' }}>
+                          <div className="tx-info">
+                            <div className="tx-note">{t.source || 'הכנסה כללית'}</div>
+                            <div className="tx-meta">הכנסה • {t.jsDate.toLocaleDateString('he-IL')}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div className="tx-amount" style={{ color: 'var(--success)' }}>+₪{Math.round(t.amount).toLocaleString()}</div>
+                            <div className="tx-actions">
+                              <button onClick={(e) => { e.stopPropagation(); deleteIncome(t.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>🗑️</button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     const cat = cats.find(c => c.id === t.catId);
                     return (
-                      <div key={t.id} className="history-item interactive-node" onClick={() => openEditTx(t)}>
+                      <div key={`exp_${t.id}`} className="history-item interactive-node" onClick={() => openEditTx(t)}>
                         <div className="tx-info">
                           <div className="tx-note">{t.note || 'הוצאה כללית'}</div>
                           <div className="tx-meta">{cat?.name || '?'} • {t.jsDate.toLocaleDateString('he-IL')} • {t.method}</div>
@@ -1069,21 +1095,37 @@ export default function App() {
            <button onClick={() => document.getElementById('scanInp').click()} disabled={ocrLoading} style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid #C7D2FE', background: '#EEF2FF', cursor: 'pointer', fontSize: 20 }}>{ocrLoading ? '⏳' : '📷'}</button>
            <input type="file" id="scanInp" style={{ display: 'none' }} accept="image/*" onChangeCapture={e => handleScan(e.target.files[0])} />
          </div>
-         {expForm.method === '💳 אשראי' && creditCards.length > 0 && (
+         {expForm.method === '💳 אשראי' && (
            <div style={{ marginTop: 8 }}>
              <label style={{ fontSize: 10, color: 'var(--text-sub)' }}>בחר כרטיס אשראי</label>
-             <select value={expForm.cardId} onChange={e => setExpForm({ ...expForm, cardId: e.target.value })}>
+             <select value={expForm.cardId} onChange={e => {
+               if (e.target.value === 'new') {
+                 addCreditCard();
+                 setExpForm({ ...expForm, cardId: '' });
+               } else {
+                 setExpForm({ ...expForm, cardId: e.target.value });
+               }
+             }}>
                <option value="">בחר כרטיס...</option>
                {creditCards.map(c => <option key={c.id} value={c.id}>{c.name} (**** {c.last4})</option>)}
+               <option value="new">+ הוסף כרטיס חדש</option>
              </select>
            </div>
          )}
-         {expForm.method === '🎁 גיפט קארד' && cards.length > 0 && (
+         {expForm.method === '🎁 גיפט קארד' && (
            <div style={{ marginTop: 8 }}>
              <label style={{ fontSize: 10, color: 'var(--text-sub)' }}>בחר גיפט קארד</label>
-             <select value={expForm.giftCardId} onChange={e => setExpForm({ ...expForm, giftCardId: e.target.value })}>
+             <select value={expForm.giftCardId} onChange={e => {
+               if (e.target.value === 'new') {
+                 addGiftCard();
+                 setExpForm({ ...expForm, giftCardId: '' });
+               } else {
+                 setExpForm({ ...expForm, giftCardId: e.target.value });
+               }
+             }}>
                <option value="">בחר כרטיס...</option>
                {cards.map(c => <option key={c.id} value={c.id}>{c.name} (₪{c.current} נותר)</option>)}
+               <option value="new">+ הוסף גיפט קארד חדש</option>
              </select>
            </div>
          )}
@@ -1097,8 +1139,6 @@ export default function App() {
         <input type="number" value={incForm.amount} onChange={e => setIncForm({ ...incForm, amount: e.target.value })} placeholder="0.00" />
         <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4, marginTop: 10 }}>מקור</label>
         <input type="text" value={incForm.source} onChange={e => setIncForm({ ...incForm, source: e.target.value })} placeholder="למשל: משכורת, בונוס" />
-        <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4, marginTop: 10 }}>תאריך</label>
-        <input type="date" value={incForm.date} onChange={e => setIncForm({ ...incForm, date: e.target.value })} />
         <button className="btn-main" onClick={saveIncome}>שמירה</button>
       </Modal>
 
