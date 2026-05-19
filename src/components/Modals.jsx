@@ -321,7 +321,7 @@ export default function Modals() {
         <h4 style={{ marginBottom: 10 }}>ניהול נתונים 💾</h4>
         <button onClick={() => { if (confirm("למחוק הכל?")) { localStorage.clear(); window.location.reload(); } }} style={{ width: '100%', padding: 12, background: 'var(--card-bg)', border: '1px solid var(--danger)', borderRadius: 12, cursor: 'pointer', fontFamily: 'Rubik', color: 'var(--danger)', marginBottom: 10 }}>🗑️ מחיקת כל הנתונים</button>
         <button onClick={hardResetApp} style={{ width: '100%', padding: 12, background: 'var(--warning)', border: '1px solid var(--warning)', borderRadius: 12, cursor: 'pointer', fontFamily: 'Rubik', color: 'white', fontWeight: 'bold' }}>⚠️ איפוס ותיקון שגיאות (Hard Reset)</button>
-        <div style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: 'var(--text-sub)' }}>BudgetMaster Pro v4.0-react</div>
+        <div style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: 'var(--text-sub)' }}>BudgetMaster Pro v4.1-react</div>
       </Modal>
 
       <Modal show={showHistoryModal} onClose={() => setShowHistoryModal(false)} title={`היסטוריית ${cats.find(c => c.id === histCatId)?.name || 'קטגוריה'}`}>
@@ -396,7 +396,7 @@ export default function Modals() {
         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
           <div style={{ fontSize: 13, background: '#f9fafb', padding: 10, borderRadius: 8, marginBottom: 5 }}>[INFO] סנכרון נתונים הושלם</div>
           <div style={{ fontSize: 13, background: '#f9fafb', padding: 10, borderRadius: 8, marginBottom: 5 }}>[INFO] משתמש מחובר: {user?.email}</div>
-          <div style={{ fontSize: 13, background: '#f9fafb', padding: 10, borderRadius: 8, marginBottom: 5 }}>[INFO] גרסה: v4.0-react</div>
+          <div style={{ fontSize: 13, background: '#f9fafb', padding: 10, borderRadius: 8, marginBottom: 5 }}>[INFO] גרסה: v4.1-react</div>
         </div>
       </Modal>
       

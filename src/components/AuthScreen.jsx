@@ -29,7 +29,7 @@ export default function AuthScreen() {
     <div id="authScreen">
       <div className="auth-card animate-pop">
         <h2>BudgetMaster Pro</h2>
-        <div style={{ fontSize: 12, opacity: 0.6, marginTop: -20, marginBottom: 20, fontFamily: 'monospace' }}>v4.0-react</div>
+        <div style={{ fontSize: 12, opacity: 0.6, marginTop: -20, marginBottom: 20, fontFamily: 'monospace' }}>v4.1-react</div>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="אימייל" />
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="סיסמה" />
         <button className="btn-main" onClick={handleLogin} disabled={authBusy}>{authBusy ? 'מתחבר...' : 'כניסה'}</button>
