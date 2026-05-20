@@ -22,8 +22,19 @@ jobs:
 
       - name: Install and Build 🔧
         run: |
-          npm install --legacy-peer-deps
-          npm run build
+          echo "Starting install and build..." > build.log
+          npm install --legacy-peer-deps >> build.log 2>&1
+          echo "Starting production build..." >> build.log
+          npm run build >> build.log 2>&1
+
+      - name: Commit build log on failure 📝
+        if: failure()
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add build.log
+          git commit -m "chore: add build log from failed run [skip ci]"
+          git push origin main
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
