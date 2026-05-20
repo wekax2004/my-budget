@@ -27,14 +27,12 @@ jobs:
           echo "Starting production build..." >> build.log
           npm run build >> build.log 2>&1
 
-      - name: Commit build log on failure 📝
-        if: failure()
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add build.log
-          git commit -m "chore: add build log from failed run [skip ci]"
-          git push origin main
+      - name: Upload Build Log 📤
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
