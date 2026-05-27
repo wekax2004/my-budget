@@ -23,6 +23,7 @@ export const DataProvider = ({ children }) => {
   const [creditCards, setCreditCards] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   
   // App settings
   const [currentYearMonth, setCurrentYearMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -59,6 +60,12 @@ export const DataProvider = ({ children }) => {
 
   useEffect(() => {
     if (!user) return;
+
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     const unsubs = [];
 
     unsubs.push(onSnapshot(query(collection(db, "categories"), where("allowedUsers", "array-contains", user.email)), s => {
@@ -124,7 +131,13 @@ export const DataProvider = ({ children }) => {
 
     checkAndCreateDefaults(user);
 
-    return () => unsubs.forEach(u => u());
+    checkAndCreateDefaults(user);
+
+    return () => {
+      unsubs.forEach(u => u());
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [user]);
 
   const value = {
@@ -132,7 +145,7 @@ export const DataProvider = ({ children }) => {
     cats, txs, income, recurring, recurringIncome, savings, cards, creditCards, shoppingList, dataLoading,
     currentYearMonth, setCurrentYearMonth,
     dateFilter, setDateFilter, isDateInFilter,
-    isLocked, setIsLocked,
+    isLocked, setIsLocked, isOffline,
     toasts, showToast
   };
 

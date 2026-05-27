@@ -21,7 +21,7 @@ import Subscriptions from './pages/Subscriptions';
 import './index.css';
 
 function MainLayout() {
-  const { user, isLocked, authLoading, currentYearMonth, setCurrentYearMonth, dateFilter, setDateFilter, toasts, cats, txs } = useData();
+  const { user, isLocked, authLoading, currentYearMonth, setCurrentYearMonth, dateFilter, setDateFilter, toasts, cats, txs, isOffline } = useData();
   const { fabOpen, setFabOpen, setShowIncomeModal, openAddTx, setShowSettingsModal, setShowPartnersModal, setShowLogsModal } = useModals();
 
   if (authLoading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #4F46E5, #818CF8)', color: 'white', fontSize: '24px' }}>טוען...</div>;
@@ -81,6 +81,12 @@ function MainLayout() {
           setShowPartnersModal={setShowPartnersModal} 
           setShowLogsModal={setShowLogsModal} 
         />
+        
+        {isOffline && (
+          <div style={{ background: 'var(--warning)', color: 'white', padding: '8px 12px', borderRadius: 8, marginBottom: 15, fontSize: 13, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <span>⚠️ אתה במצב לא מקוון. אל דאגה, הנתונים ישמרו ויסונכרנו כשתחזור לרשת!</span>
+          </div>
+        )}
         
         <div className="controls-bar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <select 
