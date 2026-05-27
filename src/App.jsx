@@ -42,7 +42,7 @@ function MainLayout() {
             if (now - lastTxTime > 24 * 60 * 60 * 1000) {
               new Notification("BudgetMaster Pro", {
                 body: "לא הוספת הוצאות לאחרונה. אל תשכח לתעד את ההוצאות שלך!",
-                icon: "/favicon.svg"
+                icon: "./favicon.svg"
               });
               localStorage.setItem('lastReminded', now.toString());
             }
