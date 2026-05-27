@@ -3,6 +3,8 @@ import { useData } from '../context/DataContext';
 import { useModals } from '../context/ModalContext';
 import { Chart, registerables } from 'chart.js';
 import { Sparkles } from 'lucide-react';
+import { db } from '../firebase';
+import { deleteDoc, doc } from 'firebase/firestore';
 
 Chart.register(...registerables);
 

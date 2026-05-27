@@ -4,8 +4,8 @@ import { useModals } from '../context/ModalContext';
 import * as LucideIcons from 'lucide-react';
 
 export default function Home() {
-  const { cats, txs, currentYearMonth, totalBudget, totalSpent, balance } = useData();
-  const { openAddCat, openAddTx, setShowCatModal, setShowHistoryModal, setHistCatId, setHistOffset, openEditCat } = useModals();
+  const { cats, txs, currentYearMonth } = useData();
+  const { openAddCat, openAddTx, setShowHistoryModal, setHistCatId, setHistOffset, openEditCat } = useModals();
 
   const filteredTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
   const totalCatBudget = cats.reduce((s, c) => s + (c.budget || 0), 0);
@@ -20,7 +20,7 @@ export default function Home() {
     if (perc > 85) return `זהירות! ניצלת ${Math.round(perc)}% מהתקציב.`;
     if (day > 20 && perc < 50) return "עבודה מעולה! שומר/ת על התקציב. העבר/י ליתרה לחיסכון!";
     const tips = ["טיפ: בדוק הוראות קבע כפולות.", `נותרו ₪${Math.round(bal).toLocaleString()} החודש.`, "חלוקת תקציב לקטגוריות עוזרת לחסוך עד 20%."];
-    return tips[Math.floor(Math.random() * tips.length)];
+    return tips[day % tips.length];
   };
 
   const getEffectiveBudget = (cat, month) => {
