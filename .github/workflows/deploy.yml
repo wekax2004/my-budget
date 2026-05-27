@@ -22,20 +22,9 @@ jobs:
 
       - name: Install and Build 🔧
         run: |
-          echo "Starting install and build..." > build.log
-          npm install --legacy-peer-deps >> build.log 2>&1
-          echo "Starting production build..." >> build.log
-          npm run build >> build.log 2>&1
+          npm install --legacy-peer-deps
+          npm run build
 
-      - name: Push Build Log to debug-log branch 📝
-        if: always()
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git checkout -b debug-log
-          git add build.log
-          git commit -m "chore: add build log [skip ci]"
-          git push origin debug-log --force
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
