@@ -6,11 +6,11 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export default function Activity() {
-  const { cats, txs, income, currentYearMonth, dataLoading, showToast } = useData();
+  const { cats, txs, income, currentYearMonth, dateFilter, isDateInFilter, dataLoading, showToast } = useData();
   const { openEditTx, openAddTx, openEditInc } = useModals();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+  const filteredTxs = txs.filter(t => isDateInFilter(t.jsDate));
   
   const deleteIncome = async (id) => { 
     if (confirm("למחוק?")) {
@@ -29,7 +29,7 @@ export default function Activity() {
   }).map(t => ({ ...t, type: 'expense' }));
 
   const filteredInc = income.filter(i => {
-    return i.date.slice(0, 7) === currentYearMonth && 
+    return isDateInFilter(i.date) && 
            ((i.source || '').toLowerCase().includes(search) || 
             i.amount.toString().includes(search));
   }).map(i => ({ ...i, type: 'income', jsDate: new Date(i.date) }));

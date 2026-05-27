@@ -13,7 +13,8 @@ const THEMES = {
   midnight: { primary:'#7C3AED', bg:'#111827', card:'#1F2937', text:'#F9FAFB', sub:'#9CA3AF' },
   forest: { primary:'#059669', bg:'#ECFDF5', card:'#FFFFFF', text:'#064E3B', sub:'#047857' },
   ocean: { primary:'#0891B2', bg:'#ECFEFF', card:'#FFFFFF', text:'#164E63', sub:'#0E7490' },
-  dark: { primary:'#6366F1', bg:'#000000', card:'#121212', text:'#E5E7EB', sub:'#9CA3AF' }
+  dark: { primary:'#6366F1', bg:'#000000', card:'#121212', text:'#E5E7EB', sub:'#9CA3AF' },
+  amoled: { primary:'#F43F5E', bg:'#000000', card:'#0A0A0A', text:'#FFFFFF', sub:'#A1A1AA' }
 };
 const rates = { ILS: 1, USD: 3.65, EUR: 3.95 };
 

@@ -4,10 +4,11 @@ import { auth } from '../firebase';
 import { useData } from '../context/DataContext';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { Menu, LogOut, Settings, Users, FileText, Download, Fingerprint, Lock, Bell, Battery, Upload } from 'lucide-react';
 import { importCSV } from '../utils/csvImporter';
 export default function Header({ setShowSettingsModal, setShowPartnersModal, setShowLogsModal }) {
-  const { user, txs, cats, currentYearMonth, isLocked, setIsLocked, toasts, showToast } = useData();
+  const { user, txs, cats, income, savings, currentYearMonth, isLocked, setIsLocked, toasts, showToast } = useData();
   const [showMenu, setShowMenu] = useState(false);
   const [lowPower, setLowPower] = useState(localStorage.getItem('lowPowerMode') === 'true');
   const [notifsEnabled, setNotifsEnabled] = useState(localStorage.getItem('notificationsEnabled') === 'true');
@@ -39,15 +40,30 @@ export default function Header({ setShowSettingsModal, setShowPartnersModal, set
     showToast(val ? 'התראות הופעלו' : 'התראות בוטלו', 'success');
   };
 
-  const exportToCSV = () => {
-    let csv = "\uFEFF" + "Date,Amount,Currency,Category,Note,Method\n";
-    txs.forEach(t => {
+  const exportToExcel = () => {
+    const txData = txs.map(t => {
       const catName = cats.find(c => c.id === t.catId)?.name || 'Unknown';
-      csv += [t.jsDate.toLocaleDateString('en-CA'), t.originalAmount || t.amount, t.currency || 'ILS', `"${catName}"`, `"${t.note}"`, t.method].join(",") + "\n";
+      return { Date: t.jsDate.toLocaleDateString('en-CA'), Amount: t.originalAmount || t.amount, Currency: t.currency || 'ILS', Category: catName, Note: t.note, Method: t.method };
     });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `budget_${new Date().toISOString().slice(0, 10)}.csv`; link.click();
-    showToast('CSV יוצא בהצלחה', 'success');
+    const wsTxs = XLSX.utils.json_to_sheet(txData);
+
+    const incData = income.map(i => ({ Date: i.date, Source: i.source, Amount: i.amount }));
+    const wsInc = XLSX.utils.json_to_sheet(incData);
+
+    const catData = cats.map(c => ({ Name: c.name, Budget: c.budget, Icon: c.icon }));
+    const wsCats = XLSX.utils.json_to_sheet(catData);
+
+    const savData = savings.map(s => ({ Name: s.name, Current: s.current, Target: s.target, Progress: `${Math.round((s.current / s.target) * 100)}%` }));
+    const wsSav = XLSX.utils.json_to_sheet(savData);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsTxs, "Expenses");
+    XLSX.utils.book_append_sheet(wb, wsInc, "Incomes");
+    XLSX.utils.book_append_sheet(wb, wsCats, "Categories");
+    XLSX.utils.book_append_sheet(wb, wsSav, "Savings");
+
+    XLSX.writeFile(wb, `BudgetMaster_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast('Excel יוצא בהצלחה', 'success');
     setShowMenu(false);
   };
 
@@ -115,8 +131,8 @@ export default function Header({ setShowSettingsModal, setShowPartnersModal, set
             <button className="dropdown-item" onClick={() => { setShowSettingsModal(true); setShowMenu(false); }}>
               <Settings size={16} /> הגדרות
             </button>
-            <button className="dropdown-item" onClick={exportToCSV}>
-              <Download size={16} /> ייצוא CSV
+            <button className="dropdown-item" onClick={exportToExcel}>
+              <Download size={16} /> ייצוא ל-Excel
             </button>
             <button className="dropdown-item" onClick={() => document.getElementById('csvUpload').click()}>
               <Upload size={16} /> ייבוא CSV

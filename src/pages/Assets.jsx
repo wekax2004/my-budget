@@ -51,12 +51,26 @@ export default function Assets() {
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
           <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Target size={20} color="var(--success)" /> יעדי חיסכון</h3>
-          <button onClick={addSavingsGoal} style={{ background: 'var(--success)', color: 'white', border: 'none', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Plus size={18} /></button>
+          <button onClick={addSavingsGoal} style={{ background: 'var(--success)', color: 'white', border: 'none', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Plus size={18} /></button>
         </div>
+        {savings.length > 0 && (() => {
+          const totalCur = savings.reduce((s, g) => s + g.current, 0);
+          const totalTar = savings.reduce((s, g) => s + g.target, 0);
+          const totalPerc = totalTar > 0 ? Math.min((totalCur / totalTar) * 100, 100) : 0;
+          return (
+            <div style={{ padding: 15, background: 'linear-gradient(135deg, var(--success), #059669)', borderRadius: 12, color: 'white', marginBottom: 20, boxShadow: '0 4px 10px rgba(16, 185, 129, 0.2)' }}>
+              <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 5 }}>סה"כ חסכונות</div>
+              <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 10 }}>₪{totalCur.toLocaleString()} / ₪{totalTar.toLocaleString()}</div>
+              <div style={{ height: 6, background: 'rgba(255,255,255,0.3)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: 'white', width: `${totalPerc}%`, transition: 'width 1s ease' }} />
+              </div>
+            </div>
+          );
+        })()}
         {savings.length ? savings.map(s => {
           const perc = Math.min((s.current / s.target) * 100, 100);
           return (
-            <div key={s.id} style={{ padding: 15, background: 'var(--card-bg)', borderRadius: 12, border: '1px solid #E5E7EB', marginBottom: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div key={s.id} className="interactive-node" style={{ padding: 15, background: 'var(--card-bg)', borderRadius: 12, border: '1px solid #E5E7EB', marginBottom: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontWeight: 600 }}>{s.name}</span>
                 <div style={{ fontSize: 12, fontWeight: 'bold', color: perc >= 100 ? 'var(--success)' : 'var(--text-main)' }}>₪{s.current.toLocaleString()} / ₪{s.target.toLocaleString()}</div>
@@ -66,7 +80,7 @@ export default function Assets() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button onClick={() => depositSavings(s.id, s.current, s.target)} style={{ fontSize: 12, padding: '6px 12px', background: 'var(--success)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>💰 הפקדה</button>
-                <button onClick={() => deleteSavingsGoal(s.id)} style={{ fontSize: 12, padding: '6px 12px', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', color: 'var(--danger)' }}><Trash2 size={14} /></button>
+                <button onClick={() => deleteSavingsGoal(s.id)} style={{ fontSize: 12, padding: '6px 12px', background: 'var(--bg)', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'var(--danger)' }}><Trash2 size={14} /></button>
               </div>
             </div>
           );

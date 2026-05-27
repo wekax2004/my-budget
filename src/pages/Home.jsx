@@ -4,10 +4,10 @@ import { useModals } from '../context/ModalContext';
 import * as LucideIcons from 'lucide-react';
 
 export default function Home() {
-  const { cats, txs, currentYearMonth } = useData();
+  const { cats, txs, currentYearMonth, isDateInFilter } = useData();
   const { openAddCat, openAddTx, setShowHistoryModal, setHistCatId, setHistOffset, openEditCat } = useModals();
 
-  const filteredTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+  const filteredTxs = txs.filter(t => isDateInFilter(t.jsDate));
   const totalCatBudget = cats.reduce((s, c) => s + (c.budget || 0), 0);
   const spentThisMonth = filteredTxs.reduce((s, t) => s + t.amount, 0);
   const bal = totalCatBudget - spentThisMonth;

@@ -9,7 +9,7 @@ import { deleteDoc, doc } from 'firebase/firestore';
 Chart.register(...registerables);
 
 export default function Insights() {
-  const { income, cats, txs, currentYearMonth } = useData();
+  const { income, cats, txs, currentYearMonth, dateFilter, isDateInFilter } = useData();
   const { setShowForecastModal, setHistCatId, setHistOffset, setShowHistoryModal, openEditInc } = useModals();
   const barRef = useRef(null);
   const pieRef = useRef(null);
@@ -18,9 +18,9 @@ export default function Insights() {
   const pieInst = useRef(null);
   const lineInst = useRef(null);
 
-  const filteredTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
+  const filteredTxs = txs.filter(t => isDateInFilter(t.jsDate));
   const totalSpent = filteredTxs.reduce((s, t) => s + t.amount, 0);
-  const monthlyIncome = income.filter(i => i.date.slice(0, 7) === currentYearMonth).reduce((s, i) => s + i.amount, 0);
+  const monthlyIncome = income.filter(i => isDateInFilter(i.date)).reduce((s, i) => s + i.amount, 0);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -71,12 +71,30 @@ export default function Insights() {
       // Line Chart
       if (lineRef.current) {
         if (lineInst.current) lineInst.current.destroy();
-        const dayMap = {};
-        const daysInMonth = new Date(parseInt(currentYearMonth.slice(0, 4)), parseInt(currentYearMonth.slice(5, 7)), 0).getDate();
-        for (let i = 1; i <= daysInMonth; i++) dayMap[i] = 0;
-        filteredTxs.forEach(t => { dayMap[t.jsDate.getDate()] += t.amount; });
-        const labels = []; const data = []; let sum = 0;
-        for (let i = 1; i <= daysInMonth; i++) { labels.push(i); sum += dayMap[i]; data.push(sum); }
+        let labels = [];
+        let data = [];
+        let sum = 0;
+
+        if (dateFilter.type === 'month') {
+          const dayMap = {};
+          const daysInMonth = new Date(parseInt(dateFilter.value.slice(0, 4)), parseInt(dateFilter.value.slice(5, 7)), 0).getDate();
+          for (let i = 1; i <= daysInMonth; i++) dayMap[i] = 0;
+          filteredTxs.forEach(t => { dayMap[t.jsDate.getDate()] += t.amount; });
+          for (let i = 1; i <= daysInMonth; i++) { labels.push(i); sum += dayMap[i]; data.push(sum); }
+        } else {
+          const sorted = [...filteredTxs].sort((a, b) => a.jsDate - b.jsDate);
+          const dateMap = {};
+          sorted.forEach(t => {
+            const d = t.jsDate.toISOString().slice(0, 10);
+            if(!dateMap[d]) dateMap[d] = 0;
+            dateMap[d] += t.amount;
+          });
+          labels = Object.keys(dateMap).sort();
+          labels.forEach(l => {
+             sum += dateMap[l];
+             data.push(sum);
+          });
+        }
         lineInst.current = new Chart(lineRef.current, {
           type: 'line', data: { labels, datasets: [{ label: 'הוצאה מצטברת', data, borderColor: '#6366F1', backgroundColor: 'rgba(99,102,241,0.1)', fill: true, tension: 0.4 }] },
           options: { responsive: true, maintainAspectRatio: false }
@@ -84,7 +102,7 @@ export default function Insights() {
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [filteredTxs, monthlyIncome, totalSpent, cats, currentYearMonth]);
+  }, [filteredTxs, monthlyIncome, totalSpent, cats, currentYearMonth, dateFilter]);
 
   const deleteIncome = async (id) => { 
     if (confirm("למחוק?")) {
@@ -126,8 +144,8 @@ export default function Insights() {
       </div>
 
       <div className="card" style={{ marginTop: 20, background: 'var(--card-bg)', padding: 15, borderRadius: 12 }}>
-        <h3 style={{ margin: '0 0 15px 0' }}>הכנסות החודש</h3>
-        {income.filter(i => i.date.slice(0, 7) === currentYearMonth).map(i => (
+        <h3 style={{ margin: '0 0 15px 0' }}>הכנסות</h3>
+        {income.filter(i => isDateInFilter(i.date)).map(i => (
           <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eee' }}>
             <span>{i.source}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -137,7 +155,7 @@ export default function Insights() {
             </div>
           </div>
         ))}
-        {income.filter(i => i.date.slice(0, 7) === currentYearMonth).length === 0 && <div style={{ color: 'var(--text-sub)', textAlign: 'center', padding: 10 }}>אין הכנסות החודש</div>}
+        {income.filter(i => isDateInFilter(i.date)).length === 0 && <div style={{ color: 'var(--text-sub)', textAlign: 'center', padding: 10 }}>אין הכנסות בטווח שנבחר</div>}
       </div>
     </div>
   );

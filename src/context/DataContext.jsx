@@ -26,6 +26,21 @@ export const DataProvider = ({ children }) => {
   
   // App settings
   const [currentYearMonth, setCurrentYearMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [dateFilter, setDateFilter] = useState({ type: 'month', value: new Date().toISOString().slice(0, 7) });
+
+  const isDateInFilter = (dateStrOrObj) => {
+    if (!dateStrOrObj) return false;
+    const dateObj = typeof dateStrOrObj === 'string' ? new Date(dateStrOrObj) : (dateStrOrObj.toDate ? dateStrOrObj.toDate() : dateStrOrObj);
+    if (isNaN(dateObj)) return false;
+    
+    if (dateFilter.type === 'month') {
+      return dateObj.toISOString().slice(0, 7) === dateFilter.value;
+    } else if (dateFilter.type === 'custom') {
+      const d = dateObj.toISOString().slice(0, 10);
+      return d >= dateFilter.start && d <= dateFilter.end;
+    }
+    return true;
+  };
   const [isLocked, setIsLocked] = useState(false);
   const { toasts, showToast } = useToast();
 
@@ -116,6 +131,7 @@ export const DataProvider = ({ children }) => {
     user, authLoading,
     cats, txs, income, recurring, recurringIncome, savings, cards, creditCards, shoppingList, dataLoading,
     currentYearMonth, setCurrentYearMonth,
+    dateFilter, setDateFilter, isDateInFilter,
     isLocked, setIsLocked,
     toasts, showToast
   };
