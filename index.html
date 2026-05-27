@@ -9,30 +9,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="./manifest.json" />
     <title>BudgetMaster Pro</title>
-    <script type="module" crossorigin src="/my-budget/assets/index-CkKCl4Pd.js"></script>
+    <script type="module" crossorigin src="/my-budget/assets/index-BUJfr8JN.js"></script>
     <link rel="modulepreload" crossorigin href="/my-budget/assets/chunk-zsgVPwQN.js">
     <link rel="modulepreload" crossorigin href="/my-budget/assets/typeof-DmQ5kzpc.js">
     <link rel="stylesheet" crossorigin href="/my-budget/assets/index-DN2yyj8_.css">
-  </head>
+  <link rel="manifest" href="/my-budget/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.getRegistrations().then(registrations => {
-            for (let reg of registrations) {
-              console.log('Unregistering old SW:', reg.scope);
-              reg.unregister();
-            }
-          }).then(() => {
-            navigator.serviceWorker.register('./sw.js').then(reg => {
-              console.log('SW Registered:', reg.scope);
-            }).catch(err => {
-              console.log('SW Registration Failed:', err);
-            });
-          });
-        });
-      }
-    </script>
   </body>
 </html>
