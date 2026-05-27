@@ -22,7 +22,7 @@ export default function Modals() {
   const {
     showCatModal, setShowCatModal, catForm, setCatForm, catEditId,
     showExpModal, setShowExpModal, expForm, setExpForm, expCatId, setExpCatId, expEditId,
-    showIncomeModal, setShowIncomeModal, incForm, setIncForm,
+    showIncomeModal, setShowIncomeModal, incForm, setIncForm, incEditId,
     showRecurringModal, setShowRecurringModal,
     showSettingsModal, setShowSettingsModal,
     showHistoryModal, setShowHistoryModal, histCatId, histOffset, setHistOffset,
@@ -142,6 +142,28 @@ export default function Modals() {
     finally { setOcrLoading(false); }
   };
 
+  const handleReceiptUpload = async (file) => {
+    if (!file) return;
+    try {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise(r => img.onload = r);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const maxDim = 600;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = (h / w) * maxDim; w = maxDim; }
+        else { w = (w / h) * maxDim; h = maxDim; }
+      }
+      canvas.width = w; canvas.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      setExpForm({ ...expForm, receiptDataUrl: dataUrl });
+      showToast('תמונה צורפה בהצלחה', 'success');
+    } catch (e) { showToast('שגיאה בצירוף תמונה', 'error'); }
+  };
+
   const saveTx = async () => {
     const rawAmt = parseFloat(expForm.amount);
     if (!rawAmt) return showToast("נא להזין סכום", "error");
@@ -149,7 +171,7 @@ export default function Modals() {
     const allowed = [user.email];
     const partner = localStorage.getItem('partnerEmail');
     if (partner) allowed.push(partner);
-    const txData = { amount: converted, originalAmount: rawAmt, currency: expForm.currency, note: expForm.note || "הוצאה כללית", method: expForm.method, cardId: expForm.cardId, giftCardId: expForm.giftCardId, catId: expCatId, allowedUsers: allowed, date: expEditId ? txs.find(t => t.id === expEditId)?.date || Timestamp.now() : Timestamp.now() };
+    const txData = { amount: converted, originalAmount: rawAmt, currency: expForm.currency, note: expForm.note || "הוצאה כללית", method: expForm.method, cardId: expForm.cardId, giftCardId: expForm.giftCardId, receiptDataUrl: expForm.receiptDataUrl || null, catId: expCatId, allowedUsers: allowed, date: expEditId ? txs.find(t => t.id === expEditId)?.date || Timestamp.now() : Timestamp.now() };
     try {
       if (expEditId) {
         await updateDoc(doc(db, "transactions", expEditId), txData);
@@ -174,10 +196,22 @@ export default function Modals() {
 
   const saveIncome = async () => {
     if (!incForm.amount || !incForm.source || !incForm.date) return showToast("חסרים נתונים", "error");
+    const incData = { uid: user.uid, amount: parseFloat(incForm.amount), source: incForm.source, date: incForm.date, timestamp: new Date() };
     try {
-      await addDoc(collection(db, "income"), { uid: user.uid, amount: parseFloat(incForm.amount), source: incForm.source, date: incForm.date, timestamp: new Date() });
-      showToast('הכנסה נוספה', 'success');
+      if (incEditId) {
+        await updateDoc(doc(db, "income", incEditId), incData);
+        showToast('הכנסה עודכנה', 'success');
+      } else {
+        await addDoc(collection(db, "income"), incData);
+        showToast('הכנסה נוספה', 'success');
+      }
     } catch (e) { showToast("שגיאה: " + e.message, 'error'); }
+    setShowIncomeModal(false);
+  };
+
+  const deleteIncome = async () => {
+    if (!incEditId || !confirm("למחוק הכנסה?")) return;
+    await deleteDoc(doc(db, "income", incEditId));
     setShowIncomeModal(false);
   };
 
@@ -262,9 +296,17 @@ export default function Modals() {
            <select value={expForm.method} onChange={e => setExpForm({ ...expForm, method: e.target.value })} style={{ flex: 1 }}>
              <option value="💳 אשראי">💳 אשראי</option><option value="💵 מזומן">💵 מזומן</option><option value="📱 ביט/פייבוקס">📱 ביט/פייבוקס</option><option value="🏦 העברה">🏦 העברה</option><option value="🎁 גיפט קארד">🎁 גיפט קארד</option>
            </select>
-           <button onClick={() => document.getElementById('scanInp').click()} disabled={ocrLoading} style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid #C7D2FE', background: '#EEF2FF', cursor: 'pointer', fontSize: 20 }}>{ocrLoading ? '⏳' : '📷'}</button>
+           <button onClick={() => document.getElementById('scanInp').click()} disabled={ocrLoading} style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid #C7D2FE', background: '#EEF2FF', cursor: 'pointer', fontSize: 20 }} title="סריקת קבלה (OCR)">{ocrLoading ? '⏳' : '📷'}</button>
+           <button onClick={() => document.getElementById('receiptInp').click()} style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid #D1FAE5', background: '#ECFDF5', cursor: 'pointer', fontSize: 20 }} title="צירוף תמונה">🖼️</button>
            <input type="file" id="scanInp" style={{ display: 'none' }} accept="image/*" onChangeCapture={e => handleScan(e.target.files[0])} />
+           <input type="file" id="receiptInp" style={{ display: 'none' }} accept="image/*" onChangeCapture={e => handleReceiptUpload(e.target.files[0])} />
          </div>
+         {expForm.receiptDataUrl && (
+           <div style={{ marginTop: 10, position: 'relative', display: 'inline-block' }}>
+             <img src={expForm.receiptDataUrl} alt="Receipt" style={{ height: 60, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+             <button onClick={() => setExpForm({ ...expForm, receiptDataUrl: '' })} style={{ position: 'absolute', top: -5, right: -5, background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer' }}>×</button>
+           </div>
+         )}
          {expForm.method === '💳 אשראי' && (
            <div style={{ marginTop: 8 }}>
              <label style={{ fontSize: 10, color: 'var(--text-sub)' }}>בחר כרטיס אשראי</label>
@@ -303,12 +345,13 @@ export default function Modals() {
         {expEditId && <button onClick={() => { deleteTx(expEditId); setShowExpModal(false); }} style={{ width: '100%', marginTop: 10, padding: 12, background: 'none', border: 'none', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', fontFamily: 'Rubik' }}>מחיקה</button>}
       </Modal>
 
-      <Modal show={showIncomeModal} onClose={() => setShowIncomeModal(false)} title="הוספת הכנסה 💰">
+      <Modal show={showIncomeModal} onClose={() => setShowIncomeModal(false)} title={incEditId ? "עריכת הכנסה 💰" : "הוספת הכנסה 💰"}>
         <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4 }}>סכום</label>
         <input type="number" value={incForm.amount} onChange={e => setIncForm({ ...incForm, amount: e.target.value })} placeholder="0.00" />
         <label style={{ fontSize: 12, color: 'var(--text-sub)', display: 'block', marginBottom: 4, marginTop: 10 }}>מקור</label>
         <input type="text" value={incForm.source} onChange={e => setIncForm({ ...incForm, source: e.target.value })} placeholder="למשל: משכורת, בונוס" />
-        <button className="btn-main" onClick={saveIncome}>שמירה</button>
+        <button className="btn-main" onClick={saveIncome} style={{ marginTop: 15 }}>שמירה</button>
+        {incEditId && <button onClick={deleteIncome} style={{ width: '100%', marginTop: 10, padding: 12, background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 12, cursor: 'pointer', fontWeight: 600, fontFamily: 'Rubik' }}>מחיקה</button>}
       </Modal>
 
       <Modal show={showSettingsModal} onClose={() => setShowSettingsModal(false)} title="הגדרות ⚙️">

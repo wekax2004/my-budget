@@ -7,7 +7,7 @@ import { db } from '../firebase';
 
 export default function Activity() {
   const { cats, txs, income, currentYearMonth, dataLoading, showToast } = useData();
-  const { openEditTx, openAddTx } = useModals();
+  const { openEditTx, openAddTx, openEditInc } = useModals();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredTxs = txs.filter(t => t.jsDate.toISOString().slice(0, 7) === currentYearMonth);
@@ -83,7 +83,8 @@ export default function Activity() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div className="tx-amount" style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: 16 }}>+₪{Math.round(t.amount).toLocaleString()}</div>
-                    <div className="tx-actions">
+                    <div className="tx-actions" style={{ display: 'flex', gap: 5 }}>
+                      <button onClick={(e) => { e.stopPropagation(); openEditInc(t); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)' }}><Edit2 size={18} /></button>
                       <button onClick={(e) => { e.stopPropagation(); deleteIncome(t.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}><Trash2 size={18} /></button>
                     </div>
                   </div>
@@ -95,7 +96,10 @@ export default function Activity() {
             return (
               <div key={`exp_${t.id}`} className="history-item interactive-node" onClick={() => openEditTx(t)} style={{ background: 'var(--card-bg)', padding: 15, borderRadius: 12, marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'pointer' }}>
                 <div className="tx-info">
-                  <div className="tx-note" style={{ fontWeight: 600 }}>{t.note || 'הוצאה כללית'}</div>
+                  <div className="tx-note" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {t.note || 'הוצאה כללית'}
+                    {t.receiptDataUrl && <span title="קיימת קבלה מצורפת" style={{ fontSize: 14 }}>🖼️</span>}
+                  </div>
                   <div className="tx-meta" style={{ fontSize: 12, color: 'var(--text-sub)' }}>{cat?.name || '?'} • {t.jsDate.toLocaleDateString('he-IL')} • {t.method}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

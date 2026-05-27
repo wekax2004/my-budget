@@ -10,7 +10,7 @@ Chart.register(...registerables);
 
 export default function Insights() {
   const { income, cats, txs, currentYearMonth } = useData();
-  const { setShowForecastModal, setHistCatId, setHistOffset, setShowHistoryModal } = useModals();
+  const { setShowForecastModal, setHistCatId, setHistOffset, setShowHistoryModal, openEditInc } = useModals();
   const barRef = useRef(null);
   const pieRef = useRef(null);
   const lineRef = useRef(null);
@@ -132,7 +132,8 @@ export default function Insights() {
             <span>{i.source}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>+₪{i.amount.toLocaleString()}</span>
-              <button onClick={() => deleteIncome(i.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
+              <button onClick={() => openEditInc(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} title="עריכה">✏️</button>
+              <button onClick={() => deleteIncome(i.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} title="מחיקה">🗑️</button>
             </div>
           </div>
         ))}

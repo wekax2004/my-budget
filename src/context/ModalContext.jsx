@@ -23,11 +23,12 @@ export const ModalProvider = ({ children }) => {
   const [catForm, setCatForm] = useState({ name: '', budget: '', color: '#3B82F6', icon: 'tag' });
   const [catEditId, setCatEditId] = useState(null);
 
-  const [expForm, setExpForm] = useState({ amount: '', note: '', method: '💳 אשראי', currency: 'ILS', cardId: '', giftCardId: '' });
+  const [expForm, setExpForm] = useState({ amount: '', note: '', method: '💳 אשראי', currency: 'ILS', cardId: '', giftCardId: '', receiptDataUrl: '' });
   const [expCatId, setExpCatId] = useState(null);
   const [expEditId, setExpEditId] = useState(null);
 
   const [incForm, setIncForm] = useState({ amount: '', source: '', date: new Date().toISOString().slice(0, 10) });
+  const [incEditId, setIncEditId] = useState(null);
 
   const [histCatId, setHistCatId] = useState(null);
   const [histOffset, setHistOffset] = useState(0);
@@ -51,10 +52,11 @@ export const ModalProvider = ({ children }) => {
     setShowCatModal(true);
   };
 
-  const openAddTx = (catId) => { setExpEditId(null); setExpCatId(catId); setExpForm({ amount: '', note: '', currency: 'ILS', method: '💳 אשראי', cardId: '', giftCardId: '' }); setShowExpModal(true); };
-  const openEditTx = (tx) => { setExpEditId(tx.id); setExpCatId(tx.catId); setExpForm({ amount: tx.originalAmount || tx.amount, note: tx.note, currency: tx.currency || 'ILS', method: tx.method || '💳 אשראי', cardId: tx.cardId || '', giftCardId: tx.giftCardId || '' }); setShowExpModal(true); };
+  const openAddTx = (catId) => { setExpEditId(null); setExpCatId(catId); setExpForm({ amount: '', note: '', currency: 'ILS', method: '💳 אשראי', cardId: '', giftCardId: '', receiptDataUrl: '' }); setShowExpModal(true); };
+  const openEditTx = (tx) => { setExpEditId(tx.id); setExpCatId(tx.catId); setExpForm({ amount: tx.originalAmount || tx.amount, note: tx.note, currency: tx.currency || 'ILS', method: tx.method || '💳 אשראי', cardId: tx.cardId || '', giftCardId: tx.giftCardId || '', receiptDataUrl: tx.receiptDataUrl || '' }); setShowExpModal(true); };
 
-  const openAddIncome = () => { setIncForm({ amount: '', source: '', date: new Date().toISOString().slice(0, 10) }); setShowIncomeModal(true); };
+  const openAddIncome = () => { setIncEditId(null); setIncForm({ amount: '', source: '', date: new Date().toISOString().slice(0, 10) }); setShowIncomeModal(true); };
+  const openEditInc = (inc) => { setIncEditId(inc.id); setIncForm({ amount: inc.amount, source: inc.source, date: inc.date }); setShowIncomeModal(true); };
 
   const value = {
     showCatModal, setShowCatModal,
@@ -71,10 +73,10 @@ export const ModalProvider = ({ children }) => {
 
     catForm, setCatForm, catEditId, setCatEditId,
     expForm, setExpForm, expCatId, setExpCatId, expEditId, setExpEditId,
-    incForm, setIncForm,
+    incForm, setIncForm, incEditId, setIncEditId,
     histCatId, setHistCatId, histOffset, setHistOffset,
 
-    openAddCat, openEditCat, openAddTx, openEditTx, openAddIncome
+    openAddCat, openEditCat, openAddTx, openEditTx, openAddIncome, openEditInc
   };
 
   return (
